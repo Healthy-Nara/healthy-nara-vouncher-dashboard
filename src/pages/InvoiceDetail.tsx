@@ -711,7 +711,7 @@ const InvoiceDetail = () => {
                       </div>
                     </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '50px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '100px' }}>
                       <div>
                         <p style={{ fontSize: '18px', fontWeight: 700, color: '#1CB89B', lineHeight: 1.35, margin: 0, fontStyle: 'italic' }}>
                           Your satisfaction is our priority – <br /> thank you for relying on us.
