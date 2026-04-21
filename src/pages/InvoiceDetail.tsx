@@ -189,11 +189,10 @@ const InvoiceDetail = () => {
     if (selected) setEditData({ ...editData, caregiverId: id, caregiverName: selected.name });
   };
 
-  const activeWatermark = (viewMode === 'customer' && isReceipt) || (viewMode === 'caregiver' && isVoucher);
+
   const displayData = editData || invoice;
   const currentPlatformFeeRate = displayData.platformFeeRate || 10;
   const currentPlatformFee = displayData.platformFee || Math.round((displayData.amount || 0) * (currentPlatformFeeRate / 100));
-  const netPayout = (displayData.amount || 0); // Caregiver gets base amount
   const grandTotal = (displayData.amount || 0) + currentPlatformFee; // Customer pays Amount + Fee
 
   const inputClasses = "block w-full border border-gray-200 rounded-lg shadow-sm p-2 focus:ring-primary focus:border-primary text-sm transition-all duration-200 hover:border-primary/40 bg-white";

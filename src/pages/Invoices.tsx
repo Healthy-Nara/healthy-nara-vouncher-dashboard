@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchInvoices, updateInvoiceStatus, deleteInvoice, updateCustomerPayment, updateCaregiverPayout } from '../api';
 import { Link } from 'react-router-dom';
 import { useState, useRef, useEffect } from 'react';
-import { CheckCircle, Clock, Filter, Plus, Search as SearchIcon, FileText, Trash2, Calendar as CalendarIcon, X } from 'lucide-react';
+import { CheckCircle, Clock, Plus, Search as SearchIcon, FileText, Trash2, Calendar as CalendarIcon, X } from 'lucide-react';
 import { DateRange, type Range, type RangeKeyDict } from 'react-date-range';
 import { format } from 'date-fns';
 

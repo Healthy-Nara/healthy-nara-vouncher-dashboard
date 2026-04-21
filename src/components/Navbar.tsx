@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { CreditCard, Banknote, LogOut, User, LayoutDashboard, Users, PlusSquare, History } from 'lucide-react';
+import { LogOut, History } from 'lucide-react';
 import halogo from '../assets/halogo.png';
 import { useAuth } from '../context/AuthContext';
 

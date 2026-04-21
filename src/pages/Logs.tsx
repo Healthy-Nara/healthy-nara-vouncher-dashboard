@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { fetchLogs } from '../api';
-import { Clock, User, Shield, Info, Calendar } from 'lucide-react';
+import { Clock, Calendar } from 'lucide-react';
 
 const Logs = () => {
   const { data: logs, isLoading } = useQuery({

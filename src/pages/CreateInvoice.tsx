@@ -231,7 +231,7 @@ const CreateInvoice = () => {
                 <div className="relative border border-gray-300 rounded-lg shadow-sm focus:ring-primary focus:border-primary">
                   <DatePicker
                     selected={formData.date}
-                    onChange={(date) => setFormData({ ...formData, date: date || new Date() })}
+                    onChange={(date: Date | null) => setFormData({ ...formData, date: date || new Date() })}
                     dateFormat="dd/MM/yyyy"
                     className={dateInputClasses}
                     required
@@ -245,7 +245,7 @@ const CreateInvoice = () => {
                 <div className="relative border border-gray-300 rounded-lg shadow-sm focus:ring-primary focus:border-primary">
                   <DatePicker
                     selected={formData.dueDate}
-                    onChange={(date) => setFormData({ ...formData, dueDate: date || new Date() })}
+                    onChange={(date: Date | null) => setFormData({ ...formData, dueDate: date || new Date() })}
                     dateFormat="dd/MM/yyyy"
                     className={dateInputClasses}
                     required
@@ -259,7 +259,7 @@ const CreateInvoice = () => {
                 <div className="relative border border-gray-300 rounded-lg shadow-sm focus:ring-primary focus:border-primary">
                   <DatePicker
                     selected={formData.serviceStartDate}
-                    onChange={(date) => setFormData({ ...formData, serviceStartDate: date || new Date() })}
+                    onChange={(date: Date | null) => setFormData({ ...formData, serviceStartDate: date || new Date() })}
                     dateFormat="dd/MM/yyyy"
                     className={dateInputClasses}
                     required
@@ -273,7 +273,7 @@ const CreateInvoice = () => {
                 <div className="relative border border-gray-300 rounded-lg shadow-sm focus:ring-primary focus:border-primary">
                   <DatePicker
                     selected={formData.serviceEndDate}
-                    onChange={(date) => setFormData({ ...formData, serviceEndDate: date || new Date() })}
+                    onChange={(date: Date | null) => setFormData({ ...formData, serviceEndDate: date || new Date() })}
                     dateFormat="dd/MM/yyyy"
                     className={dateInputClasses}
                     required
