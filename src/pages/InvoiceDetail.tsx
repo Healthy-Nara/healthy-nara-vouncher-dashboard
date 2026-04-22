@@ -7,6 +7,7 @@ import { downloadAsImage, downloadAsPDF } from '../utils/export';
 import halogo from '../assets/halogo.png';
 import patternBg from '../assets/pattern.png';
 import autosign from '../assets/autosign.png';
+import CustomDatePicker from '../components/CustomDatePicker';
 
 const formatDateSlash = (dateStr: string) => {
   if (!dateStr) return 'N/A';
@@ -200,7 +201,7 @@ const InvoiceDetail = () => {
   const valueClasses = "text-sm font-semibold text-gray-900";
 
   return (
-    <div className={`mx-auto pb-20 transition-all duration-300 ${showPreview ? 'max-w-[1600px]' : 'max-w-3xl'}`}>
+    <div className={`mx-auto pb-20 transition-all duration-300 ${showPreview ? 'max-w-[1500px]' : 'max-w-3xl'}`}>
       {/* Top Nav */}
       <div className="flex items-center justify-between mb-5">
         <Link to="/" className="inline-flex items-center text-sm text-gray-500 hover:text-primary transition-colors font-semibold">
@@ -221,14 +222,14 @@ const InvoiceDetail = () => {
       )}
 
       {/* ========== ADAPTIVE LAYOUT ========== */}
-      <div className={`grid gap-5 items-start transition-all duration-300 ${showPreview ? 'grid-cols-1 lg:grid-cols-12' : 'grid-cols-1'}`}>
+      <div className={`grid gap-6 items-start transition-all duration-300 ${showPreview ? 'grid-cols-1 xl:grid-cols-12' : 'grid-cols-1'}`}>
 
         {/* ========== LEFT COLUMN: Admin Controls + Invoice Data ========== */}
-        <div className={`space-y-5 ${showPreview ? 'lg:col-span-5' : ''}`}>
+        <div className={`space-y-5 ${showPreview ? 'xl:col-span-4' : ''}`}>
 
           {/* ---- Admin Controls Card (FIRST) ---- */}
-          <div className="bg-white border border-primary/20 rounded-2xl shadow-sm overflow-hidden">
-            <div className="bg-primary/5 px-5 py-2.5 border-b border-primary/20 flex justify-between items-center">
+          <div className="bg-white border border-primary/20 rounded-2xl shadow-sm">
+            <div className="bg-primary/5 px-5 py-2.5 border-b border-primary/20 flex justify-between items-center rounded-t-2xl">
               <h3 className="text-[10px] font-bold text-primary uppercase tracking-widest">Admin Controls</h3>
               <button
                 onClick={() => setIsStatusEditing(!isStatusEditing)}
@@ -352,7 +353,7 @@ const InvoiceDetail = () => {
 
                   <div className="p-3 bg-gray-50/60 rounded-xl border border-gray-100">
                     <h3 className="text-xs font-bold text-gray-700 mb-3">Duty & Financials</h3>
-                    <div className="grid grid-cols-2 gap-2.5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className={labelClasses}>Duty Type</label>
                         <select className={inputClasses} value={editData?.dutyType || 'Day Shift'} onChange={(e) => setEditData({ ...editData, dutyType: e.target.value })}>
@@ -378,21 +379,45 @@ const InvoiceDetail = () => {
                         <label className={labelClasses}>Platform Fee (%)</label>
                         <input type="number" min="0" max="100" step="0.1" className={inputClasses} value={editData?.platformFeeRate || 10} onChange={(e) => setEditData({ ...editData, platformFeeRate: parseFloat(e.target.value) || 0 })} />
                       </div>
-                      <div>
-                        <label className={labelClasses}>Invoice Date</label>
-                        <input type="date" className={inputClasses} value={editData?.date || ''} onChange={(e) => setEditData({ ...editData, date: e.target.value })} />
-                      </div>
-                      <div>
-                        <label className={labelClasses}>Service Start</label>
-                        <input type="date" className={inputClasses} value={editData?.serviceStartDate || ''} onChange={(e) => setEditData({ ...editData, serviceStartDate: e.target.value })} />
-                      </div>
-                      <div>
-                        <label className={labelClasses}>Service End</label>
-                        <input type="date" className={inputClasses} value={editData?.serviceEndDate || ''} onChange={(e) => setEditData({ ...editData, serviceEndDate: e.target.value })} />
-                      </div>
-                      <div>
-                        <label className={labelClasses}>Due Date</label>
-                        <input type="date" className={inputClasses} value={editData?.dueDate || ''} onChange={(e) => setEditData({ ...editData, dueDate: e.target.value })} />
+                        <CustomDatePicker
+                          label="Invoice Date"
+                          selected={editData?.date ? new Date(editData.date) : new Date()}
+                          onChange={(date) => {
+                            const newDateStr = date.toISOString().split('T')[0];
+                            setEditData({ 
+                              ...editData, 
+                              date: newDateStr,
+                              dueDate: editData.dueDate < newDateStr ? newDateStr : editData.dueDate
+                            });
+                          }}
+                        />
+
+                        <CustomDatePicker
+                          label="Due Date"
+                          selected={editData?.dueDate ? new Date(editData.dueDate) : new Date()}
+                          minDate={editData?.date ? new Date(editData.date) : undefined}
+                          onChange={(date) => setEditData({ ...editData, dueDate: date.toISOString().split('T')[0] })}
+                        />
+
+                        <CustomDatePicker
+                          label="Service Start"
+                          selected={editData?.serviceStartDate ? new Date(editData.serviceStartDate) : new Date()}
+                          onChange={(date) => {
+                            const newDateStr = date.toISOString().split('T')[0];
+                            setEditData({ 
+                              ...editData, 
+                              serviceStartDate: newDateStr,
+                              serviceEndDate: editData.serviceEndDate < newDateStr ? newDateStr : editData.serviceEndDate
+                            });
+                          }}
+                        />
+
+                        <CustomDatePicker
+                          label="Service End"
+                          selected={editData?.serviceEndDate ? new Date(editData.serviceEndDate) : new Date()}
+                          minDate={editData?.serviceStartDate ? new Date(editData.serviceStartDate) : undefined}
+                          onChange={(date) => setEditData({ ...editData, serviceEndDate: date.toISOString().split('T')[0] })}
+                        />
                       </div>
                       <div>
                         <label className={labelClasses}>Payment Method</label>
@@ -404,9 +429,8 @@ const InvoiceDetail = () => {
                         </select>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="p-3 bg-primary/5 rounded-xl border border-primary/15">
+                    <div className="p-3 bg-primary/5 rounded-xl border border-primary/15">
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-500 text-xs">Caregiver Payout (Base)</span>
                       <span className="font-bold text-gray-700">{(editData?.amount || 0).toLocaleString()} MMK</span>
@@ -481,7 +505,7 @@ const InvoiceDetail = () => {
 
                   <div className="p-3 bg-gray-50/60 rounded-xl border border-gray-100">
                     <h3 className="text-xs font-bold text-gray-700 mb-2">Duty & Financials</h3>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div><p className={labelClasses}>Duty Type</p><p className={valueClasses}>{invoice.dutyType}</p></div>
                       <div><p className={labelClasses}>Specialized Service</p><p className={valueClasses}>{invoice.servicePackage || 'N/A'}</p></div>
                       <div><p className={labelClasses}>Invoice Date</p><p className={valueClasses}>{formatDateSlash(invoice.date)}</p></div>
@@ -504,8 +528,8 @@ const InvoiceDetail = () => {
 
         {/* ========== RIGHT COLUMN: Invoice Preview ========== */}
         {showPreview && (
-          <div className="lg:col-span-7">
-            <div className="space-y-3 animate-fadeIn lg:sticky lg:top-4">
+          <div className="xl:col-span-8">
+            <div className="space-y-3 animate-fadeIn xl:sticky xl:top-4">
               <div className="flex flex-wrap items-center justify-between bg-white border border-gray-200 rounded-2xl px-4 py-2.5 shadow-sm gap-2">
                 <div className="flex bg-gray-100 p-0.5 rounded-lg">
                   <button onClick={() => setViewMode('invoice')}
@@ -534,215 +558,218 @@ const InvoiceDetail = () => {
               </div>
 
               {/* Invoice Document Wrapper for Mobile Scrolling */}
-              <div className="overflow-x-auto pb-6 rounded-2xl shadow-inner bg-gray-200/50 p-1">
-                <div
-                  id="document-preview"
-                  className="relative mx-auto shadow-2xl"
-                  style={{
-                    backgroundColor: '#ffffff',
-                    padding: '40px',
-                    fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
-                    minWidth: '800px',
-                    width: '800px'
-                  }}
-                >
+              <div className="overflow-x-auto pb-8 rounded-2xl shadow-inner bg-gray-100/50">
+                <div className="min-w-max flex justify-center p-4 lg:p-8">
+                  <div className="shadow-2xl rounded-sm overflow-hidden">
+                    <div
+                      id="document-preview"
+                      className="relative bg-white"
+                      style={{
+                        padding: '40px',
+                        fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+                        width: '800px',
+                        minWidth: '800px',
+                      }}
+                    >
 
-                  {/* Background pattern overlay */}
-                  <div style={{
-                    position: 'absolute',
-                    inset: 0,
-                    zIndex: 0,
-                    backgroundImage: `url(${patternBg})`,
-                    backgroundRepeat: 'repeat',
-                    backgroundSize: '600px',
-                    opacity: 0.35,
-                    pointerEvents: 'none',
-                  }} />
+                      {/* Background pattern overlay */}
+                      <div style={{
+                        position: 'absolute',
+                        inset: 0,
+                        zIndex: 0,
+                        backgroundImage: `url(${patternBg})`,
+                        backgroundRepeat: 'repeat',
+                        backgroundSize: '600px',
+                        opacity: 0.35,
+                        pointerEvents: 'none',
+                      }} />
 
-                  {/* {activeWatermark && (
+                      {/* {activeWatermark && (
                   <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none opacity-[0.03] rotate-[-30deg]" style={{ zIndex: 2 }}>
                     <h1 className="text-[160px] font-black tracking-tighter">PAID</h1>
                   </div>
                 )} */}
 
-                  {/* Content wrapper - sits above the pattern */}
-                  <div style={{ position: 'relative', zIndex: 1 }}>
+                      {/* Content wrapper - sits above the pattern */}
+                      <div style={{ position: 'relative', zIndex: 1 }}>
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '28px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <img src={halogo} alt="Healthy Nara" style={{ width: '38px', height: '38px', borderRadius: '8px', objectFit: 'contain' }} />
-                        <span style={{ fontSize: '24px', fontWeight: 800, color: '#1CB89B', letterSpacing: '-0.5px' }}>Healthy Nara</span>
-                      </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <h1 style={{ fontSize: '28px', fontWeight: 800, color: '#1CB89B', letterSpacing: '5px', textTransform: 'uppercase', margin: 0 }}>
-                          {viewMode === 'invoice' ? 'INVOICE' : 'RECEIPT'}
-                        </h1>
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '28px' }}>
-                      <div>
-                        <p style={{ fontSize: '11px', color: '#6b7280', margin: '0 0 3px 0' }}>Invoice to:</p>
-                        <p style={{ fontSize: '16px', fontWeight: 700, color: '#1CB89B', margin: '0 0 3px 0' }}>{invoice.customerName}</p>
-                        <p style={{ fontSize: '12px', color: '#374151', margin: '0 0 2px 0' }}>
-                          {invoice.servicePackage && invoice.servicePackage !== 'N/A' ? invoice.servicePackage : 'General Care Service'}
-                        </p>
-                        <p style={{ fontSize: '12px', color: '#374151', margin: '0 0 2px 0' }}>
-                          {customerDetail?.address || 'N/A'}
-                          {customerDetail?.address && customerDetail?.township && ` ၊ `}
-                          {customerDetail?.township || 'Yangon'}
-                        </p>
-                      </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', fontSize: '11px', color: '#374151', marginBottom: '3px' }}>
-                          <span style={{ fontWeight: 600 }}>Due Date</span>
-                          <span>: {displayData.dueDate ? formatDateSlash(displayData.dueDate) : formatDateSlash(displayData.date)}</span>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '28px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <img src={halogo} alt="Healthy Nara" style={{ width: '38px', height: '38px', borderRadius: '8px', objectFit: 'contain' }} />
+                            <span style={{ fontSize: '24px', fontWeight: 800, color: '#1CB89B', letterSpacing: '-0.5px' }}>Healthy Nara</span>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <h1 style={{ fontSize: '28px', fontWeight: 800, color: '#1CB89B', letterSpacing: '5px', textTransform: 'uppercase', margin: 0 }}>
+                              {viewMode === 'invoice' ? 'INVOICE' : 'RECEIPT'}
+                            </h1>
+                          </div>
                         </div>
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', fontSize: '11px', color: '#374151' }}>
-                          <span style={{ fontWeight: 600 }}>Invoice Date</span>
-                          <span>: {formatDateSlash(displayData.date)}</span>
-                        </div>
-                      </div>
-                    </div>
 
-                    <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '0' }}>
-                      <thead>
-                        <tr>
-                          {['Start Date', 'End Date', 'Service Package', 'Nurse Aid Name'].map(h => (
-                            <th key={h} style={{ backgroundColor: '#1CB89B', color: '#fff', padding: '8px 10px', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'left', border: '1px solid #1CB89B' }}>{h}</th>
-                          ))}
-                          <th style={{ backgroundColor: '#1CB89B', color: '#fff', padding: '8px 10px', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'right', border: '1px solid #1CB89B' }}>Amount</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr>
-                          <td style={{ padding: '8px 10px', fontSize: '11px', fontWeight: 600, color: '#374151', backgroundColor: '#f3f4f6', border: '1px solid #e5e7eb' }}>{invoice.serviceStartDate ? formatDateSlash(invoice.serviceStartDate) : formatDateSlash(invoice.date)}</td>
-                          <td style={{ padding: '8px 10px', fontSize: '11px', fontWeight: 600, color: '#374151', backgroundColor: '#f3f4f6', border: '1px solid #e5e7eb' }}>{invoice.serviceEndDate ? formatDateSlash(invoice.serviceEndDate) : formatDateSlash(invoice.date)}</td>
-                          <td style={{ padding: '8px 10px', fontSize: '11px', fontWeight: 700, color: '#374151', backgroundColor: '#f3f4f6', border: '1px solid #e5e7eb' }}>
-                            {invoice.servicePackage && invoice.servicePackage !== 'N/A'
-                              ? `${invoice.dutyType} (${invoice.servicePackage})`
-                              : invoice.dutyType}
-                          </td>
-                          <td style={{ padding: '8px 10px', fontSize: '11px', color: '#374151', backgroundColor: '#f3f4f6', border: '1px solid #e5e7eb', textAlign: 'center' }}>{invoice.caregiverName}</td>
-                          <td style={{ padding: '8px 10px', fontSize: '11px', fontWeight: 700, color: '#1CB89B', backgroundColor: '#f3f4f6', border: '1px solid #e5e7eb', textAlign: 'right' }}>{invoice.amount.toLocaleString()} MMK</td>
-                        </tr>
-                        {[1, 2, 3, 4].map((i) => (
-                          <tr key={i}>
-                            {[0, 1, 2, 3, 4].map(j => (
-                              <td key={j} style={{ padding: '8px 10px', backgroundColor: i % 2 === 0 ? '#d1d5db' : '#9ca3af', border: '1px solid #e5e7eb', height: j === 0 ? '14px' : undefined }}>&nbsp;</td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0' }}>
-                      <div style={{ width: '300px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', borderBottom: '1px solid #e5e7eb' }}>
-                          <span style={{ fontSize: '11px', fontWeight: 600, color: '#374151' }}>Platform fees ({displayData.platformFeeRate || 10}%) :</span>
-                          <span style={{ fontSize: '11px', fontWeight: 700, color: '#1CB89B' }}>+{currentPlatformFee.toLocaleString()} MMK</span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', backgroundColor: '#f3f4f6', borderTop: '2px solid #1CB89B' }}>
-                          <span style={{ fontSize: '12px', fontWeight: 800, color: '#374151', textTransform: 'uppercase' }}>{viewMode === 'caregiver' ? 'PAYOUT AMOUNT :' : 'GRAND TOTAL :'}</span>
-                          <span style={{ fontSize: '12px', fontWeight: 800, color: '#374151' }}>{(viewMode === 'caregiver' ? displayData.amount : grandTotal).toLocaleString()} MMK</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {viewMode === 'caregiver' && invoice.payoutDetails ? (
-                      <div style={{ marginTop: '20px', padding: '14px', backgroundColor: 'rgba(28,184,155,0.05)', borderRadius: '8px', border: '1px solid rgba(28,184,155,0.15)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '10px' }}>
-                          <ShieldCheck size={12} color="#1CB89B" />
-                          <span style={{ fontSize: '10px', fontWeight: 700, color: '#1CB89B', textTransform: 'uppercase', letterSpacing: '1.5px' }}>Payout Confirmation (To Caregiver)</span>
-                        </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
-                          <div><p style={{ fontSize: '9px', color: '#9ca3af', fontWeight: 700, textTransform: 'uppercase', margin: '0 0 3px 0' }}>Payee Name</p><p style={{ fontSize: '11px', fontWeight: 700, color: '#111827', margin: 0 }}>{invoice.payoutDetails.payeeAccountName}</p></div>
-                          <div><p style={{ fontSize: '9px', color: '#9ca3af', fontWeight: 700, textTransform: 'uppercase', margin: '0 0 3px 0' }}>Payout Date</p><p style={{ fontSize: '11px', fontWeight: 700, color: '#111827', margin: 0 }}>{new Date(invoice.payoutDetails.dateTime).toLocaleString()}</p></div>
-                          <div><p style={{ fontSize: '9px', color: '#9ca3af', fontWeight: 700, textTransform: 'uppercase', margin: '0 0 3px 0' }}>Method</p><p style={{ fontSize: '11px', fontWeight: 700, color: '#111827', margin: 0 }}>{invoice.payoutDetails.paymentChannel}</p></div>
-                        </div>
-                      </div>
-                    ) : viewMode === 'customer' && invoice.paymentDetails ? (
-                      null
-                    ) : null}
-
-                    <div style={{ marginTop: '48px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-                      <div style={{ flex: 1 }}>
-                        <p style={{ fontSize: '15px', color: '#374151', fontWeight: 700, margin: '0 0 10px 0' }}>Payment Method</p>
-
-                        {viewMode === 'invoice' ? (
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
-                            <div>
-                              <h4 style={{ fontSize: '15px', fontWeight: 900, color: '#A0222C', margin: '0 0 4px 0', textTransform: 'uppercase', letterSpacing: '0.3px', lineHeight: 1.2 }}>AYA Pay</h4>
-                              <p style={{ fontSize: '13px', color: '#374151', margin: '0 0 2px 0', fontWeight: 700 }}>AccNumber - 09-426 106 176</p>
-                              <p style={{ fontSize: '13px', color: '#374151', margin: 0, fontWeight: 700 }}>Name - Akari Myat Phyo</p>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '28px' }}>
+                          <div>
+                            <p style={{ fontSize: '11px', color: '#6b7280', margin: '0 0 3px 0' }}>Invoice to:</p>
+                            <p style={{ fontSize: '16px', fontWeight: 700, color: '#1CB89B', margin: '0 0 3px 0' }}>{invoice.customerName}</p>
+                            <p style={{ fontSize: '12px', color: '#374151', margin: '0 0 2px 0' }}>
+                              {invoice.servicePackage && invoice.servicePackage !== 'N/A' ? invoice.servicePackage : 'General Care Service'}
+                            </p>
+                            <p style={{ fontSize: '12px', color: '#374151', margin: '0 0 2px 0' }}>
+                              {customerDetail?.address || 'N/A'}
+                              {customerDetail?.address && customerDetail?.township && ` ၊ `}
+                              {customerDetail?.township || 'Yangon'}
+                            </p>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', fontSize: '11px', color: '#374151', marginBottom: '3px' }}>
+                              <span style={{ fontWeight: 600 }}>Due Date</span>
+                              <span>: {displayData.dueDate ? formatDateSlash(displayData.dueDate) : formatDateSlash(displayData.date)}</span>
                             </div>
-                            <div>
-                              <h4 style={{ fontSize: '15px', fontWeight: 900, color: '#075CAB', margin: '0 0 4px 0', textTransform: 'uppercase', letterSpacing: '0.3px', lineHeight: 1.2 }}>KBZPay</h4>
-                              <p style={{ fontSize: '13px', color: '#374151', margin: '0 0 2px 0', fontWeight: 700 }}>AccNumber - 09-426 106 176</p>
-                              <p style={{ fontSize: '11px', color: '#374151', margin: 0, fontWeight: 700 }}>Name - Akari Myat Phyo</p>
-                            </div>
-                            <div>
-                              <h4 style={{ fontSize: '15px', fontWeight: 900, color: '#FFE508', margin: '0 0 4px 0', textTransform: 'uppercase', letterSpacing: '0.3px', lineHeight: 1.2 }}>WAVE PAY</h4>
-                              <p style={{ fontSize: '11px', color: '#374151', margin: '0 0 2px 0', fontWeight: 700 }}>AccNumber - 09-426 106 176</p>
-                              <p style={{ fontSize: '11px', color: '#374151', margin: 0, fontWeight: 700 }}>Name - Akari Myat Phyo</p>
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', fontSize: '11px', color: '#374151' }}>
+                              <span style={{ fontWeight: 600 }}>Invoice Date</span>
+                              <span>: {formatDateSlash(displayData.date)}</span>
                             </div>
                           </div>
-                        ) :
-
-                          (
-                            viewMode === 'caregiver' && invoice.payoutDetails ? (
-                              <>
-                                <p style={{ fontSize: '11px', color: '#374151', margin: '0 0 2px 0' }}>Service fees – {invoice.payoutDetails.paymentChannel || 'Kpay'}</p>
-                                <p style={{ fontSize: '11px', color: '#374151', margin: '0 0 24px 0' }}>Platform fees – {invoice.payoutDetails.paymentChannel || 'Kpay'}</p>
-                              </>
-                            ) :
-                              viewMode === 'customer' && invoice.paymentDetails ? (
-                                <>
-                                  <p style={{ fontSize: '11px', color: '#374151', margin: '0 0 2px 0' }}>Service fees – {invoice.paymentDetails.paymentChannel || 'Kpay'}</p>
-                                  <p style={{ fontSize: '11px', color: '#374151', margin: '0 0 24px 0' }}>Platform fees – {invoice.paymentDetails.paymentChannel || 'Kpay'}</p>
-                                </>
-                              ) :
-                                <>
-                                  <p style={{ fontSize: '11px', color: '#374151', margin: '0 0 2px 0' }}>Service fees – {invoice.paymentMethod || 'Kpay'}</p>
-                                  <p style={{ fontSize: '11px', color: '#374151', margin: '0 0 24px 0' }}>Platform fees – {invoice.paymentMethod || 'Kpay'}</p>
-                                </>
-                          )}
-
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '100px' }}>
-                      <div>
-                        <p style={{ fontSize: '18px', fontWeight: 700, color: '#1CB89B', lineHeight: 1.35, margin: 0, fontStyle: 'italic' }}>
-                          Your satisfaction is our priority – <br /> thank you for relying on us.
-                        </p>
-                      </div>
-                      <div style={{ textAlign: 'center', minWidth: '160px', position: 'relative' }}>
-                        <img
-                          src={autosign}
-                          alt="Signature"
-                          style={{
-                            width: '120px',
-                            position: 'absolute',
-                            bottom: '22px',
-                            left: '50%',
-                            transform: 'translateX(-50%)',
-                            pointerEvents: 'none',
-                            filter: 'contrast(1.1)',
-                            opacity: 0.95
-                          }}
-                        />
-                        <div style={{ width: '100px', height: '1px', backgroundColor: '#374151', margin: '0 auto 6px auto', opacity: 0.4 }}></div>
-                        <div style={{ marginTop: '10px', height: '20px' }}>
-                          <p style={{ fontSize: '12px', fontWeight: 700, color: '#111827', margin: '0 0 2px 0' }}>Khin Me Me Zin</p>
-                          <p style={{ fontSize: '10px', color: '#6b7280', fontStyle: 'italic', margin: 0 }}>Administrator</p>
                         </div>
-                      </div>
-                    </div>
-                  </div>{/* End content-wrapper */}
-                </div>{/* End document-preview */}
+
+                        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '0' }}>
+                          <thead>
+                            <tr>
+                              {['Start Date', 'End Date', 'Service Package', 'Nurse Aid Name'].map(h => (
+                                <th key={h} style={{ backgroundColor: '#1CB89B', color: '#fff', padding: '8px 10px', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'left', border: '1px solid #1CB89B' }}>{h}</th>
+                              ))}
+                              <th style={{ backgroundColor: '#1CB89B', color: '#fff', padding: '8px 10px', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'right', border: '1px solid #1CB89B' }}>Amount</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td style={{ padding: '8px 10px', fontSize: '11px', fontWeight: 600, color: '#374151', backgroundColor: '#f3f4f6', border: '1px solid #e5e7eb' }}>{invoice.serviceStartDate ? formatDateSlash(invoice.serviceStartDate) : formatDateSlash(invoice.date)}</td>
+                              <td style={{ padding: '8px 10px', fontSize: '11px', fontWeight: 600, color: '#374151', backgroundColor: '#f3f4f6', border: '1px solid #e5e7eb' }}>{invoice.serviceEndDate ? formatDateSlash(invoice.serviceEndDate) : formatDateSlash(invoice.date)}</td>
+                              <td style={{ padding: '8px 10px', fontSize: '11px', fontWeight: 700, color: '#374151', backgroundColor: '#f3f4f6', border: '1px solid #e5e7eb' }}>
+                                {invoice.servicePackage && invoice.servicePackage !== 'N/A'
+                                  ? `${invoice.dutyType} (${invoice.servicePackage})`
+                                  : invoice.dutyType}
+                              </td>
+                              <td style={{ padding: '8px 10px', fontSize: '11px', color: '#374151', backgroundColor: '#f3f4f6', border: '1px solid #e5e7eb', textAlign: 'center' }}>{invoice.caregiverName}</td>
+                              <td style={{ padding: '8px 10px', fontSize: '11px', fontWeight: 700, color: '#1CB89B', backgroundColor: '#f3f4f6', border: '1px solid #e5e7eb', textAlign: 'right' }}>{invoice.amount.toLocaleString()} MMK</td>
+                            </tr>
+                            {[1, 2, 3, 4].map((i) => (
+                              <tr key={i}>
+                                {[0, 1, 2, 3, 4].map(j => (
+                                  <td key={j} style={{ padding: '8px 10px', backgroundColor: i % 2 === 0 ? '#d1d5db' : '#9ca3af', border: '1px solid #e5e7eb', height: j === 0 ? '14px' : undefined }}>&nbsp;</td>
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0' }}>
+                          <div style={{ width: '300px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', borderBottom: '1px solid #e5e7eb' }}>
+                              <span style={{ fontSize: '11px', fontWeight: 600, color: '#374151' }}>Platform fees ({displayData.platformFeeRate || 10}%) :</span>
+                              <span style={{ fontSize: '11px', fontWeight: 700, color: '#1CB89B' }}>+{currentPlatformFee.toLocaleString()} MMK</span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', backgroundColor: '#f3f4f6', borderTop: '2px solid #1CB89B' }}>
+                              <span style={{ fontSize: '12px', fontWeight: 800, color: '#374151', textTransform: 'uppercase' }}>{viewMode === 'caregiver' ? 'PAYOUT AMOUNT :' : 'GRAND TOTAL :'}</span>
+                              <span style={{ fontSize: '12px', fontWeight: 800, color: '#374151' }}>{(viewMode === 'caregiver' ? displayData.amount : grandTotal).toLocaleString()} MMK</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {viewMode === 'caregiver' && invoice.payoutDetails ? (
+                          <div style={{ marginTop: '20px', padding: '14px', backgroundColor: 'rgba(28,184,155,0.05)', borderRadius: '8px', border: '1px solid rgba(28,184,155,0.15)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '10px' }}>
+                              <ShieldCheck size={12} color="#1CB89B" />
+                              <span style={{ fontSize: '10px', fontWeight: 700, color: '#1CB89B', textTransform: 'uppercase', letterSpacing: '1.5px' }}>Payout Confirmation (To Caregiver)</span>
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+                              <div><p style={{ fontSize: '9px', color: '#9ca3af', fontWeight: 700, textTransform: 'uppercase', margin: '0 0 3px 0' }}>Payee Name</p><p style={{ fontSize: '11px', fontWeight: 700, color: '#111827', margin: 0 }}>{invoice.payoutDetails.payeeAccountName}</p></div>
+                              <div><p style={{ fontSize: '9px', color: '#9ca3af', fontWeight: 700, textTransform: 'uppercase', margin: '0 0 3px 0' }}>Payout Date</p><p style={{ fontSize: '11px', fontWeight: 700, color: '#111827', margin: 0 }}>{new Date(invoice.payoutDetails.dateTime).toLocaleString()}</p></div>
+                              <div><p style={{ fontSize: '9px', color: '#9ca3af', fontWeight: 700, textTransform: 'uppercase', margin: '0 0 3px 0' }}>Method</p><p style={{ fontSize: '11px', fontWeight: 700, color: '#111827', margin: 0 }}>{invoice.payoutDetails.paymentChannel}</p></div>
+                            </div>
+                          </div>
+                        ) : viewMode === 'customer' && invoice.paymentDetails ? (
+                          null
+                        ) : null}
+
+                        <div style={{ marginTop: '48px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                          <div style={{ flex: 1 }}>
+                            <p style={{ fontSize: '15px', color: '#374151', fontWeight: 700, margin: '0 0 10px 0' }}>Payment Method</p>
+
+                            {viewMode === 'invoice' ? (
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
+                                <div>
+                                  <h4 style={{ fontSize: '15px', fontWeight: 900, color: '#A0222C', margin: '0 0 4px 0', textTransform: 'uppercase', letterSpacing: '0.3px', lineHeight: 1.2 }}>AYA Pay</h4>
+                                  <p style={{ fontSize: '13px', color: '#374151', margin: '0 0 2px 0', fontWeight: 700 }}>AccNumber - 09-426 106 176</p>
+                                  <p style={{ fontSize: '13px', color: '#374151', margin: 0, fontWeight: 700 }}>Name - Akari Myat Phyo</p>
+                                </div>
+                                <div>
+                                  <h4 style={{ fontSize: '15px', fontWeight: 900, color: '#075CAB', margin: '0 0 4px 0', textTransform: 'uppercase', letterSpacing: '0.3px', lineHeight: 1.2 }}>KBZPay</h4>
+                                  <p style={{ fontSize: '13px', color: '#374151', margin: '0 0 2px 0', fontWeight: 700 }}>AccNumber - 09-426 106 176</p>
+                                  <p style={{ fontSize: '11px', color: '#374151', margin: 0, fontWeight: 700 }}>Name - Akari Myat Phyo</p>
+                                </div>
+                                <div>
+                                  <h4 style={{ fontSize: '15px', fontWeight: 900, color: '#FFE508', margin: '0 0 4px 0', textTransform: 'uppercase', letterSpacing: '0.3px', lineHeight: 1.2 }}>WAVE PAY</h4>
+                                  <p style={{ fontSize: '11px', color: '#374151', margin: '0 0 2px 0', fontWeight: 700 }}>AccNumber - 09-426 106 176</p>
+                                  <p style={{ fontSize: '11px', color: '#374151', margin: 0, fontWeight: 700 }}>Name - Akari Myat Phyo</p>
+                                </div>
+                              </div>
+                            ) :
+
+                              (
+                                viewMode === 'caregiver' && invoice.payoutDetails ? (
+                                  <>
+                                    <p style={{ fontSize: '11px', color: '#374151', margin: '0 0 2px 0' }}>Service fees – {invoice.payoutDetails.paymentChannel || 'Kpay'}</p>
+                                    <p style={{ fontSize: '11px', color: '#374151', margin: '0 0 24px 0' }}>Platform fees – {invoice.payoutDetails.paymentChannel || 'Kpay'}</p>
+                                  </>
+                                ) :
+                                  viewMode === 'customer' && invoice.paymentDetails ? (
+                                    <>
+                                      <p style={{ fontSize: '11px', color: '#374151', margin: '0 0 2px 0' }}>Service fees – {invoice.paymentDetails.paymentChannel || 'Kpay'}</p>
+                                      <p style={{ fontSize: '11px', color: '#374151', margin: '0 0 24px 0' }}>Platform fees – {invoice.paymentDetails.paymentChannel || 'Kpay'}</p>
+                                    </>
+                                  ) :
+                                    <>
+                                      <p style={{ fontSize: '11px', color: '#374151', margin: '0 0 2px 0' }}>Service fees – {invoice.paymentMethod || 'Kpay'}</p>
+                                      <p style={{ fontSize: '11px', color: '#374151', margin: '0 0 24px 0' }}>Platform fees – {invoice.paymentMethod || 'Kpay'}</p>
+                                    </>
+                              )}
+
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '100px' }}>
+                          <div>
+                            <p style={{ fontSize: '18px', fontWeight: 700, color: '#1CB89B', lineHeight: 1.35, margin: 0, fontStyle: 'italic' }}>
+                              Your satisfaction is our priority – <br /> thank you for relying on us.
+                            </p>
+                          </div>
+                          <div style={{ textAlign: 'center', minWidth: '160px', position: 'relative' }}>
+                            <img
+                              src={autosign}
+                              alt="Signature"
+                              style={{
+                                width: '120px',
+                                position: 'absolute',
+                                bottom: '22px',
+                                left: '50%',
+                                transform: 'translateX(-50%)',
+                                pointerEvents: 'none',
+                                filter: 'contrast(1.1)',
+                                opacity: 0.95
+                              }}
+                            />
+                            <div style={{ width: '100px', height: '1px', backgroundColor: '#374151', margin: '0 auto 6px auto', opacity: 0.4 }}></div>
+                            <div style={{ marginTop: '10px', height: '20px' }}>
+                              <p style={{ fontSize: '12px', fontWeight: 700, color: '#111827', margin: '0 0 2px 0' }}>Khin Me Me Zin</p>
+                              <p style={{ fontSize: '10px', color: '#6b7280', fontStyle: 'italic', margin: 0 }}>Administrator</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>{/* End content-wrapper */}
+                    </div>{/* End document-preview */}
+                  </div>{/* End shadow-wrapper */}
+                </div>{/* End min-w-max centering wrapper */}
               </div>{/* End overflow-scroll wrapper */}
-            </div>{/* End lg:sticky */}
+            </div>{/* End sticky */}
           </div>
         )}
       </div>

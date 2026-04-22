@@ -2,10 +2,9 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { createInvoice, fetchCustomers, fetchCaregivers } from '../api';
-import { ArrowLeft, Send, Plus, Calendar as CalendarIcon } from 'lucide-react';
+import { ArrowLeft, Send, Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import DatePicker from 'react-datepicker';
-import 'react-datepicker/dist/react-datepicker.css';
+import CustomDatePicker from '../components/CustomDatePicker';
 
 const CreateInvoice = () => {
   const navigate = useNavigate();
@@ -68,7 +67,6 @@ const CreateInvoice = () => {
   };
 
   const inputClasses = "mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2.5 focus:ring-primary focus:border-primary text-sm";
-  const dateInputClasses = " block w-full p-2.5 text-sm";
   const labelClasses = "block text-sm font-semibold text-gray-700 mb-1";
 
   return (
@@ -83,15 +81,15 @@ const CreateInvoice = () => {
         </div>
       </div>
 
-      <div className="bg-white shadow-xl rounded-2xl border border-gray-100 overflow-hidden">
-        <form onSubmit={handleSubmit} className="p-8 space-y-6">
+      <div className="bg-white shadow-xl rounded-2xl border border-gray-100">
+        <form onSubmit={handleSubmit} className="p-4 md:p-8 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
               <div className="flex justify-between items-center border-b border-primary/10 pb-2">
                 <h2 className="text-lg font-bold text-gray-900">Customer</h2>
-                <Link to="/customers" className="text-xs text-primary font-bold hover:underline flex items-center gap-1">
+                {/* <Link to="/customers" className="text-xs text-primary font-bold hover:underline flex items-center gap-1">
                   <Plus size={12} /> New Profile
-                </Link>
+                </Link> */}
               </div>
               <div>
                 <label className={labelClasses}>Select Customer</label>
@@ -123,9 +121,9 @@ const CreateInvoice = () => {
             <div className="space-y-4">
               <div className="flex justify-between items-center border-b border-primary/10 pb-2">
                 <h2 className="text-lg font-bold text-gray-900">Caregiver</h2>
-                <Link to="/caregivers" className="text-xs text-primary font-bold hover:underline flex items-center gap-1">
+                {/* <Link to="/caregivers" className="text-xs text-primary font-bold hover:underline flex items-center gap-1">
                   <Plus size={12} /> New Profile
-                </Link>
+                </Link> */}
               </div>
               <div>
                 <label className={labelClasses}>Select Caregiver</label>
@@ -227,63 +225,53 @@ const CreateInvoice = () => {
               </div>
 
               <div className="md:col-span-3">
-                <label className={labelClasses}>Invoice Date</label>
-                <div className="relative border border-gray-300 rounded-lg shadow-sm focus:ring-primary focus:border-primary">
-                  <DatePicker
-                    selected={formData.date}
-                    onChange={(date: Date | null) => setFormData({ ...formData, date: date || new Date() })}
-                    dateFormat="dd/MM/yyyy"
-                    className={dateInputClasses}
-                    required
-                  />
-                  <CalendarIcon size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                </div>
+                <CustomDatePicker
+                  label="Invoice Date"
+                  selected={formData.date}
+                  onChange={(date) => {
+                    setFormData((prev) => ({
+                      ...prev,
+                      date,
+                      dueDate: prev.dueDate < date ? date : prev.dueDate
+                    }));
+                  }}
+                />
               </div>
 
               <div className="md:col-span-3">
-                <label className={labelClasses}>Due Date</label>
-                <div className="relative border border-gray-300 rounded-lg shadow-sm focus:ring-primary focus:border-primary">
-                  <DatePicker
-                    selected={formData.dueDate}
-                    onChange={(date: Date | null) => setFormData({ ...formData, dueDate: date || new Date() })}
-                    dateFormat="dd/MM/yyyy"
-                    className={dateInputClasses}
-                    required
-                  />
-                  <CalendarIcon size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                </div>
+                <CustomDatePicker
+                  label="Due Date"
+                  selected={formData.dueDate}
+                  minDate={formData.date}
+                  onChange={(date) => setFormData({ ...formData, dueDate: date })}
+                />
               </div>
 
               <div className="md:col-span-3">
-                <label className={labelClasses}>Service Start Date</label>
-                <div className="relative border border-gray-300 rounded-lg shadow-sm focus:ring-primary focus:border-primary">
-                  <DatePicker
-                    selected={formData.serviceStartDate}
-                    onChange={(date: Date | null) => setFormData({ ...formData, serviceStartDate: date || new Date() })}
-                    dateFormat="dd/MM/yyyy"
-                    className={dateInputClasses}
-                    required
-                  />
-                  <CalendarIcon size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                </div>
+                <CustomDatePicker
+                  label="Service Start Date"
+                  selected={formData.serviceStartDate}
+                  onChange={(date) => {
+                    setFormData((prev) => ({
+                      ...prev,
+                      serviceStartDate: date,
+                      serviceEndDate: prev.serviceEndDate < date ? date : prev.serviceEndDate
+                    }));
+                  }}
+                />
               </div>
 
               <div className="md:col-span-3">
-                <label className={labelClasses}>Service End Date</label>
-                <div className="relative border border-gray-300 rounded-lg shadow-sm focus:ring-primary focus:border-primary">
-                  <DatePicker
-                    selected={formData.serviceEndDate}
-                    onChange={(date: Date | null) => setFormData({ ...formData, serviceEndDate: date || new Date() })}
-                    dateFormat="dd/MM/yyyy"
-                    className={dateInputClasses}
-                    required
-                  />
-                  <CalendarIcon size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                </div>
+                <CustomDatePicker
+                  label="Service End Date"
+                  selected={formData.serviceEndDate}
+                  minDate={formData.serviceStartDate}
+                  onChange={(date) => setFormData({ ...formData, serviceEndDate: date })}
+                />
               </div>
             </div>
 
-            <div className="bg-primary/5 rounded-2xl p-6 border border-primary/20 shadow-inner">
+            <div className="bg-primary/5 rounded-2xl p-4 md:p-6 border border-primary/20 shadow-inner">
               <div className="space-y-3">
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-gray-500 font-medium tracking-tight">Caregiver Payout (Net):</span>
@@ -291,7 +279,7 @@ const CreateInvoice = () => {
                 </div>
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-gray-500 font-medium tracking-tight">Platform Service Fee ({formData.platformFeeRate}%):</span>
-                  <span className="font-bold text-emerald-600">+{((formData.amount * formData.platformFeeRate) / 100).toLocaleString()} MMK</span>
+                  <span className="font-bold text-emerald-600 ">+{((formData.amount * formData.platformFeeRate) / 100).toLocaleString()} MMK</span>
                 </div>
                 <div className="pt-4 mt-2 border-t border-primary/20 flex justify-between items-end">
                   <div>
@@ -299,7 +287,7 @@ const CreateInvoice = () => {
                     <p className="text-xs text-gray-400 font-medium">Payable by Customer</p>
                   </div>
                   <div className="text-right">
-                    <span className="text-3xl font-black text-primary tracking-tighter">
+                    <span className="text-2xl md:text-3xl font-black text-primary tracking-tighter">
                       {(formData.amount + (formData.amount * formData.platformFeeRate / 100)).toLocaleString()}
                     </span>
                     <span className="ml-1.5 text-xs font-black text-primary/60">MMK</span>
