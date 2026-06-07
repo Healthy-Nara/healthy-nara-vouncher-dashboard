@@ -394,7 +394,7 @@ const Invoices = () => {
 
                   <div className="grid grid-cols-2 gap-4 bg-gray-50/50 py-3 rounded-xl border border-gray-100">
                     <div>
-                      <p className="text-[10px] font-black text-gray-400 uppercase mb-1">Customer</p>
+                      <p className="text-[10px] font-black text-gray-400 uppercase mb-1">Parent</p>
                       <p className="text-xs font-bold text-gray-900 leading-tight">{invoice.customerName}</p>
                     </div>
                     <div>

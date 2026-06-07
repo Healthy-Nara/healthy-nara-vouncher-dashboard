@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchInvoiceByNumber, updateInvoiceStatus, updateInvoice, fetchCustomers, fetchCaregivers, updateCustomerPayment, updateCaregiverPayout, fetchCustomerById } from '../api';
+import { fetchInvoiceByNumber, updateInvoiceStatus, updateInvoice, fetchParents, fetchCaregivers, updateCustomerPayment, updateCaregiverPayout, lockInvoice, unlockInvoice } from '../api';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, FileText, Image as ImageIcon, CheckCircle, Clock, CreditCard, Banknote, ShieldCheck, Save, Eye, EyeOff, Pencil, X } from 'lucide-react';
 import { downloadAsImage, downloadAsPDF } from '../utils/export';
@@ -33,8 +33,13 @@ const InvoiceDetail = () => {
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalType, setModalType] = useState<'customer' | 'caregiver'>('customer');
-  const [paymentMethod, setPaymentMethod] = useState('KBZPay');
+  const [paymentMethod, setPaymentMethod] = useState('KBZPay (Kpay)');
   const [additionalNote, setAdditionalNote] = useState('');
+  const [paymentAmount, setPaymentAmount] = useState(0);
+  const [senderName, setSenderName] = useState('');
+  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
+  const [receiverName, setReceiverName] = useState('');
+  const [secondName, setSecondName] = useState('');
 
   const { data: invoice, isLoading, error } = useQuery({
     queryKey: ['invoice-detail', invoiceNumber],
@@ -44,15 +49,7 @@ const InvoiceDetail = () => {
 
   console.log(invoice)
 
-  const { data: customers } = useQuery({ queryKey: ['customers'], queryFn: fetchCustomers });
-
-  const { data: customerDetail } = useQuery({
-    queryKey: ['customer-detail', invoice?.customer],
-    queryFn: () => fetchCustomerById(invoice?.customer),
-    enabled: !!invoice?.customer,
-  });
-
-  console.log('customerDetail', customerDetail)
+  const { data: parents } = useQuery({ queryKey: ['parents'], queryFn: fetchParents });
 
   const { data: caregivers } = useQuery({ queryKey: ['caregivers'], queryFn: fetchCaregivers });
 
@@ -81,6 +78,20 @@ const InvoiceDetail = () => {
       setIsEditing(false);
       setUpdateSuccess(true);
       setTimeout(() => setUpdateSuccess(false), 3000);
+    },
+  });
+
+  const lockMutation = useMutation({
+    mutationFn: () => lockInvoice(invoiceNumber!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['invoice-detail', invoiceNumber] });
+    },
+  });
+
+  const unlockMutation = useMutation({
+    mutationFn: () => unlockInvoice(invoiceNumber!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['invoice-detail', invoiceNumber] });
     },
   });
 
@@ -115,6 +126,8 @@ const InvoiceDetail = () => {
 
   const isReceipt = invoice.customerPaymentStatus === 'Received';
   const isVoucher = invoice.caregiverPayoutStatus === 'Paid';
+  const isLocked = invoice.isLocked || (isReceipt && isVoucher);
+  const canEditAmount = !isLocked && invoice.invoiceStatus !== 'Payment Confirmed' && invoice.invoiceStatus !== 'Payout Completed';
 
   const toggleCustomerStatus = () => {
     const newStatus = invoice.customerPaymentStatus === 'Received' ? 'Pending' : 'Received';
@@ -132,22 +145,24 @@ const InvoiceDetail = () => {
       paymentMutation.mutate({
         type: 'customer',
         data: {
-          receivedAmount: invoice.amount + (invoice.platformFee || 0),
+          receivedAmount: paymentAmount || invoice.amount + (invoice.platformFee || 0),
           paymentChannel: paymentMethod,
-          payerAccountName: invoice.customerName,
-          dateTime: new Date().toISOString(),
+          payerAccountName: senderName || invoice.customerName,
+          dateTime: paymentDate,
           note: additionalNote
         }
       });
-      // Also sync payment method on the invoice itself
       updateMutation.mutate({ ...editData, paymentMethod });
     } else {
       paymentMutation.mutate({
         type: 'caregiver',
         data: {
           paymentChannel: paymentMethod,
-          payeeAccountName: invoice.caregiverName,
-          dateTime: new Date().toISOString(),
+          payeeAccountName: receiverName || invoice.caregiverName,
+          amount: paymentAmount || invoice.amount,
+          secondName,
+          dutyType: invoice.dutyType,
+          dateTime: paymentDate,
           note: additionalNote
         }
       });
@@ -181,13 +196,13 @@ const InvoiceDetail = () => {
   };
 
   const handleCustomerSelect = (id: string) => {
-    const selected = customers?.find((c: any) => c._id === id);
-    if (selected) setEditData({ ...editData, customerId: id, customerName: selected.name });
+    const selected = parents?.find((p: any) => p._id === id);
+    if (selected) setEditData({ ...editData, parentId: id, customerName: selected.parentName });
   };
 
   const handleCaregiverSelect = (id: string) => {
     const selected = caregivers?.find((c: any) => c._id === id);
-    if (selected) setEditData({ ...editData, caregiverId: id, caregiverName: selected.name });
+    if (selected) setEditData({ ...editData, caregiverId: id, caregiverName: selected.caregiverName });
   };
 
 
@@ -204,8 +219,8 @@ const InvoiceDetail = () => {
     <div className={`mx-auto pb-20 transition-all duration-300 ${showPreview ? 'max-w-[1500px]' : 'max-w-3xl'}`}>
       {/* Top Nav */}
       <div className="flex items-center justify-between mb-5">
-        <Link to="/" className="inline-flex items-center text-sm text-gray-500 hover:text-primary transition-colors font-semibold">
-          <ArrowLeft className="mr-1 h-4 w-4" /> Back to Dashboard
+        <Link to="/invoices" className="inline-flex items-center text-sm text-gray-500 hover:text-primary transition-colors font-semibold">
+          <ArrowLeft className="mr-1 h-4 w-4" /> Back to Invoices
         </Link>
         <div className="flex items-center gap-2">
           <span className="text-xs font-bold text-gray-400 uppercase tracking-tight mr-2">Invoice</span>
@@ -230,13 +245,32 @@ const InvoiceDetail = () => {
           {/* ---- Admin Controls Card (FIRST) ---- */}
           <div className="bg-white border border-primary/20 rounded-2xl shadow-sm">
             <div className="bg-primary/5 px-5 py-2.5 border-b border-primary/20 flex justify-between items-center rounded-t-2xl">
-              <h3 className="text-[10px] font-bold text-primary uppercase tracking-widest">Admin Controls</h3>
-              <button
-                onClick={() => setIsStatusEditing(!isStatusEditing)}
-                className={`text-[10px] font-bold px-2 py-0.5 rounded transition-all ${isStatusEditing ? 'bg-red-500 text-white' : 'bg-primary/20 text-primary hover:bg-primary/30'}`}
-              >
-                {isStatusEditing ? 'Cancel Edit' : 'Edit'}
-              </button>
+              <div className="flex items-center gap-2">
+                <h3 className="text-[10px] font-bold text-primary uppercase tracking-widest">Admin Controls</h3>
+                {isLocked && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700">
+                    🔒 LOCKED
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {isLocked ? (
+                  <button
+                    onClick={() => unlockMutation.mutate()}
+                    disabled={unlockMutation.isPending}
+                    className="text-[10px] font-bold px-2 py-0.5 rounded bg-red-100 text-red-700 hover:bg-red-200 transition-all"
+                  >
+                    {unlockMutation.isPending ? 'Unlocking...' : '🔓 Unlock'}
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setIsStatusEditing(!isStatusEditing)}
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded transition-all ${isStatusEditing ? 'bg-red-500 text-white' : 'bg-primary/20 text-primary hover:bg-primary/30'}`}
+                  >
+                    {isStatusEditing ? 'Cancel Edit' : 'Edit'}
+                  </button>
+                )}
+              </div>
             </div>
             <div className="p-4 space-y-3">
               <div className="flex items-center justify-between p-2.5 bg-gray-50 rounded-xl border border-gray-100">
@@ -280,6 +314,16 @@ const InvoiceDetail = () => {
                 className={`w-full inline-flex items-center justify-center px-5 py-2.5 border border-transparent shadow-md text-sm font-bold rounded-xl transition-all duration-300 mt-1 ${showPreview ? 'bg-gray-700 text-white hover:bg-gray-800' : 'bg-gradient-to-r from-primary to-emerald-600 text-white hover:from-primary-dark hover:to-emerald-700 hover:shadow-lg hover:scale-[1.01]'}`}>
                 {showPreview ? (<><EyeOff className="mr-2 h-4 w-4" /> Hide Preview</>) : (<><Eye className="mr-2 h-4 w-4" /> Generate Preview</>)}
               </button>
+
+              {isReceipt && isVoucher && !isLocked && (
+                <button
+                  onClick={() => lockMutation.mutate()}
+                  disabled={lockMutation.isPending}
+                  className="w-full inline-flex items-center justify-center px-5 py-2.5 border border-red-200 shadow-md text-sm font-bold rounded-xl transition-all duration-300 mt-2 bg-red-50 text-red-700 hover:bg-red-100"
+                >
+                  🔒 Lock Invoice (Payment Confirmed)
+                </button>
+              )}
             </div>
           </div>
 
@@ -288,11 +332,15 @@ const InvoiceDetail = () => {
             <div className="bg-gray-50 px-5 py-3 border-b border-gray-200 flex justify-between items-center">
               <h2 className="text-sm font-bold text-gray-900">Invoice Details</h2>
               <div className="flex items-center gap-2">
-                {!isEditing ? (
+                {!isEditing && canEditAmount ? (
                   <button onClick={() => setIsEditing(true)}
                     className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-bold text-primary bg-primary/10 hover:bg-primary/20 transition-all duration-200 gap-1">
                     <Pencil size={12} /> Edit
                   </button>
+                ) : !canEditAmount ? (
+                  <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-bold text-red-600 bg-red-50 gap-1">
+                    🔒 {isLocked ? 'Locked' : 'Payment Confirmed'}
+                  </span>
                 ) : (
                   <>
                     <button onClick={handleCancelEdit}
@@ -318,13 +366,13 @@ const InvoiceDetail = () => {
               {isEditing ? (
                 <div className="space-y-4">
                   <div className="p-3 bg-gray-50/60 rounded-xl border border-gray-100">
-                    <h3 className="text-xs font-bold text-gray-700 mb-3">Customer</h3>
+                    <h3 className="text-xs font-bold text-gray-700 mb-3">Parent</h3>
                     <div className="space-y-2.5">
                       <div>
-                        <label className={labelClasses}>Select Customer</label>
-                        <select className={inputClasses} value={editData?.customerId || ''} onChange={(e) => handleCustomerSelect(e.target.value)}>
+                        <label className={labelClasses}>Select Parent</label>
+                        <select className={inputClasses} value={editData?.parentId || ''} onChange={(e) => handleCustomerSelect(e.target.value)}>
                           <option value="">-- Keep Current --</option>
-                          {customers?.map((c: any) => (<option key={c._id} value={c._id}>{c.name}</option>))}
+                          {parents?.map((p: any) => (<option key={p._id} value={p._id}>{p.parentName}</option>))}
                         </select>
                       </div>
                       <div>
@@ -341,7 +389,7 @@ const InvoiceDetail = () => {
                         <label className={labelClasses}>Select Caregiver</label>
                         <select className={inputClasses} value={editData?.caregiverId || ''} onChange={(e) => handleCaregiverSelect(e.target.value)}>
                           <option value="">-- Keep Current --</option>
-                          {caregivers?.map((c: any) => (<option key={c._id} value={c._id}>{c.name}</option>))}
+                          {caregivers?.map((c: any) => (<option key={c._id} value={c._id}>{c.caregiverName}</option>))}
                         </select>
                       </div>
                       <div>
@@ -357,10 +405,12 @@ const InvoiceDetail = () => {
                       <div>
                         <label className={labelClasses}>Duty Type</label>
                         <select className={inputClasses} value={editData?.dutyType || 'Day Shift'} onChange={(e) => setEditData({ ...editData, dutyType: e.target.value })}>
-                          <option value="Day Shift">Day Shift</option>
-                          <option value="Night Shift">Night Shift</option>
-                          <option value="24-Hour Care">24-Hour Care</option>
-
+                          <option value="Day Shift">Day Shift (08:00 AM - 08:00 PM)</option>
+                          <option value="Night Shift">Night Shift (08:00 PM - 08:00 AM)</option>
+                          <option value="24-Hour Full Care">24-Hour Full Care</option>
+                          <option value="Hourly Basis">Hourly Basis</option>
+                          <option value="Newborn Care Service">Newborn Care Service</option>
+                          <option value="Childcare Care Service">Childcare Care Service</option>
                         </select>
                       </div>
                       <div>
@@ -448,7 +498,7 @@ const InvoiceDetail = () => {
               ) : (
                 <div className="space-y-4">
                   <div className="p-3 bg-gray-50/60 rounded-xl border border-gray-100">
-                    <h3 className="text-xs font-bold text-gray-700 mb-2">Customer</h3>
+                    <h3 className="text-xs font-bold text-gray-700 mb-2">Parent</h3>
                     <div className="flex items-center justify-between">
                       <div>
                         <p className={labelClasses}>Name</p>
@@ -613,9 +663,7 @@ const InvoiceDetail = () => {
                               {invoice.servicePackage && invoice.servicePackage !== 'N/A' ? invoice.servicePackage : 'General Care Service'}
                             </p>
                             <p style={{ fontSize: '12px', color: '#374151', margin: '0 0 2px 0' }}>
-                              {customerDetail?.address || 'N/A'}
-                              {customerDetail?.address && customerDetail?.township && ` ၊ `}
-                              {customerDetail?.township || 'Yangon'}
+                              Service Period
                             </p>
                           </div>
                           <div style={{ textAlign: 'right' }}>
@@ -780,53 +828,74 @@ const InvoiceDetail = () => {
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="bg-primary/10 px-6 py-4 border-b border-primary/20">
               <h3 className="text-lg font-bold text-primary">
-                {modalType === 'customer' ? 'Confirm Customer Payment' : 'Confirm Caregiver Payout'}
+                {modalType === 'customer' ? 'Confirm Customer Payment' : 'Confirm NA Payout'}
               </h3>
               <p className="text-xs text-gray-500 mt-0.5">
                 Record the {modalType === 'customer' ? 'receipt' : 'payout'} for {invoice.invoiceNumber}
               </p>
             </div>
             <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Payment Channel</label>
-                <select
-                  className="block w-full border border-gray-300 rounded-xl p-3 focus:ring-primary focus:border-primary text-sm bg-gray-50 font-medium"
-                  value={paymentMethod}
-                  onChange={(e) => setPaymentMethod(e.target.value)}
-                >
-                  <option value="KBZPay (Kpay)">KBZPay (Kpay)</option>
-                  <option value="WavePay">WavePay</option>
-                  <option value="AYAPay">AYAPay</option>
-                </select>
-              </div>
+              {modalType === 'customer' ? (
+                <>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Payment Channel</label>
+                    <select className="block w-full border border-gray-300 rounded-xl p-3 focus:ring-primary focus:border-primary text-sm bg-gray-50 font-medium" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
+                      <option value="KBZPay (Kpay)">KBZPay (Kpay)</option>
+                      <option value="WavePay">WavePay</option>
+                      <option value="AYAPay">AYAPay</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Amount (MMK)</label>
+                    <input type="number" min="0" className="block w-full border border-gray-300 rounded-xl p-3 focus:ring-primary focus:border-primary text-sm bg-gray-50 font-medium" value={paymentAmount || invoice.amount + (invoice.platformFee || 0)} onChange={(e) => setPaymentAmount(parseFloat(e.target.value) || 0)} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Sender Name</label>
+                    <input type="text" className="block w-full border border-gray-300 rounded-xl p-3 focus:ring-primary focus:border-primary text-sm bg-gray-50 font-medium" value={senderName} onChange={(e) => setSenderName(e.target.value)} placeholder={invoice.customerName} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Date</label>
+                    <input type="date" className="block w-full border border-gray-300 rounded-xl p-3 focus:ring-primary focus:border-primary text-sm bg-gray-50 font-medium" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Payment Channel</label>
+                    <select className="block w-full border border-gray-300 rounded-xl p-3 focus:ring-primary focus:border-primary text-sm bg-gray-50 font-medium" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
+                      <option value="KBZPay (Kpay)">KBZPay (Kpay)</option>
+                      <option value="WavePay">WavePay</option>
+                      <option value="AYAPay">AYAPay</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Amount (MMK)</label>
+                    <input type="number" min="0" className="block w-full border border-gray-300 rounded-xl p-3 focus:ring-primary focus:border-primary text-sm bg-gray-50 font-medium" value={paymentAmount || invoice.amount} onChange={(e) => setPaymentAmount(parseFloat(e.target.value) || 0)} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Receiver Name</label>
+                    <input type="text" className="block w-full border border-gray-300 rounded-xl p-3 focus:ring-primary focus:border-primary text-sm bg-gray-50 font-medium" value={receiverName} onChange={(e) => setReceiverName(e.target.value)} placeholder={invoice.caregiverName} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Second Name (Account Name)</label>
+                    <input type="text" className="block w-full border border-gray-300 rounded-xl p-3 focus:ring-primary focus:border-primary text-sm bg-gray-50 font-medium" value={secondName} onChange={(e) => setSecondName(e.target.value)} placeholder="Account name on bank/app" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Date</label>
+                    <input type="date" className="block w-full border border-gray-300 rounded-xl p-3 focus:ring-primary focus:border-primary text-sm bg-gray-50 font-medium" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} />
+                  </div>
+                </>
+              )}
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Additional Note</label>
-                <textarea
-                  className="block w-full border border-gray-300 rounded-xl p-3 focus:ring-primary focus:border-primary text-sm bg-gray-50"
-                  rows={3}
-                  placeholder="Enter any additional details..."
-                  value={additionalNote}
-                  onChange={(e) => setAdditionalNote(e.target.value)}
-                />
+                <textarea className="block w-full border border-gray-300 rounded-xl p-3 focus:ring-primary focus:border-primary text-sm bg-gray-50" rows={2} placeholder="Optional note..." value={additionalNote} onChange={(e) => setAdditionalNote(e.target.value)} />
               </div>
 
               <div className="flex gap-3 pt-2">
-                <button
-                  onClick={() => {
-                    setIsModalOpen(false);
-                    setAdditionalNote('');
-                  }}
-                  className="flex-1 py-3 px-4 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-50 transition-all"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleConfirmPayment}
-                  disabled={paymentMutation.isPending}
-                  className="flex-1 py-3 px-4 bg-primary text-white rounded-xl text-sm font-bold hover:bg-primary-dark shadow-lg shadow-primary/20 transition-all disabled:opacity-50"
-                >
-                  {paymentMutation.isPending ? 'Processing...' : 'Confirm'}
+                <button onClick={() => { setIsModalOpen(false); setAdditionalNote(''); }} className="flex-1 py-3 px-4 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-50 transition-all">Cancel</button>
+                <button onClick={handleConfirmPayment} disabled={paymentMutation.isPending} className="flex-1 py-3 px-4 bg-primary text-white rounded-xl text-sm font-bold hover:bg-primary-dark shadow-lg shadow-primary/20 transition-all disabled:opacity-50">
+                  {paymentMutation.isPending ? 'Processing...' : modalType === 'customer' ? 'Confirm & Lock' : 'Confirm Payout'}
                 </button>
               </div>
             </div>

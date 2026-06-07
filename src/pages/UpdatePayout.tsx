@@ -56,8 +56,8 @@ const UpdatePayout = () => {
   return (
     <div className="max-w-3xl mx-auto">
       <div className="mb-6">
-        <Link to="/" className="inline-flex items-center text-sm text-gray-500 hover:text-primary transition-colors mb-2 font-semibold">
-          <ArrowLeft className="mr-1 h-4 w-4" /> Back to Dashboard
+        <Link to="/invoices" className="inline-flex items-center text-sm text-gray-500 hover:text-primary transition-colors mb-2 font-semibold">
+          <ArrowLeft className="mr-1 h-4 w-4" /> Back to Invoices
         </Link>
         <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Process Caregiver Payout</h1>
         <p className="mt-1 text-sm text-gray-500">Record the disbursement of funds for <span className="text-primary font-bold">Healthy Nara</span>.</p>

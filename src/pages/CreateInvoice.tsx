@@ -1,15 +1,15 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { createInvoice, fetchCustomers, fetchCaregivers } from '../api';
-import { ArrowLeft, Send, Plus } from 'lucide-react';
+import { createInvoice, fetchParents, fetchCaregivers } from '../api';
+import { ArrowLeft, Send } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import CustomDatePicker from '../components/CustomDatePicker';
 
 const CreateInvoice = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    customerId: '',
+    parentId: '',
     caregiverId: '',
     customerName: '',
     caregiverName: '',
@@ -23,7 +23,7 @@ const CreateInvoice = () => {
     dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
   });
 
-  const { data: customers } = useQuery({ queryKey: ['customers'], queryFn: fetchCustomers });
+  const { data: parents } = useQuery({ queryKey: ['parents'], queryFn: fetchParents });
   const { data: caregivers } = useQuery({ queryKey: ['caregivers'], queryFn: fetchCaregivers });
 
   const mutation = useMutation({
@@ -39,23 +39,23 @@ const CreateInvoice = () => {
       return createInvoice(apiData);
     },
     onSuccess: () => {
-      navigate('/');
+      navigate('/invoices');
     },
   });
 
-  const handleCustomerChange = (id: string) => {
-    const selected = customers?.find((c: any) => c._id === id);
+  const handleParentChange = (id: string) => {
+    const selected = parents?.find((p: any) => p._id === id);
     if (selected) {
-      setFormData({ ...formData, customerId: id, customerName: selected.name });
+      setFormData({ ...formData, parentId: id, customerName: selected.parentName });
     } else {
-      setFormData({ ...formData, customerId: '', customerName: '' });
+      setFormData({ ...formData, parentId: '', customerName: '' });
     }
   };
 
   const handleCaregiverChange = (id: string) => {
     const selected = caregivers?.find((c: any) => c._id === id);
     if (selected) {
-      setFormData({ ...formData, caregiverId: id, caregiverName: selected.name });
+      setFormData({ ...formData, caregiverId: id, caregiverName: selected.caregiverName });
     } else {
       setFormData({ ...formData, caregiverId: '', caregiverName: '' });
     }
@@ -73,7 +73,7 @@ const CreateInvoice = () => {
     <div className="max-w-3xl mx-auto">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <Link to="/" className="inline-flex items-center text-sm text-gray-500 hover:text-primary transition-colors mb-2 font-semibold">
+          <Link to="/invoices" className="inline-flex items-center text-sm text-gray-500 hover:text-primary transition-colors mb-2 font-semibold">
             <ArrowLeft className="mr-1 h-4 w-4" /> Back to Invoices
           </Link>
           <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Create New Invoice</h1>
@@ -86,22 +86,19 @@ const CreateInvoice = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
               <div className="flex justify-between items-center border-b border-primary/10 pb-2">
-                <h2 className="text-lg font-bold text-gray-900">Customer</h2>
-                {/* <Link to="/customers" className="text-xs text-primary font-bold hover:underline flex items-center gap-1">
-                  <Plus size={12} /> New Profile
-                </Link> */}
+                <h2 className="text-lg font-bold text-gray-900">Parent</h2>
               </div>
               <div>
-                <label className={labelClasses}>Select Customer</label>
+                <label className={labelClasses}>Select Parent</label>
                 <select
                   required
                   className={inputClasses}
-                  value={formData.customerId}
-                  onChange={(e) => handleCustomerChange(e.target.value)}
+                  value={formData.parentId}
+                  onChange={(e) => handleParentChange(e.target.value)}
                 >
-                  <option value="">-- Choose Customer --</option>
-                  {customers?.map((c: any) => (
-                    <option key={c._id} value={c._id}>{c.name}</option>
+                  <option value="">-- Choose Parent --</option>
+                  {parents?.map((p: any) => (
+                    <option key={p._id} value={p._id}>{p.parentName}</option>
                   ))}
                 </select>
               </div>
@@ -135,7 +132,7 @@ const CreateInvoice = () => {
                 >
                   <option value="">-- Choose Caregiver --</option>
                   {caregivers?.map((c: any) => (
-                    <option key={c._id} value={c._id}>{c.name}</option>
+                    <option key={c._id} value={c._id}>{c.caregiverName}</option>
                   ))}
                 </select>
               </div>
@@ -167,9 +164,10 @@ const CreateInvoice = () => {
                 >
                   <option value="Day Shift">Day Shift (08:00 AM - 08:00 PM)</option>
                   <option value="Night Shift">Night Shift (08:00 PM - 08:00 AM)</option>
-                  <option value="24-Hour Care">24-Hour Full Care</option>
-                  <option value="Hourly">Hourly Basis</option>
+                  <option value="24-Hour Full Care">24-Hour Full Care</option>
+                  <option value="Hourly Basis">Hourly Basis</option>
                   <option value="Newborn Care Service">Newborn Care Service</option>
+                  <option value="Childcare Care Service">Childcare Care Service</option>
                 </select>
               </div>
 
