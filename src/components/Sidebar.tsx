@@ -9,14 +9,14 @@ interface SidebarProps {
 const navItems = [
   { label: 'Invoices', icon: FileText, path: '/invoices', roles: ['admin', 'staff'] },
   { label: 'Report', icon: BarChart3, path: '/report', roles: ['admin'] },
-  { label: 'Parents', icon: Users, path: '/parents', roles: ['admin'] },
-  { label: 'Caregivers', icon: HeartHandshake, path: '/caregivers', roles: ['admin'] },
-  { label: 'Leads', icon: PhoneCall, path: '/leads', roles: ['admin'], isNew: true },
-  { label: 'Bookings', icon: CalendarDays, path: '/bookings', roles: ['admin'], isNew: true },
-  { label: 'Schedule', icon: CalendarSearch, path: '/schedule', roles: ['admin'], isNew: true },
+  { label: 'Parents', icon: Users, path: '/parents', roles: ['admin', 'staff'] },
+  { label: 'Caregivers', icon: HeartHandshake, path: '/caregivers', roles: ['admin', 'staff'] },
+  { label: 'Leads', icon: PhoneCall, path: '/leads', roles: ['admin', 'staff'], isNew: true },
+  { label: 'Bookings', icon: CalendarDays, path: '/bookings', roles: ['admin', 'staff'], isNew: true },
+  { label: 'Schedule', icon: CalendarSearch, path: '/schedule', roles: ['admin', 'staff'], isNew: true },
   { label: 'Daily Report', icon: ClipboardList, path: '/', roles: ['admin'] },
-  { label: 'Payouts', icon: Banknote, path: '/payouts', roles: ['admin'], isNew: true },
-  { label: 'Bank Report', icon: PieChart, path: '/bank-report', roles: ['admin'], isNew: true },
+  { label: 'Payouts', icon: Banknote, path: '/payouts', roles: ['admin', 'staff'], isNew: true },
+  { label: 'Bank Report', icon: PieChart, path: '/bank-report', roles: ['admin'] },
   { label: 'Activity Log', icon: History, path: '/logs', roles: ['admin'] },
 ];
 

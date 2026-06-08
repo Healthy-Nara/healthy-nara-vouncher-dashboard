@@ -38,6 +38,12 @@ const PrivateRoute = ({ children, roles }: { children: React.ReactNode, roles?: 
   return <>{children}</>;
 };
 
+const HomePage = () => {
+  const { user } = useAuth();
+  if (user?.role === 'staff') return <Bookings />;
+  return <DailyReport />;
+};
+
 function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -59,8 +65,8 @@ function App() {
                   <main className="container mx-auto px-4 py-8">
                     <Routes>
                       <Route path="/" element={
-                        <PrivateRoute roles={['admin']}>
-                          <DailyReport />
+                        <PrivateRoute roles={['admin', 'staff']}>
+                          <HomePage />
                         </PrivateRoute>
                       } />
                       <Route path="/invoices" element={
@@ -79,12 +85,12 @@ function App() {
                         </PrivateRoute>
                       } />
                       <Route path="/update-payment/:invoiceNumber?" element={
-                        <PrivateRoute roles={['admin']}>
+                        <PrivateRoute roles={['admin', 'staff']}>
                           <UpdatePayment />
                         </PrivateRoute>
                       } />
                       <Route path="/update-payout/:invoiceNumber?" element={
-                        <PrivateRoute roles={['admin']}>
+                        <PrivateRoute roles={['admin', 'staff']}>
                           <UpdatePayout />
                         </PrivateRoute>
                       } />
@@ -94,32 +100,32 @@ function App() {
                         </PrivateRoute>
                       } />
                       <Route path="/parents" element={
-                        <PrivateRoute roles={['admin']}>
+                        <PrivateRoute roles={['admin', 'staff']}>
                           <Parents />
                         </PrivateRoute>
                       } />
                       <Route path="/parents/:id" element={
-                        <PrivateRoute roles={['admin']}>
+                        <PrivateRoute roles={['admin', 'staff']}>
                           <ParentDetail />
                         </PrivateRoute>
                       } />
                       <Route path="/caregivers" element={
-                        <PrivateRoute roles={['admin']}>
+                        <PrivateRoute roles={['admin', 'staff']}>
                           <Caregivers />
                         </PrivateRoute>
                       } />
                       <Route path="/caregivers/:id" element={
-                        <PrivateRoute roles={['admin']}>
+                        <PrivateRoute roles={['admin', 'staff']}>
                           <CaregiverDetail />
                         </PrivateRoute>
                       } />
                       <Route path="/leads" element={
-                        <PrivateRoute roles={['admin']}>
+                        <PrivateRoute roles={['admin', 'staff']}>
                           <Leads />
                         </PrivateRoute>
                       } />
                       <Route path="/leads/:id" element={
-                        <PrivateRoute roles={['admin']}>
+                        <PrivateRoute roles={['admin', 'staff']}>
                           <LeadDetail />
                         </PrivateRoute>
                       } />
@@ -134,12 +140,12 @@ function App() {
                         </PrivateRoute>
                       } />
                       <Route path="/schedule" element={
-                        <PrivateRoute roles={['admin']}>
+                        <PrivateRoute roles={['admin', 'staff']}>
                           <Schedule />
                         </PrivateRoute>
                       } />
                       <Route path="/payouts" element={
-                        <PrivateRoute roles={['admin']}>
+                        <PrivateRoute roles={['admin', 'staff']}>
                           <Payouts />
                         </PrivateRoute>
                       } />
