@@ -18,7 +18,6 @@ import {
   ArrowLeft,
   Phone,
   Calendar,
-  Package,
   CheckCircle,
   Copy,
   ExternalLink,

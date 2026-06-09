@@ -123,11 +123,11 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
               >
                 <Icon size={18} />
                 {item.label}
-                {"isNew" in item && item.isNew && (
+                {/* {"isNew" in item && item.isNew && (
                   <span className="ml-auto text-[9px] font-bold bg-white text-[#1CB89B] px-1.5 py-0.5 rounded-full">
                     NEW
                   </span>
-                )}
+                )} */}
               </Link>
             );
           })}
