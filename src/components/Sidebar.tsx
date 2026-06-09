@@ -21,25 +21,36 @@ interface SidebarProps {
 const navItems = [
   { label: "Daily Report", icon: ClipboardList, path: "/", roles: ["admin"] },
   {
+    label: "Leads",
+    icon: PhoneCall,
+    path: "/leads",
+    roles: ["admin", "staff"],
+  },
+  {
     label: "Bookings",
     icon: CalendarDays,
     path: "/bookings",
     roles: ["admin", "staff"],
   },
   {
-    label: "Leads",
-    icon: PhoneCall,
-    path: "/leads",
+    label: "Schedule",
+    icon: CalendarSearch,
+    path: "/schedule",
     roles: ["admin", "staff"],
   },
-
   {
     label: "Invoices",
     icon: FileText,
     path: "/invoices",
     roles: ["admin", "staff"],
   },
-
+  {
+    label: "Payouts",
+    icon: Banknote,
+    path: "/payouts",
+    roles: ["admin", "staff"],
+  },
+  { label: "Report", icon: BarChart3, path: "/report", roles: ["admin"] },
   {
     label: "Parents",
     icon: Users,
@@ -50,20 +61,6 @@ const navItems = [
     label: "Caregivers",
     icon: HeartHandshake,
     path: "/caregivers",
-    roles: ["admin", "staff"],
-  },
-
-  {
-    label: "Schedule",
-    icon: CalendarSearch,
-    path: "/schedule",
-    roles: ["admin", "staff"],
-  },
-  { label: "Report", icon: BarChart3, path: "/report", roles: ["admin"] },
-  {
-    label: "Payouts",
-    icon: Banknote,
-    path: "/payouts",
     roles: ["admin", "staff"],
   },
   {
