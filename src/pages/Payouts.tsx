@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { fetchPayoutSummary } from '../api';
 import { useState } from 'react';
+import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { Banknote, CheckCircle, Clock, ExternalLink, Search } from 'lucide-react';
 
@@ -30,7 +31,7 @@ const Payouts = () => {
   const displayList = filterList(activeTab === 'pending' ? pendingInvoices : paidInvoices);
 
   const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return format(new Date(dateStr), 'dd-MM-yyyy');
   };
 
   return (

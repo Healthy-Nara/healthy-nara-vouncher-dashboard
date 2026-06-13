@@ -1,13 +1,13 @@
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { fetchPublicBooking, selectBookingNA } from '../api';
 import { useState } from 'react';
+import { format } from 'date-fns';
 import { useParams } from 'react-router-dom';
 import { Calendar, Package, Phone, CheckCircle, Clock, User } from 'lucide-react';
 import halogo from '../assets/halogo.png';
 
 const formatDate = (dateStr: string) => {
-  const d = new Date(dateStr);
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return format(new Date(dateStr), 'dd-MM-yyyy');
 };
 
 const PublicBooking = () => {

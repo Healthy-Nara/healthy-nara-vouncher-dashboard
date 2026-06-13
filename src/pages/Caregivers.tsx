@@ -1,8 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchCaregivers, createCaregiver, updateCaregiver, deleteCaregiver } from '../api';
 import { useState } from 'react';
+import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Search, Pencil, Trash2, X, Eye } from 'lucide-react';
+import CustomDatePicker from '../components/CustomDatePicker';
 
 const GENDERS = ['Male', 'Female'] as const;
 
@@ -83,7 +85,7 @@ const Caregivers = () => {
       township: c.township || '',
       NRC: c.NRC || '',
       address: c.address || '',
-      birthdate: c.birthdate ? new Date(c.birthdate).toISOString().split('T')[0] : '',
+      birthdate: c.birthdate ? format(new Date(c.birthdate), 'dd-MM-yyyy') : '',
       bankInfo: c.bankInfo || '',
       specialization: c.specialization || '',
       note: c.note || '',
@@ -94,10 +96,12 @@ const Caregivers = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const toIso = (d: string) => d ? new Date(d.split('-').reverse().join('-')).toISOString() : d;
+    const payload = { ...form, birthdate: toIso(form.birthdate) };
     if (editingId) {
-      updateMutation.mutate({ id: editingId, data: form });
+      updateMutation.mutate({ id: editingId, data: payload });
     } else {
-      createMutation.mutate(form);
+      createMutation.mutate(payload);
     }
   };
 
@@ -253,8 +257,10 @@ const Caregivers = () => {
                 </div>
                 <div>
                   <label className={label}>Birthdate</label>
-                  <input type="date" className={input} value={form.birthdate}
-                    onChange={(e) => setForm({ ...form, birthdate: e.target.value })} />
+                  <CustomDatePicker
+                    selected={form.birthdate ? new Date(form.birthdate.split('-').reverse().join('-')) : new Date()}
+                    onChange={(date) => setForm({ ...form, birthdate: format(date, 'dd-MM-yyyy') })}
+                  />
                 </div>
                 <div className="md:col-span-2">
                   <label className={label}>Address</label>

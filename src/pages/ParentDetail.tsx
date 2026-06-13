@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchParentById, fetchParentBookings, updateParent } from '../api';
 import { useState } from 'react';
+import { format } from 'date-fns';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Phone, MapPin, Baby, Calendar, ChevronRight, Edit2 } from 'lucide-react';
 
@@ -61,7 +62,7 @@ const ParentDetail = () => {
   };
 
   const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return format(new Date(dateStr), 'dd-MM-yyyy');
   };
 
   if (isLoading) return <div className="text-center py-12 text-gray-500">Loading...</div>;
@@ -214,7 +215,7 @@ const ParentDetail = () => {
                       <div className="flex-1">
                         <p className="text-sm font-bold text-gray-900">{child.childName}</p>
                         <div className="text-[11px] text-gray-500 flex items-center gap-2">
-                          {child.birthDate && <span>{new Date(child.birthDate).toLocaleDateString()}</span>}
+                          {child.birthDate && <span>{format(new Date(child.birthDate), 'dd-MM-yyyy')}</span>}
                           {child.gender && <span>{child.gender}</span>}
                           {child.hasInfectiousDisease && <span className="text-red-500">Infectious</span>}
                         </div>

@@ -1,8 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchCaregiverStats, updateCaregiver } from '../api';
 import { useState } from 'react';
+import { format } from 'date-fns';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Phone, MapPin, Calendar, ChevronRight, Edit2, Banknote, TrendingUp, Clock, User } from 'lucide-react';
+import CustomDatePicker from '../components/CustomDatePicker';
 
 const STATUS_CONFIG: Record<string, { color: string; bg: string; icon: string }> = {
   'Pending NA Selection': { color: 'text-yellow-700', bg: 'bg-yellow-100', icon: '⏳' },
@@ -36,7 +38,11 @@ const CaregiverDetail = () => {
   });
 
   const updateMutation = useMutation({
-    mutationFn: (data: any) => updateCaregiver(id!, data),
+    mutationFn: (data: any) => {
+      const toIso = (d: string) => d ? new Date(d.split('-').reverse().join('-')).toISOString() : d;
+      const payload = { ...data, birthdate: toIso(data.birthdate) };
+      return updateCaregiver(id!, payload);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['caregiverStats', id] });
       queryClient.invalidateQueries({ queryKey: ['caregivers'] });
@@ -53,7 +59,7 @@ const CaregiverDetail = () => {
       township: c?.township || '',
       NRC: c?.NRC || '',
       address: c?.address || '',
-      birthdate: c?.birthdate ? c.birthdate.split('T')[0] : '',
+      birthdate: c?.birthdate ? format(new Date(c.birthdate), 'dd-MM-yyyy') : '',
       bankInfo: c?.bankInfo || '',
       specialization: c?.specialization || '',
       note: c?.note || '',
@@ -62,7 +68,7 @@ const CaregiverDetail = () => {
   };
 
   const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return format(new Date(dateStr), 'dd-MM-yyyy');
   };
 
   const fmt = (n: number) => n?.toLocaleString() || '0';
@@ -139,8 +145,10 @@ const CaregiverDetail = () => {
                   </div>
                   <div>
                     <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">Birthdate</label>
-                    <input type="date" value={editForm.birthdate} onChange={e => setEditForm({ ...editForm, birthdate: e.target.value })}
-                      className="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-primary focus:border-primary" />
+                    <CustomDatePicker
+                      selected={editForm.birthdate ? new Date(editForm.birthdate.split('-').reverse().join('-')) : new Date()}
+                      onChange={(date) => setEditForm({ ...editForm, birthdate: format(date, 'dd-MM-yyyy') })}
+                    />
                   </div>
                   <div>
                     <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">Bank Info</label>

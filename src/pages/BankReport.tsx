@@ -1,7 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { fetchFinancialReport } from '../api';
 import { useState, useMemo } from 'react';
+import { format } from 'date-fns';
 import { BarChart3, TrendingUp, TrendingDown, Wallet, Calendar, ArrowDown } from 'lucide-react';
+import CustomDatePicker from '../components/CustomDatePicker';
 
 const BankReport = () => {
   const [dateRange, setDateRange] = useState<'daily' | 'weekly' | 'monthly'>('monthly');
@@ -11,7 +13,7 @@ const BankReport = () => {
   const handleRangeChange = (range: 'daily' | 'weekly' | 'monthly') => {
     setDateRange(range);
     const today = new Date();
-    const fmt = (d: Date) => d.toISOString().split('T')[0];
+    const fmt = (d: Date) => format(d, 'dd-MM-yyyy');
     if (range === 'daily') {
       setStartDate(fmt(today));
       setEndDate(fmt(today));
@@ -27,9 +29,11 @@ const BankReport = () => {
     }
   };
 
+  const toApiDate = (d: string) => d ? d.split('-').reverse().join('-') : '';
+
   const { data: report, isLoading } = useQuery({
     queryKey: ['financial-report', startDate, endDate],
-    queryFn: () => fetchFinancialReport(startDate || undefined, endDate || undefined),
+    queryFn: () => fetchFinancialReport(toApiDate(startDate) || undefined, toApiDate(endDate) || undefined),
   });
 
   const summaryCards = useMemo(() => {
@@ -86,11 +90,15 @@ const BankReport = () => {
           </div>
           <div className="flex items-center gap-2">
             <Calendar size={14} className="text-gray-400" />
-            <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
-              className="border border-gray-300 rounded-lg px-3 py-1.5 text-xs font-medium focus:ring-primary focus:border-primary" />
+            <CustomDatePicker
+              selected={startDate ? new Date(startDate.split('-').reverse().join('-')) : new Date()}
+              onChange={(date) => setStartDate(format(date, 'dd-MM-yyyy'))}
+            />
             <span className="text-xs text-gray-400">to</span>
-            <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
-              className="border border-gray-300 rounded-lg px-3 py-1.5 text-xs font-medium focus:ring-primary focus:border-primary" />
+            <CustomDatePicker
+              selected={endDate ? new Date(endDate.split('-').reverse().join('-')) : new Date()}
+              onChange={(date) => setEndDate(format(date, 'dd-MM-yyyy'))}
+            />
           </div>
         </div>
       </div>

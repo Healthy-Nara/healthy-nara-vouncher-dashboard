@@ -38,7 +38,7 @@ const CustomDatePicker = ({ selected, onChange, label, minDate, placeholder }: C
         <div className="flex items-center gap-2">
           <CalendarIcon size={16} className="text-gray-400" />
           <span className={selected ? 'text-gray-900 font-medium' : 'text-gray-400'}>
-            {selected ? format(selected, 'dd/MM/yyyy') : placeholder || 'Select date'}
+            {selected ? format(selected, 'dd-MM-yyyy') : placeholder || 'Select date'}
           </span>
         </div>
         <ChevronDown size={14} className={`text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
@@ -77,6 +77,11 @@ const CustomDatePicker = ({ selected, onChange, label, minDate, placeholder }: C
       )}
     </div>
   );
+};
+
+export const parseDdMmYyyy = (str: string): Date => {
+  const [dd, mm, yyyy] = str.split('-');
+  return new Date(Number(yyyy), Number(mm) - 1, Number(dd));
 };
 
 export default CustomDatePicker;

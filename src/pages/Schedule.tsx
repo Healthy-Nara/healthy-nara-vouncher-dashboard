@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { fetchSchedule } from '../api';
 import { useState, useMemo } from 'react';
+import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Calendar, User, Package } from 'lucide-react';
 
@@ -60,7 +61,7 @@ const Schedule = () => {
   const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
 
   const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return format(new Date(dateStr), 'dd-MM');
   };
 
   return (

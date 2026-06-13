@@ -32,14 +32,11 @@ import halogo from "../assets/halogo.png";
 import patternBg from "../assets/pattern.png";
 import autosign from "../assets/autosign.png";
 import CustomDatePicker from "../components/CustomDatePicker";
+import { format } from "date-fns";
 
 const formatDateSlash = (dateStr: string) => {
   if (!dateStr) return "N/A";
-  const d = new Date(dateStr);
-  const dd = String(d.getDate()).padStart(2, "0");
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const yyyy = d.getFullYear();
-  return `${dd}/${mm}/${yyyy}`;
+  return format(new Date(dateStr), "dd-MM-yyyy");
 };
 
 // Background pattern image for invoice/receipt preview
@@ -66,7 +63,7 @@ const InvoiceDetail = () => {
   const [paymentAmount, setPaymentAmount] = useState(0);
   const [senderName, setSenderName] = useState("");
   const [paymentDate, setPaymentDate] = useState(
-    new Date().toISOString().split("T")[0],
+    format(new Date(), "dd-MM-yyyy"),
   );
   const [receiverName, setReceiverName] = useState("");
   const [secondName, setSecondName] = useState("");
@@ -81,7 +78,7 @@ const InvoiceDetail = () => {
     enabled: !!invoiceNumber,
   });
 
-  console.log(invoice);
+  console.log("invoice", invoice);
 
   const { data: parents } = useQuery({
     queryKey: ["parents"],
@@ -165,18 +162,19 @@ const InvoiceDetail = () => {
         dutyType: invoice.dutyType || "Day Shift",
         servicePackage: invoice.servicePackage || "N/A",
         date: invoice.date
-          ? new Date(invoice.date).toISOString().split("T")[0]
+          ? format(new Date(invoice.date), "dd-MM-yyyy")
           : "",
         serviceStartDate: invoice.serviceStartDate
-          ? new Date(invoice.serviceStartDate).toISOString().split("T")[0]
+          ? format(new Date(invoice.serviceStartDate), "dd-MM-yyyy")
           : "",
         serviceEndDate: invoice.serviceEndDate
-          ? new Date(invoice.serviceEndDate).toISOString().split("T")[0]
+          ? format(new Date(invoice.serviceEndDate), "dd-MM-yyyy")
           : "",
         dueDate: invoice.dueDate
-          ? new Date(invoice.dueDate).toISOString().split("T")[0]
+          ? format(new Date(invoice.dueDate), "dd-MM-yyyy")
           : "",
         paymentMethod: invoice.paymentMethod || "Kpay",
+        additionalCharges: invoice.additionalCharges || [],
       });
     }
   }, [invoice]);
@@ -220,6 +218,7 @@ const InvoiceDetail = () => {
   };
 
   const handleConfirmPayment = () => {
+    const isoDateTime = paymentDate ? new Date(paymentDate.split('-').reverse().join('-')).toISOString() : new Date().toISOString();
     if (modalType === "customer") {
       paymentMutation.mutate({
         type: "customer",
@@ -228,11 +227,12 @@ const InvoiceDetail = () => {
             paymentAmount || invoice.amount + (invoice.platformFee || 0),
           paymentChannel: paymentMethod,
           payerAccountName: senderName || invoice.customerName,
-          dateTime: paymentDate,
+          dateTime: isoDateTime,
           note: additionalNote,
         },
       });
-      updateMutation.mutate({ ...editData, paymentMethod });
+      const toIso = (d: string) => d ? new Date(d.split('-').reverse().join('-')).toISOString() : d;
+      updateMutation.mutate({ ...editData, paymentMethod, date: toIso(editData.date), serviceStartDate: toIso(editData.serviceStartDate), serviceEndDate: toIso(editData.serviceEndDate), dueDate: toIso(editData.dueDate) });
     } else {
       paymentMutation.mutate({
         type: "caregiver",
@@ -242,7 +242,7 @@ const InvoiceDetail = () => {
           amount: paymentAmount || invoice.amount,
           secondName,
           dutyType: invoice.dutyType,
-          dateTime: paymentDate,
+          dateTime: isoDateTime,
           note: additionalNote,
         },
       });
@@ -261,7 +261,16 @@ const InvoiceDetail = () => {
   };
 
   const handleUpdate = () => {
-    if (editData) updateMutation.mutate(editData);
+    if (editData) {
+      const toIso = (d: string) => d ? new Date(d.split('-').reverse().join('-')).toISOString() : d;
+      updateMutation.mutate({
+        ...editData,
+        date: toIso(editData.date),
+        serviceStartDate: toIso(editData.serviceStartDate),
+        serviceEndDate: toIso(editData.serviceEndDate),
+        dueDate: toIso(editData.dueDate),
+      });
+    }
   };
 
   const handleCancelEdit = () => {
@@ -271,7 +280,7 @@ const InvoiceDetail = () => {
       amount: invoice.amount || 0,
       dutyType: invoice.dutyType || "Day Shift",
       date: invoice.date
-        ? new Date(invoice.date).toISOString().split("T")[0]
+        ? format(new Date(invoice.date), "dd-MM-yyyy")
         : "",
       paymentMethod: invoice.paymentMethod || "Kpay",
     });
@@ -303,11 +312,14 @@ const InvoiceDetail = () => {
   const currentPlatformFee =
     displayData.platformFee ||
     Math.round((displayData.amount || 0) * (currentPlatformFeeRate / 100));
+  console.log("displayData", displayData);
   const additionalChargesTotal = (displayData.additionalCharges || []).reduce(
     (sum: number, c: any) => sum + (c.amount || 0),
     0,
   );
-  const grandTotal = (displayData.amount || 0) + currentPlatformFee + additionalChargesTotal;
+  console.log("additionalChargesTotal", additionalChargesTotal);
+  const grandTotal =
+    (displayData.amount || 0) + currentPlatformFee + additionalChargesTotal;
 
   const inputClasses =
     "block w-full border border-gray-200 rounded-lg shadow-sm p-2 focus:ring-primary focus:border-primary text-sm transition-all duration-200 hover:border-primary/40 bg-white";
@@ -706,7 +718,7 @@ const InvoiceDetail = () => {
                           editData?.date ? new Date(editData.date) : new Date()
                         }
                         onChange={(date) => {
-                          const newDateStr = date.toISOString().split("T")[0];
+                          const newDateStr = format(date, "dd-MM-yyyy");
                           setEditData({
                             ...editData,
                             date: newDateStr,
@@ -731,7 +743,7 @@ const InvoiceDetail = () => {
                         onChange={(date) =>
                           setEditData({
                             ...editData,
-                            dueDate: date.toISOString().split("T")[0],
+                            dueDate: format(date, "dd-MM-yyyy"),
                           })
                         }
                       />
@@ -744,7 +756,7 @@ const InvoiceDetail = () => {
                             : new Date()
                         }
                         onChange={(date) => {
-                          const newDateStr = date.toISOString().split("T")[0];
+                          const newDateStr = format(date, "dd-MM-yyyy");
                           setEditData({
                             ...editData,
                             serviceStartDate: newDateStr,
@@ -771,7 +783,7 @@ const InvoiceDetail = () => {
                         onChange={(date) =>
                           setEditData({
                             ...editData,
-                            serviceEndDate: date.toISOString().split("T")[0],
+                            serviceEndDate: format(date, "dd-MM-yyyy"),
                           })
                         }
                       />
@@ -1683,7 +1695,7 @@ const InvoiceDetail = () => {
                                   </p>
                                   <p
                                     style={{
-                                      fontSize: "13px",
+                                      fontSize: "11px",
                                       color: "#374151",
                                       margin: 0,
                                       fontWeight: 700,
@@ -2000,11 +2012,9 @@ const InvoiceDetail = () => {
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                       Date
                     </label>
-                    <input
-                      type="date"
-                      className="block w-full border border-gray-300 rounded-xl p-3 focus:ring-primary focus:border-primary text-sm bg-gray-50 font-medium"
-                      value={paymentDate}
-                      onChange={(e) => setPaymentDate(e.target.value)}
+                    <CustomDatePicker
+                      selected={paymentDate ? new Date(paymentDate.split('-').reverse().join('-')) : new Date()}
+                      onChange={(date) => setPaymentDate(format(date, 'dd-MM-yyyy'))}
                     />
                   </div>
                 </>
@@ -2066,11 +2076,9 @@ const InvoiceDetail = () => {
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                       Date
                     </label>
-                    <input
-                      type="date"
-                      className="block w-full border border-gray-300 rounded-xl p-3 focus:ring-primary focus:border-primary text-sm bg-gray-50 font-medium"
-                      value={paymentDate}
-                      onChange={(e) => setPaymentDate(e.target.value)}
+                    <CustomDatePicker
+                      selected={paymentDate ? new Date(paymentDate.split('-').reverse().join('-')) : new Date()}
+                      onChange={(date) => setPaymentDate(format(date, 'dd-MM-yyyy'))}
                     />
                   </div>
                 </>

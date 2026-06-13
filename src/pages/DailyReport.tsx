@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { fetchSchedule, fetchInvoices } from '../api';
 import { useState, useMemo } from 'react';
+import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Calendar, User, FileText, DollarSign } from 'lucide-react';
 
@@ -63,7 +64,7 @@ const DailyReport = () => {
   const goToday = () => setSelectedDate(new Date());
 
   const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+    return format(date, 'EEE, dd-MM-yyyy');
   };
 
   const formatMMK = (amount: number) => {

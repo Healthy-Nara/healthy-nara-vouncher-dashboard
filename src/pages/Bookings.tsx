@@ -2,7 +2,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchBookings, fetchParents, createBookingFromParent } from '../api';
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { format } from 'date-fns';
 import { Search, ChevronRight, Calendar, Package, User, Plus, X } from 'lucide-react';
+import CustomDatePicker, { parseDdMmYyyy } from '../components/CustomDatePicker';
 
 const ALL_STATUSES = ['All', 'Pending NA Selection', 'Assigned', 'Completed', 'Cancelled'] as const;
 
@@ -35,7 +37,14 @@ const Bookings = () => {
 
   const queryClient = useQueryClient();
   const createFromParentMutation = useMutation({
-    mutationFn: (data: any) => createBookingFromParent(data),
+    mutationFn: (data: any) => {
+      const toIso = (d: string) => d ? new Date(d.split('-').reverse().join('-')).toISOString() : d;
+      const payload = {
+        ...data,
+        requestedDates: data.requestedDates?.map((d: string) => toIso(d)),
+      };
+      return createBookingFromParent(payload);
+    },
     onSuccess: (result: any) => {
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
       setShowParentModal(false);
@@ -73,7 +82,11 @@ const Bookings = () => {
   }, [allBookings]);
 
   const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    if (!dateStr) return "";
+    if (dateStr.includes("-") && dateStr.split("-")[0].length === 2) {
+      return format(parseDdMmYyyy(dateStr), 'dd-MM');
+    }
+    return format(new Date(dateStr), 'dd-MM');
   };
 
   const formatDateRange = (dates: string[]) => {
@@ -388,8 +401,13 @@ const Bookings = () => {
                 <div>
                   <label className="text-xs text-gray-600 mb-1 block">Requested Dates</label>
                   <div className="flex items-center gap-2 mb-2">
-                    <input type="date" value={newDate} onChange={e => setNewDate(e.target.value)}
-                      className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+                    <div className="flex-1">
+                      <CustomDatePicker
+                        selected={newDate ? parseDdMmYyyy(newDate) : new Date()}
+                        onChange={(date) => setNewDate(format(date, 'dd-MM-yyyy'))}
+                        minDate={new Date()}
+                      />
+                    </div>
                     <button onClick={() => {
                       if (newDate && !parentForm.requestedDates.includes(newDate)) {
                         setParentForm(f => ({ ...f, requestedDates: [...f.requestedDates, newDate] }));
@@ -404,7 +422,7 @@ const Bookings = () => {
                     <div className="flex flex-wrap gap-1.5">
                       {parentForm.requestedDates.map((d, i) => (
                         <span key={i} className="inline-flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary rounded-full text-xs font-bold">
-                          {new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          {formatDate(d)}
                           <button onClick={() => setParentForm(f => ({ ...f, requestedDates: f.requestedDates.filter((_, j) => j !== i) }))}
                             className="p-0.5 hover:bg-primary/20 rounded-full">
                             <X size={12} />

@@ -14,6 +14,7 @@ import {
 } from "../api";
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { format } from "date-fns";
 import {
   ArrowLeft,
   Phone,
@@ -32,6 +33,7 @@ import {
   XCircle,
   Package,
 } from "lucide-react";
+import CustomDatePicker, { parseDdMmYyyy } from "../components/CustomDatePicker";
 
 const STATUS_CONFIG: Record<
   string,
@@ -143,7 +145,14 @@ const BookingDetail = () => {
   });
 
   const updateBookingMutation = useMutation({
-    mutationFn: (data: any) => updateBooking(id!, data),
+    mutationFn: (data: any) => {
+      const toIso = (d: string) => d ? new Date(d.split('-').reverse().join('-')).toISOString() : d;
+      const payload = {
+        ...data,
+        requestedDates: data.requestedDates?.map((d: string) => toIso(d)),
+      };
+      return updateBooking(id!, payload);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["booking", id] });
       setIsEditingBooking(false);
@@ -183,7 +192,7 @@ const BookingDetail = () => {
       dutyDuration: booking?.dutyDuration || "",
       dutyShift: booking?.dutyShift || "",
       requestedDates:
-        booking?.requestedDates?.map((d: string) => d.slice(0, 10)) || [],
+        booking?.requestedDates?.map((d: string) => format(new Date(d), "dd-MM-yyyy")) || [],
       additionalNotes: booking?.additionalNotes || "",
       additionalCharges: booking?.additionalCharges || [],
     });
@@ -191,8 +200,13 @@ const BookingDetail = () => {
   };
 
   const addChildMutation = useMutation({
-    mutationFn: (data: any) =>
-      addPublicBookingChild(booking!.bookingToken!, data),
+    mutationFn: (data: any) => {
+      const payload = {
+        ...data,
+        birthDate: data.birthDate ? new Date(data.birthDate.split('-').reverse().join('-')).toISOString() : data.birthDate,
+      };
+      return addPublicBookingChild(booking!.bookingToken!, payload);
+    },
     onSuccess: (result) => {
       setChildrenList(result || []);
       setShowAddChild(false);
@@ -224,11 +238,11 @@ const BookingDetail = () => {
   };
 
   const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
+    if (!dateStr) return "";
+    if (dateStr.includes("-") && dateStr.split("-")[0].length === 2) {
+      return dateStr;
+    }
+    return format(new Date(dateStr), "dd-MM-yyyy");
   };
 
   const copyLink = () => {
@@ -497,12 +511,13 @@ const BookingDetail = () => {
                       Requested Dates
                     </label>
                     <div className="flex items-center gap-2 mb-2">
-                      <input
-                        type="date"
-                        value={newDate}
-                        onChange={(e) => setNewDate(e.target.value)}
-                        className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-primary focus:border-primary"
-                      />
+                      <div className="flex-1">
+                        <CustomDatePicker
+                          selected={newDate ? parseDdMmYyyy(newDate) : new Date()}
+                          onChange={(date) => setNewDate(format(date, "dd-MM-yyyy"))}
+                          minDate={new Date()}
+                        />
+                      </div>
                       <button
                         onClick={() => {
                           if (
@@ -1255,9 +1270,10 @@ const BookingDetail = () => {
                               {child.birthDate && (
                                 <p>
                                   📅{" "}
-                                  {new Date(
-                                    child.birthDate,
-                                  ).toLocaleDateString()}
+                                  {format(
+                                    new Date(child.birthDate),
+                                    "dd-MM-yyyy",
+                                  )}
                                 </p>
                               )}
                               {child.gender && <p>👤 {child.gender}</p>}
@@ -1302,16 +1318,14 @@ const BookingDetail = () => {
                       <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">
                         Birth Date
                       </label>
-                      <input
-                        type="date"
-                        value={childForm.birthDate}
-                        onChange={(e) =>
+                      <CustomDatePicker
+                        selected={childForm.birthDate ? new Date(childForm.birthDate.split('-').reverse().join('-')) : new Date()}
+                        onChange={(date) =>
                           setChildForm({
                             ...childForm,
-                            birthDate: e.target.value,
+                            birthDate: format(date, "dd-MM-yyyy"),
                           })
                         }
-                        className="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-primary focus:border-primary"
                       />
                     </div>
                     <div>
