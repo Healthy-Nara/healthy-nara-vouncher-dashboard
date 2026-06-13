@@ -36,6 +36,9 @@ import { format } from "date-fns";
 
 const formatDateSlash = (dateStr: string) => {
   if (!dateStr) return "N/A";
+  if (dateStr.includes("-") && dateStr.split("-")[0].length === 2) {
+    return dateStr;
+  }
   return format(new Date(dateStr), "dd-MM-yyyy");
 };
 
