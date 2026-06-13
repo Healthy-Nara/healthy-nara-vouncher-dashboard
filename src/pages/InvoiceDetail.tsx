@@ -303,7 +303,11 @@ const InvoiceDetail = () => {
   const currentPlatformFee =
     displayData.platformFee ||
     Math.round((displayData.amount || 0) * (currentPlatformFeeRate / 100));
-  const grandTotal = (displayData.amount || 0) + currentPlatformFee; // Customer pays Amount + Fee
+  const additionalChargesTotal = (displayData.additionalCharges || []).reduce(
+    (sum: number, c: any) => sum + (c.amount || 0),
+    0,
+  );
+  const grandTotal = (displayData.amount || 0) + currentPlatformFee + additionalChargesTotal;
 
   const inputClasses =
     "block w-full border border-gray-200 rounded-lg shadow-sm p-2 focus:ring-primary focus:border-primary text-sm transition-all duration-200 hover:border-primary/40 bg-white";
@@ -814,6 +818,25 @@ const InvoiceDetail = () => {
                         MMK
                       </span>
                     </div>
+                    {(editData?.additionalCharges || []).length > 0 && (
+                      <div className="mt-2 space-y-1">
+                        {(editData?.additionalCharges || []).map(
+                          (c: any, i: number) => (
+                            <div
+                              key={i}
+                              className="flex items-center justify-between text-sm"
+                            >
+                              <span className="text-gray-500 text-xs">
+                                {c.name}
+                              </span>
+                              <span className="font-semibold text-gray-700">
+                                +{(c.amount || 0).toLocaleString()} MMK
+                              </span>
+                            </div>
+                          ),
+                        )}
+                      </div>
+                    )}
                     <div className="flex items-center justify-between text-sm mt-2 pt-2 border-t border-primary/20">
                       <span className="font-bold text-gray-800 text-xs uppercase">
                         Grand Total (Customer Pays)
@@ -964,22 +987,45 @@ const InvoiceDetail = () => {
                         </p>
                       </div>
                     </div>
-                    <div className="mt-3 pt-3 border-t border-gray-200 flex items-center justify-between">
-                      <div>
-                        <p className={labelClasses}>
-                          Platform Fee ({invoice.platformFeeRate || 10}%)
-                        </p>
-                        <p className="text-sm font-semibold text-primary">
-                          +{currentPlatformFee.toLocaleString()} MMK
-                        </p>
+                    <div className="mt-3 pt-3 border-t border-gray-200">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className={labelClasses}>
+                            Platform Fee ({invoice.platformFeeRate || 10}%)
+                          </p>
+                          <p className="text-sm font-semibold text-primary">
+                            +{currentPlatformFee.toLocaleString()} MMK
+                          </p>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <p className={labelClasses}>
-                          Grand Total (Customer Pays)
-                        </p>
-                        <p className="text-base font-extrabold text-primary">
-                          {grandTotal.toLocaleString()} MMK
-                        </p>
+                      {(invoice.additionalCharges || []).length > 0 && (
+                        <div className="mt-2 space-y-1">
+                          {(invoice.additionalCharges || []).map(
+                            (c: any, i: number) => (
+                              <div
+                                key={i}
+                                className="flex items-center justify-between"
+                              >
+                                <p className={labelClasses}>{c.name}</p>
+                                <p className="text-sm font-semibold text-gray-700">
+                                  +{(c.amount || 0).toLocaleString()} MMK
+                                </p>
+                              </div>
+                            ),
+                          )}
+                        </div>
+                      )}
+                      <div className="mt-2 pt-2 border-t border-gray-200 flex items-center justify-between">
+                        <div>
+                          <p className={labelClasses}>
+                            Grand Total (Customer Pays)
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-base font-extrabold text-primary">
+                            {grandTotal.toLocaleString()} MMK
+                          </p>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1395,6 +1441,40 @@ const InvoiceDetail = () => {
                                 +{currentPlatformFee.toLocaleString()} MMK
                               </span>
                             </div>
+                            {(displayData.additionalCharges || []).length > 0 &&
+                              (displayData.additionalCharges || []).map(
+                                (c: any, i: number) => (
+                                  <div
+                                    key={i}
+                                    style={{
+                                      display: "flex",
+                                      justifyContent: "space-between",
+                                      alignItems: "center",
+                                      padding: "8px 10px",
+                                      borderBottom: "1px solid #e5e7eb",
+                                    }}
+                                  >
+                                    <span
+                                      style={{
+                                        fontSize: "11px",
+                                        fontWeight: 600,
+                                        color: "#374151",
+                                      }}
+                                    >
+                                      {c.name}
+                                    </span>
+                                    <span
+                                      style={{
+                                        fontSize: "11px",
+                                        fontWeight: 700,
+                                        color: "#1CB89B",
+                                      }}
+                                    >
+                                      +{(c.amount || 0).toLocaleString()} MMK
+                                    </span>
+                                  </div>
+                                ),
+                              )}
                             <div
                               style={{
                                 display: "flex",
