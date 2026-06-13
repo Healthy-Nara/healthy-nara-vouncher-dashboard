@@ -66,7 +66,7 @@ const BookingDetail = () => {
     durationOfBusStopToHome: "",
   });
   const [showFormModal, setShowFormModal] = useState(false);
-  const [stepperStep, setStepperStep] = useState<1 | 2 | 3>(1);
+  const [activeTab, setActiveTab] = useState<'booking' | 'customer'>('booking');
   const [childrenList, setChildrenList] = useState<any[]>([]);
   const [showAddChild, setShowAddChild] = useState(false);
   const [childForm, setChildForm] = useState({
@@ -197,7 +197,7 @@ const BookingDetail = () => {
   });
 
   const openFormModal = async () => {
-    setStepperStep(1);
+    setActiveTab('booking');
     setParentForm({
       parentName: booking?.parent?.parentName || booking?.customerName || "",
       contactNumber:
@@ -226,23 +226,17 @@ const BookingDetail = () => {
     setShowFormModal(true);
   };
 
-  const handleNextStep = () => {
-    if (stepperStep === 1) {
-      parentSaveMutation.mutate(parentForm, {
-        onSuccess: () => setStepperStep(2),
-      });
-    } else if (stepperStep === 2) {
-      setStepperStep(3);
-    }
-  };
-
-  const handleFinish = () => {
+  const handleSaveBooking = () => {
     updateBookingMutation.mutate(bookingForm, {
       onSuccess: () => {
         setShowFormModal(false);
         setNewDate("");
       },
     });
+  };
+
+  const handleSaveCustomer = () => {
+    parentSaveMutation.mutate(parentForm);
   };
 
   const formatDate = (dateStr: string) => {
@@ -978,81 +972,38 @@ const BookingDetail = () => {
       {showFormModal && (
         <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-start justify-center pt-12">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
-            {/* Stepper Header */}
-            <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={() => setShowFormModal(false)}
-                  className="p-1 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-200"
-                >
-                  <X size={18} />
-                </button>
-                <div className="flex-1 flex items-center justify-center gap-3">
-                  <button
-                    onClick={() => stepperStep >= 1 && setStepperStep(1)}
-                    className={`flex items-center gap-2 ${stepperStep === 1 ? "text-primary" : "text-gray-400"}`}
-                  >
-                    <div
-                      className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold ${
-                        stepperStep === 1
-                          ? "bg-primary text-white"
-                          : "bg-gray-200 text-gray-500"
-                      }`}
-                    >
-                      1
-                    </div>
-                    <span
-                      className={`text-xs font-bold ${stepperStep === 1 ? "text-primary" : "text-gray-400"}`}
-                    >
-                      Parent
-                    </span>
-                  </button>
-                  <div className="w-8 h-px bg-gray-300"></div>
-                  <button
-                    onClick={() => stepperStep >= 2 && setStepperStep(2)}
-                    className={`flex items-center gap-2 ${stepperStep === 2 ? "text-primary" : "text-gray-400"}`}
-                  >
-                    <div
-                      className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold ${
-                        stepperStep === 2
-                          ? "bg-primary text-white"
-                          : "bg-gray-200 text-gray-500"
-                      }`}
-                    >
-                      2
-                    </div>
-                    <span
-                      className={`text-xs font-bold ${stepperStep === 2 ? "text-primary" : "text-gray-400"}`}
-                    >
-                      Children
-                    </span>
-                  </button>
-                  <div className="w-8 h-px bg-gray-300"></div>
-                  <button
-                    onClick={() => stepperStep >= 3 && setStepperStep(3)}
-                    className={`flex items-center gap-2 ${stepperStep === 3 ? "text-primary" : "text-gray-400"}`}
-                  >
-                    <div
-                      className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold ${
-                        stepperStep === 3
-                          ? "bg-primary text-white"
-                          : "bg-gray-200 text-gray-500"
-                      }`}
-                    >
-                      3
-                    </div>
-                    <span
-                      className={`text-xs font-bold ${stepperStep === 3 ? "text-primary" : "text-gray-400"}`}
-                    >
-                      Booking
-                    </span>
-                  </button>
-                </div>
-              </div>
+            {/* Tab Header */}
+            <div className="flex items-center border-b border-gray-200">
+              <button
+                onClick={() => setShowFormModal(false)}
+                className="p-3 text-gray-400 hover:text-gray-600"
+              >
+                <X size={18} />
+              </button>
+              <button
+                onClick={() => setActiveTab('booking')}
+                className={`flex-1 py-3 text-sm font-bold text-center transition-colors ${
+                  activeTab === 'booking'
+                    ? 'text-primary border-b-2 border-primary'
+                    : 'text-gray-400 hover:text-gray-600'
+                }`}
+              >
+                Booking Data
+              </button>
+              <button
+                onClick={() => setActiveTab('customer')}
+                className={`flex-1 py-3 text-sm font-bold text-center transition-colors ${
+                  activeTab === 'customer'
+                    ? 'text-primary border-b-2 border-primary'
+                    : 'text-gray-400 hover:text-gray-600'
+                }`}
+              >
+                Customer Info
+              </button>
             </div>
 
-            {/* Step 1: Parent Info */}
-            {stepperStep === 1 && (
+            {/* Customer Info Tab */}
+            {activeTab === 'customer' && (
               <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 mb-0.5">
@@ -1163,12 +1114,7 @@ const BookingDetail = () => {
                     className="block w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-primary focus:border-primary"
                   />
                 </div>
-              </div>
-            )}
 
-            {/* Step 2: Children */}
-            {stepperStep === 2 && (
-              <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
                 {/* Children List */}
                 {childrenList.length === 0 ? (
                   <div className="text-center py-8 text-gray-400 text-sm">
@@ -1334,8 +1280,8 @@ const BookingDetail = () => {
               </div>
             )}
 
-            {/* Step 3: Booking Details */}
-            {stepperStep === 3 && (
+            {/* Booking Data Tab */}
+            {activeTab === 'booking' && (
               <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 mb-0.5">
@@ -1538,55 +1484,28 @@ const BookingDetail = () => {
 
             {/* Footer */}
             <div className="px-6 py-4 border-t border-gray-200 flex gap-3">
-              {stepperStep === 1 ? (
-                <>
-                  <button
-                    onClick={() => setShowFormModal(false)}
-                    className="flex-1 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-50 transition-all py-2.5"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleNextStep}
-                    disabled={
-                      !parentForm.parentName || parentSaveMutation.isPending
-                    }
-                    className="flex-1 bg-primary text-white rounded-xl text-sm font-bold shadow-md hover:bg-primary-dark transition-all py-2.5 disabled:opacity-50"
-                  >
-                    {parentSaveMutation.isPending ? "Saving..." : "Next →"}
-                  </button>
-                </>
-              ) : stepperStep === 2 ? (
-                <>
-                  <button
-                    onClick={() => setStepperStep(1)}
-                    className="flex-1 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-50 transition-all py-2.5"
-                  >
-                    ← Back
-                  </button>
-                  <button
-                    onClick={handleNextStep}
-                    className="flex-1 bg-primary text-white rounded-xl text-sm font-bold shadow-md hover:bg-primary-dark transition-all py-2.5"
-                  >
-                    Next →
-                  </button>
-                </>
+              <button
+                onClick={() => setShowFormModal(false)}
+                className="flex-1 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-50 transition-all py-2.5"
+              >
+                Cancel
+              </button>
+              {activeTab === 'booking' ? (
+                <button
+                  onClick={handleSaveBooking}
+                  disabled={updateBookingMutation.isPending}
+                  className="flex-1 bg-primary text-white rounded-xl text-sm font-bold shadow-md hover:bg-primary-dark transition-all py-2.5 disabled:opacity-50"
+                >
+                  {updateBookingMutation.isPending ? "Saving..." : "Save Booking"}
+                </button>
               ) : (
-                <>
-                  <button
-                    onClick={() => setStepperStep(2)}
-                    className="flex-1 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-50 transition-all py-2.5"
-                  >
-                    ← Back
-                  </button>
-                  <button
-                    onClick={handleFinish}
-                    disabled={updateBookingMutation.isPending}
-                    className="flex-1 bg-primary text-white rounded-xl text-sm font-bold shadow-md hover:bg-primary-dark transition-all py-2.5 disabled:opacity-50"
-                  >
-                    {updateBookingMutation.isPending ? "Saving..." : "Done"}
-                  </button>
-                </>
+                <button
+                  onClick={handleSaveCustomer}
+                  disabled={!parentForm.parentName || parentSaveMutation.isPending}
+                  className="flex-1 bg-primary text-white rounded-xl text-sm font-bold shadow-md hover:bg-primary-dark transition-all py-2.5 disabled:opacity-50"
+                >
+                  {parentSaveMutation.isPending ? "Saving..." : "Save Customer"}
+                </button>
               )}
             </div>
           </div>
