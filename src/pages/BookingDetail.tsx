@@ -82,6 +82,7 @@ const BookingDetail = () => {
     dutyShift: "",
     requestedDates: [] as string[],
     additionalNotes: "",
+    additionalCharges: [] as { name: string; amount: number }[],
   });
   const [newDate, setNewDate] = useState("");
 
@@ -214,6 +215,7 @@ const BookingDetail = () => {
       requestedDates:
         booking?.requestedDates?.map((d: string) => d.slice(0, 10)) || [],
       additionalNotes: booking?.additionalNotes || "",
+      additionalCharges: booking?.additionalCharges || [],
     });
     if (booking?.bookingToken) {
       try {
@@ -1455,6 +1457,65 @@ const BookingDetail = () => {
                   ) : (
                     <p className="text-xs text-gray-400">No dates added yet</p>
                   )}
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">
+                    Additional Charges
+                  </label>
+                  {bookingForm.additionalCharges.length > 0 ? (
+                    <div className="space-y-2 mb-2">
+                      {bookingForm.additionalCharges.map((charge, i) => (
+                        <div key={i} className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={charge.name}
+                            onChange={(e) => {
+                              const updated = [...bookingForm.additionalCharges];
+                              updated[i] = { ...updated[i], name: e.target.value };
+                              setBookingForm({ ...bookingForm, additionalCharges: updated });
+                            }}
+                            placeholder="Charge name"
+                            className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-primary focus:border-primary"
+                          />
+                          <input
+                            type="number"
+                            value={charge.amount || ''}
+                            onChange={(e) => {
+                              const updated = [...bookingForm.additionalCharges];
+                              updated[i] = { ...updated[i], amount: parseFloat(e.target.value) || 0 };
+                              setBookingForm({ ...bookingForm, additionalCharges: updated });
+                            }}
+                            placeholder="Amount"
+                            className="w-28 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-primary focus:border-primary"
+                          />
+                          <button
+                            onClick={() =>
+                              setBookingForm({
+                                ...bookingForm,
+                                additionalCharges: bookingForm.additionalCharges.filter((_, j) => j !== i),
+                              })
+                            }
+                            className="p-1.5 hover:bg-red-50 rounded-lg text-red-400 hover:text-red-600 transition-colors"
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-gray-400 mb-2">No additional charges</p>
+                  )}
+                  <button
+                    onClick={() =>
+                      setBookingForm({
+                        ...bookingForm,
+                        additionalCharges: [...bookingForm.additionalCharges, { name: '', amount: 0 }],
+                      })
+                    }
+                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-primary bg-primary/10 rounded-lg hover:bg-primary/20 transition-colors"
+                  >
+                    + Add Charge
+                  </button>
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 mb-0.5">
