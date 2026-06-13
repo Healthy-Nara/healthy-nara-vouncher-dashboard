@@ -20,7 +20,7 @@ const Bookings = () => {
   const [showParentModal, setShowParentModal] = useState(false);
   const [parentSearch, setParentSearch] = useState('');
   const [selectedParentId, setSelectedParentId] = useState('');
-  const [parentForm, setParentForm] = useState({ dutyDuration: '', dutyShift: '', requestedDates: [] as string[], additionalNotes: '' });
+  const [parentForm, setParentForm] = useState({ servicePackage: '', dutyDuration: '', dutyShift: '', requestedDates: [] as string[], additionalNotes: '' });
   const [newDate, setNewDate] = useState('');
 
   const { data: allBookings = [], isLoading } = useQuery({
@@ -40,7 +40,7 @@ const Bookings = () => {
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
       setShowParentModal(false);
       setSelectedParentId('');
-      setParentForm({ dutyDuration: '', dutyShift: '', requestedDates: [], additionalNotes: '' });
+      setParentForm({ servicePackage: '', dutyDuration: '', dutyShift: '', requestedDates: [], additionalNotes: '' });
       setParentSearch('');
       setNewDate('');
       navigate(`/bookings/${result._id}`);
@@ -346,6 +346,18 @@ const Bookings = () => {
               {/* Step 2: Booking Details */}
               <div className="space-y-3">
                 <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Booking Details</label>
+                <div>
+                  <label className="text-xs text-gray-600 mb-1 block">Service Type</label>
+                  <select
+                    value={parentForm.servicePackage}
+                    onChange={e => setParentForm(f => ({ ...f, servicePackage: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                  >
+                    <option value="">Select service type</option>
+                    <option value="Newborn Service">Newborn Service</option>
+                    <option value="Childcare Service">Childcare Service</option>
+                  </select>
+                </div>
                 <div>
                   <label className="text-xs text-gray-600 mb-1 block">Duty Duration</label>
                   <select

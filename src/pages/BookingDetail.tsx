@@ -77,6 +77,7 @@ const BookingDetail = () => {
   });
   const [deleteChildIndex, setDeleteChildIndex] = useState<number | null>(null);
   const [bookingForm, setBookingForm] = useState({
+    servicePackage: "",
     dutyDuration: "",
     dutyShift: "",
     requestedDates: [] as string[],
@@ -207,6 +208,7 @@ const BookingDetail = () => {
       durationOfBusStopToHome: booking?.parent?.durationOfBusStopToHome || "",
     });
     setBookingForm({
+      servicePackage: booking?.servicePackage || "",
       dutyDuration: booking?.dutyDuration || "",
       dutyShift: booking?.dutyShift || "",
       requestedDates:
@@ -1333,6 +1335,25 @@ const BookingDetail = () => {
             {/* Step 3: Booking Details */}
             {stepperStep === 3 && (
               <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-0.5">
+                    Service Type
+                  </label>
+                  <select
+                    value={bookingForm.servicePackage}
+                    onChange={(e) =>
+                      setBookingForm({
+                        ...bookingForm,
+                        servicePackage: e.target.value,
+                      })
+                    }
+                    className="block w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-primary focus:border-primary"
+                  >
+                    <option value="">Select service type</option>
+                    <option value="Newborn Service">Newborn Service</option>
+                    <option value="Childcare Service">Childcare Service</option>
+                  </select>
+                </div>
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 mb-0.5">
                     Duty Duration
