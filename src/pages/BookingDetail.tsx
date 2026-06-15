@@ -12,7 +12,7 @@ import {
   deletePublicBookingChild,
   updateBookingStatus,
 } from "../api";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import {
@@ -33,7 +33,9 @@ import {
   XCircle,
   Package,
 } from "lucide-react";
-import CustomDatePicker, { parseDdMmYyyy } from "../components/CustomDatePicker";
+import CustomDatePicker, {
+  parseDdMmYyyy,
+} from "../components/CustomDatePicker";
 
 const STATUS_CONFIG: Record<
   string,
@@ -146,7 +148,8 @@ const BookingDetail = () => {
 
   const updateBookingMutation = useMutation({
     mutationFn: (data: any) => {
-      const toIso = (d: string) => d ? new Date(d.split('-').reverse().join('-')).toISOString() : d;
+      const toIso = (d: string) =>
+        d ? new Date(d.split("-").reverse().join("-")).toISOString() : d;
       const payload = {
         ...data,
         requestedDates: data.requestedDates?.map((d: string) => toIso(d)),
@@ -192,7 +195,9 @@ const BookingDetail = () => {
       dutyDuration: booking?.dutyDuration || "",
       dutyShift: booking?.dutyShift || "",
       requestedDates:
-        booking?.requestedDates?.map((d: string) => format(new Date(d), "dd-MM-yyyy")) || [],
+        booking?.requestedDates?.map((d: string) =>
+          format(new Date(d), "dd-MM-yyyy"),
+        ) || [],
       additionalNotes: booking?.additionalNotes || "",
       additionalCharges: booking?.additionalCharges || [],
     });
@@ -203,7 +208,11 @@ const BookingDetail = () => {
     mutationFn: (data: any) => {
       const payload = {
         ...data,
-        birthDate: data.birthDate ? new Date(data.birthDate.split('-').reverse().join('-')).toISOString() : data.birthDate,
+        birthDate: data.birthDate
+          ? new Date(
+              data.birthDate.split("-").reverse().join("-"),
+            ).toISOString()
+          : data.birthDate,
       };
       return addPublicBookingChild(booking!.bookingToken!, payload);
     },
@@ -301,6 +310,11 @@ const BookingDetail = () => {
     setCopiedDuty(true);
     setTimeout(() => setCopiedDuty(false), 2000);
   };
+
+  useEffect(() => {
+    console.log("Loading children...");
+    loadChildren();
+  }, [booking]);
 
   if (isLoading)
     return <div className="text-center py-12 text-gray-500">Loading...</div>;
@@ -513,8 +527,12 @@ const BookingDetail = () => {
                     <div className="flex items-center gap-2 mb-2">
                       <div className="flex-1">
                         <CustomDatePicker
-                          selected={newDate ? parseDdMmYyyy(newDate) : new Date()}
-                          onChange={(date) => setNewDate(format(date, "dd-MM-yyyy"))}
+                          selected={
+                            newDate ? parseDdMmYyyy(newDate) : new Date()
+                          }
+                          onChange={(date) =>
+                            setNewDate(format(date, "dd-MM-yyyy"))
+                          }
                           minDate={new Date()}
                         />
                       </div>
@@ -675,15 +693,11 @@ const BookingDetail = () => {
                       Cancel
                     </button>
                     <button
-                      onClick={() =>
-                        updateBookingMutation.mutate(bookingForm)
-                      }
+                      onClick={() => updateBookingMutation.mutate(bookingForm)}
                       disabled={updateBookingMutation.isPending}
                       className="flex-1 bg-primary text-white rounded-xl text-sm font-bold shadow-md hover:bg-primary-dark transition-all py-2 disabled:opacity-50"
                     >
-                      {updateBookingMutation.isPending
-                        ? "Saving..."
-                        : "Save"}
+                      {updateBookingMutation.isPending ? "Saving..." : "Save"}
                     </button>
                   </div>
                 </div>
@@ -714,14 +728,14 @@ const BookingDetail = () => {
                         {booking.dutyDuration || "—"}
                       </p>
                     </div>
-                    <div>
+                    {/* <div>
                       <p className="text-[10px] text-gray-500 uppercase">
                         Duty Type
                       </p>
                       <p className="text-sm font-semibold text-gray-900">
                         {booking.dutyType || "—"}
                       </p>
-                    </div>
+                    </div> */}
                   </div>
                   {booking.requestedDates &&
                     booking.requestedDates.length > 0 && (
@@ -730,15 +744,17 @@ const BookingDetail = () => {
                           Requested Dates
                         </p>
                         <div className="flex flex-wrap gap-1">
-                          {booking.requestedDates.map((d: string, i: number) => (
-                            <span
-                              key={i}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary rounded-full text-[10px] font-bold"
-                            >
-                              <Calendar size={10} />
-                              {formatDate(d)}
-                            </span>
-                          ))}
+                          {booking.requestedDates.map(
+                            (d: string, i: number) => (
+                              <span
+                                key={i}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary rounded-full text-[10px] font-bold"
+                              >
+                                <Calendar size={10} />
+                                {formatDate(d)}
+                              </span>
+                            ),
+                          )}
                         </div>
                       </div>
                     )}
@@ -838,9 +854,7 @@ const BookingDetail = () => {
                                 </p>
                                 <div className="flex items-center gap-2 text-[10px] text-gray-500">
                                   <span>{cg.gender}</span>
-                                  {cg.township && (
-                                    <span>· {cg.township}</span>
-                                  )}
+                                  {cg.township && <span>· {cg.township}</span>}
                                   {cg.specialization && (
                                     <span>· {cg.specialization}</span>
                                   )}
@@ -865,7 +879,10 @@ const BookingDetail = () => {
                                 }`}
                               >
                                 {selectedCaregiverId === cg._id && (
-                                  <CheckCircle size={12} className="text-white" />
+                                  <CheckCircle
+                                    size={12}
+                                    className="text-white"
+                                  />
                                 )}
                               </div>
                             </div>
@@ -1213,9 +1230,7 @@ const BookingDetail = () => {
                       </p>
                       <button
                         onClick={() =>
-                          navigate(
-                            `/leads/${booking.lead._id || booking.lead}`,
-                          )
+                          navigate(`/leads/${booking.lead._id || booking.lead}`)
                         }
                         className="text-xs text-primary hover:underline inline-flex items-center gap-1"
                       >
@@ -1319,7 +1334,16 @@ const BookingDetail = () => {
                         Birth Date
                       </label>
                       <CustomDatePicker
-                        selected={childForm.birthDate ? new Date(childForm.birthDate.split('-').reverse().join('-')) : new Date()}
+                        selected={
+                          childForm.birthDate
+                            ? new Date(
+                                childForm.birthDate
+                                  .split("-")
+                                  .reverse()
+                                  .join("-"),
+                              )
+                            : new Date()
+                        }
                         onChange={(date) =>
                           setChildForm({
                             ...childForm,
@@ -1368,9 +1392,7 @@ const BookingDetail = () => {
                         Cancel
                       </button>
                       <button
-                        onClick={() =>
-                          addChildMutation.mutate(childForm)
-                        }
+                        onClick={() => addChildMutation.mutate(childForm)}
                         disabled={
                           !childForm.childName.trim() ||
                           addChildMutation.isPending

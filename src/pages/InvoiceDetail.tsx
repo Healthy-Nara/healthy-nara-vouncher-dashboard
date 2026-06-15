@@ -31,7 +31,7 @@ import { downloadAsImage, downloadAsPDF } from "../utils/export";
 import halogo from "../assets/halogo.png";
 import patternBg from "../assets/pattern.png";
 import autosign from "../assets/autosign.png";
-import CustomDatePicker from "../components/CustomDatePicker";
+import CustomDatePicker, { parseDdMmYyyy } from "../components/CustomDatePicker";
 import { format } from "date-fns";
 
 const formatDateSlash = (dateStr: string) => {
@@ -221,7 +221,7 @@ const InvoiceDetail = () => {
   };
 
   const handleConfirmPayment = () => {
-    const isoDateTime = paymentDate ? new Date(paymentDate.split('-').reverse().join('-')).toISOString() : new Date().toISOString();
+    const isoDateTime = paymentDate ? parseDdMmYyyy(paymentDate).toISOString() : new Date().toISOString();
     if (modalType === "customer") {
       paymentMutation.mutate({
         type: "customer",
@@ -234,7 +234,7 @@ const InvoiceDetail = () => {
           note: additionalNote,
         },
       });
-      const toIso = (d: string) => d ? new Date(d.split('-').reverse().join('-')).toISOString() : d;
+      const toIso = (d: string) => d ? parseDdMmYyyy(d).toISOString() : d;
       updateMutation.mutate({ ...editData, paymentMethod, date: toIso(editData.date), serviceStartDate: toIso(editData.serviceStartDate), serviceEndDate: toIso(editData.serviceEndDate), dueDate: toIso(editData.dueDate) });
     } else {
       paymentMutation.mutate({
@@ -265,7 +265,7 @@ const InvoiceDetail = () => {
 
   const handleUpdate = () => {
     if (editData) {
-      const toIso = (d: string) => d ? new Date(d.split('-').reverse().join('-')).toISOString() : d;
+      const toIso = (d: string) => d ? parseDdMmYyyy(d).toISOString() : d;
       updateMutation.mutate({
         ...editData,
         date: toIso(editData.date),
@@ -718,7 +718,7 @@ const InvoiceDetail = () => {
                       <CustomDatePicker
                         label="Invoice Date"
                         selected={
-                          editData?.date ? new Date(editData.date) : new Date()
+                          editData?.date ? parseDdMmYyyy(editData.date) : new Date()
                         }
                         onChange={(date) => {
                           const newDateStr = format(date, "dd-MM-yyyy");
@@ -737,11 +737,11 @@ const InvoiceDetail = () => {
                         label="Due Date"
                         selected={
                           editData?.dueDate
-                            ? new Date(editData.dueDate)
+                            ? parseDdMmYyyy(editData.dueDate)
                             : new Date()
                         }
                         minDate={
-                          editData?.date ? new Date(editData.date) : undefined
+                          editData?.date ? parseDdMmYyyy(editData.date) : undefined
                         }
                         onChange={(date) =>
                           setEditData({
@@ -755,7 +755,7 @@ const InvoiceDetail = () => {
                         label="Service Start"
                         selected={
                           editData?.serviceStartDate
-                            ? new Date(editData.serviceStartDate)
+                            ? parseDdMmYyyy(editData.serviceStartDate)
                             : new Date()
                         }
                         onChange={(date) => {
@@ -775,12 +775,12 @@ const InvoiceDetail = () => {
                         label="Service End"
                         selected={
                           editData?.serviceEndDate
-                            ? new Date(editData.serviceEndDate)
+                            ? parseDdMmYyyy(editData.serviceEndDate)
                             : new Date()
                         }
                         minDate={
                           editData?.serviceStartDate
-                            ? new Date(editData.serviceStartDate)
+                            ? parseDdMmYyyy(editData.serviceStartDate)
                             : undefined
                         }
                         onChange={(date) =>
@@ -2016,7 +2016,7 @@ const InvoiceDetail = () => {
                       Date
                     </label>
                     <CustomDatePicker
-                      selected={paymentDate ? new Date(paymentDate.split('-').reverse().join('-')) : new Date()}
+                      selected={paymentDate ? parseDdMmYyyy(paymentDate) : new Date()}
                       onChange={(date) => setPaymentDate(format(date, 'dd-MM-yyyy'))}
                     />
                   </div>
@@ -2080,7 +2080,7 @@ const InvoiceDetail = () => {
                       Date
                     </label>
                     <CustomDatePicker
-                      selected={paymentDate ? new Date(paymentDate.split('-').reverse().join('-')) : new Date()}
+                      selected={paymentDate ? parseDdMmYyyy(paymentDate) : new Date()}
                       onChange={(date) => setPaymentDate(format(date, 'dd-MM-yyyy'))}
                     />
                   </div>
