@@ -31,7 +31,9 @@ import { downloadAsImage, downloadAsPDF } from "../utils/export";
 import halogo from "../assets/halogo.png";
 import patternBg from "../assets/pattern.png";
 import autosign from "../assets/autosign.png";
-import CustomDatePicker, { parseDdMmYyyy } from "../components/CustomDatePicker";
+import CustomDatePicker, {
+  parseDdMmYyyy,
+} from "../components/CustomDatePicker";
 import { format } from "date-fns";
 
 const formatDateSlash = (dateStr: string) => {
@@ -164,9 +166,7 @@ const InvoiceDetail = () => {
         platformFeeRate: invoice.platformFeeRate || 10,
         dutyType: invoice.dutyType || "Day Shift",
         servicePackage: invoice.servicePackage || "N/A",
-        date: invoice.date
-          ? format(new Date(invoice.date), "dd-MM-yyyy")
-          : "",
+        date: invoice.date ? format(new Date(invoice.date), "dd-MM-yyyy") : "",
         serviceStartDate: invoice.serviceStartDate
           ? format(new Date(invoice.serviceStartDate), "dd-MM-yyyy")
           : "",
@@ -221,7 +221,9 @@ const InvoiceDetail = () => {
   };
 
   const handleConfirmPayment = () => {
-    const isoDateTime = paymentDate ? parseDdMmYyyy(paymentDate).toISOString() : new Date().toISOString();
+    const isoDateTime = paymentDate
+      ? parseDdMmYyyy(paymentDate).toISOString()
+      : new Date().toISOString();
     if (modalType === "customer") {
       paymentMutation.mutate({
         type: "customer",
@@ -234,8 +236,15 @@ const InvoiceDetail = () => {
           note: additionalNote,
         },
       });
-      const toIso = (d: string) => d ? parseDdMmYyyy(d).toISOString() : d;
-      updateMutation.mutate({ ...editData, paymentMethod, date: toIso(editData.date), serviceStartDate: toIso(editData.serviceStartDate), serviceEndDate: toIso(editData.serviceEndDate), dueDate: toIso(editData.dueDate) });
+      const toIso = (d: string) => (d ? parseDdMmYyyy(d).toISOString() : d);
+      updateMutation.mutate({
+        ...editData,
+        paymentMethod,
+        date: toIso(editData.date),
+        serviceStartDate: toIso(editData.serviceStartDate),
+        serviceEndDate: toIso(editData.serviceEndDate),
+        dueDate: toIso(editData.dueDate),
+      });
     } else {
       paymentMutation.mutate({
         type: "caregiver",
@@ -265,7 +274,7 @@ const InvoiceDetail = () => {
 
   const handleUpdate = () => {
     if (editData) {
-      const toIso = (d: string) => d ? parseDdMmYyyy(d).toISOString() : d;
+      const toIso = (d: string) => (d ? parseDdMmYyyy(d).toISOString() : d);
       updateMutation.mutate({
         ...editData,
         date: toIso(editData.date),
@@ -282,9 +291,7 @@ const InvoiceDetail = () => {
       caregiverName: invoice.caregiverName || "",
       amount: invoice.amount || 0,
       dutyType: invoice.dutyType || "Day Shift",
-      date: invoice.date
-        ? format(new Date(invoice.date), "dd-MM-yyyy")
-        : "",
+      date: invoice.date ? format(new Date(invoice.date), "dd-MM-yyyy") : "",
       paymentMethod: invoice.paymentMethod || "Kpay",
     });
     setIsEditing(false);
@@ -718,7 +725,9 @@ const InvoiceDetail = () => {
                       <CustomDatePicker
                         label="Invoice Date"
                         selected={
-                          editData?.date ? parseDdMmYyyy(editData.date) : new Date()
+                          editData?.date
+                            ? parseDdMmYyyy(editData.date)
+                            : new Date()
                         }
                         onChange={(date) => {
                           const newDateStr = format(date, "dd-MM-yyyy");
@@ -741,7 +750,9 @@ const InvoiceDetail = () => {
                             : new Date()
                         }
                         minDate={
-                          editData?.date ? parseDdMmYyyy(editData.date) : undefined
+                          editData?.date
+                            ? parseDdMmYyyy(editData.date)
+                            : undefined
                         }
                         onChange={(date) =>
                           setEditData({
@@ -1694,7 +1705,7 @@ const InvoiceDetail = () => {
                                       fontWeight: 700,
                                     }}
                                   >
-                                    AccNumber - 09-951 207 795
+                                    AccNumber - 09-783 742 007
                                   </p>
                                   <p
                                     style={{
@@ -1704,7 +1715,7 @@ const InvoiceDetail = () => {
                                       fontWeight: 700,
                                     }}
                                   >
-                                    Name - Thant Sin Oo
+                                    Name - Htet Oo Wai Yan
                                   </p>
                                 </div>
                                 <div>
@@ -1729,7 +1740,7 @@ const InvoiceDetail = () => {
                                       fontWeight: 700,
                                     }}
                                   >
-                                    AccNumber - 09-951 207 795
+                                    AccNumber - 09-783 742 007
                                   </p>
                                   <p
                                     style={{
@@ -1739,7 +1750,7 @@ const InvoiceDetail = () => {
                                       fontWeight: 700,
                                     }}
                                   >
-                                    Name - Thant Sin Oo
+                                    Name - Htet Oo Wai Yan
                                   </p>
                                 </div>
                                 <div>
@@ -1764,7 +1775,7 @@ const InvoiceDetail = () => {
                                       fontWeight: 700,
                                     }}
                                   >
-                                    AccNumber - 09-951 207 795
+                                    AccNumber - 09-783 742 007
                                   </p>
                                   <p
                                     style={{
@@ -1774,7 +1785,7 @@ const InvoiceDetail = () => {
                                       fontWeight: 700,
                                     }}
                                   >
-                                    Name - Thant Sin Oo
+                                    Name - Htet Oo Wai Yan
                                   </p>
                                 </div>
                               </div>
@@ -2016,8 +2027,12 @@ const InvoiceDetail = () => {
                       Date
                     </label>
                     <CustomDatePicker
-                      selected={paymentDate ? parseDdMmYyyy(paymentDate) : new Date()}
-                      onChange={(date) => setPaymentDate(format(date, 'dd-MM-yyyy'))}
+                      selected={
+                        paymentDate ? parseDdMmYyyy(paymentDate) : new Date()
+                      }
+                      onChange={(date) =>
+                        setPaymentDate(format(date, "dd-MM-yyyy"))
+                      }
                     />
                   </div>
                 </>
@@ -2080,8 +2095,12 @@ const InvoiceDetail = () => {
                       Date
                     </label>
                     <CustomDatePicker
-                      selected={paymentDate ? parseDdMmYyyy(paymentDate) : new Date()}
-                      onChange={(date) => setPaymentDate(format(date, 'dd-MM-yyyy'))}
+                      selected={
+                        paymentDate ? parseDdMmYyyy(paymentDate) : new Date()
+                      }
+                      onChange={(date) =>
+                        setPaymentDate(format(date, "dd-MM-yyyy"))
+                      }
                     />
                   </div>
                 </>
