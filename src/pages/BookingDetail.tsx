@@ -359,7 +359,7 @@ const BookingDetail = () => {
           </div>
         </div>
         <div className="flex gap-2 flex-wrap">
-          {booking.status === "Assigned" && !booking.invoice && (
+          {["Assigned", "Completed"].includes(booking.status) && !booking.invoice && (
             <button
               onClick={() => setShowInvoiceForm(true)}
               className="inline-flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-xl text-sm font-bold shadow-md hover:bg-primary-dark transition-all"
@@ -404,7 +404,7 @@ const BookingDetail = () => {
 
         {/* Invoice Form - Modal */}
         {showInvoiceForm &&
-          booking.status === "Assigned" &&
+          ["Assigned", "Completed"].includes(booking.status) &&
           !booking.invoice && (
             <>
               <div
