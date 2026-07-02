@@ -164,6 +164,7 @@ const InvoiceDetail = () => {
         caregiverName: invoice.caregiverName || "",
         amount: invoice.amount || 0,
         platformFeeRate: invoice.platformFeeRate || 10,
+        platformFeeType: invoice.platformFeeType || "percentage",
         dutyType: invoice.dutyType || "Day Shift",
         servicePackage: invoice.servicePackage || "N/A",
         date: invoice.date ? format(new Date(invoice.date), "dd-MM-yyyy") : "",
@@ -290,6 +291,8 @@ const InvoiceDetail = () => {
       customerName: invoice.customerName || "",
       caregiverName: invoice.caregiverName || "",
       amount: invoice.amount || 0,
+      platformFeeType: invoice.platformFeeType || "percentage",
+      platformFeeRate: invoice.platformFeeRate || 10,
       dutyType: invoice.dutyType || "Day Shift",
       date: invoice.date ? format(new Date(invoice.date), "dd-MM-yyyy") : "",
       paymentMethod: invoice.paymentMethod || "Kpay",
@@ -319,9 +322,12 @@ const InvoiceDetail = () => {
 
   const displayData = editData || invoice;
   const currentPlatformFeeRate = displayData.platformFeeRate || 10;
+  const currentPlatformFeeType = displayData.platformFeeType || "percentage";
   const currentPlatformFee =
     displayData.platformFee ||
-    Math.round((displayData.amount || 0) * (currentPlatformFeeRate / 100));
+    (currentPlatformFeeType === "fixed"
+      ? currentPlatformFeeRate
+      : Math.round((displayData.amount || 0) * (currentPlatformFeeRate / 100)));
   console.log("displayData", displayData);
   const additionalChargesTotal = (displayData.additionalCharges || []).reduce(
     (sum: number, c: any) => sum + (c.amount || 0),
@@ -706,21 +712,37 @@ const InvoiceDetail = () => {
                         />
                       </div>
                       <div>
-                        <label className={labelClasses}>Platform Fee (%)</label>
-                        <input
-                          type="number"
-                          min="0"
-                          max="100"
-                          step="0.1"
-                          className={inputClasses}
-                          value={editData?.platformFeeRate || 10}
-                          onChange={(e) =>
-                            setEditData({
-                              ...editData,
-                              platformFeeRate: parseFloat(e.target.value) || 0,
-                            })
-                          }
-                        />
+                        <label className={labelClasses}>Platform Fee</label>
+                        <div className="flex gap-2">
+                          <div className="flex rounded-lg border border-gray-200 overflow-hidden">
+                            <button type="button" onClick={() => setEditData({ ...editData, platformFeeType: 'percentage' })}
+                              className={`px-2 py-1 text-[10px] font-bold transition-all ${editData?.platformFeeType === 'percentage' ? 'bg-primary text-white' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}>
+                              %
+                            </button>
+                            <button type="button" onClick={() => setEditData({ ...editData, platformFeeType: 'fixed' })}
+                              className={`px-2 py-1 text-[10px] font-bold transition-all ${editData?.platformFeeType === 'fixed' ? 'bg-primary text-white' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}>
+                              MMK
+                            </button>
+                          </div>
+                          <div className="relative flex-1">
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.1"
+                              className={inputClasses}
+                              value={editData?.platformFeeRate || 10}
+                              onChange={(e) =>
+                                setEditData({
+                                  ...editData,
+                                  platformFeeRate: parseFloat(e.target.value) || 0,
+                                })
+                              }
+                            />
+                            <div className="absolute inset-y-0 right-0 pr-2 flex items-center pointer-events-none">
+                              <span className="text-gray-400 text-[10px] font-bold">{editData?.platformFeeType === 'fixed' ? 'MMK' : '%'}</span>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                       <CustomDatePicker
                         label="Invoice Date"
@@ -832,14 +854,13 @@ const InvoiceDetail = () => {
                     </div>
                     <div className="flex items-center justify-between text-sm mt-1">
                       <span className="text-gray-500 text-xs text-primary">
-                        Platform Fees ({editData?.platformFeeRate || 10}%)
+                        Platform Fees ({editData?.platformFeeType === 'fixed' ? `${(editData?.platformFeeRate || 0).toLocaleString()} MMK` : `${editData?.platformFeeRate || 10}%`})
                       </span>
                       <span className="font-semibold text-primary">
                         +
-                        {(
-                          (editData?.amount *
-                            (editData?.platformFeeRate || 10)) /
-                          100
+                        {(editData?.platformFeeType === 'fixed'
+                          ? (editData?.platformFeeRate || 0)
+                          : ((editData?.amount || 0) * (editData?.platformFeeRate || 10)) / 100
                         ).toLocaleString()}{" "}
                         MMK
                       </span>
@@ -1017,7 +1038,7 @@ const InvoiceDetail = () => {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className={labelClasses}>
-                            Platform Fee ({invoice.platformFeeRate || 10}%)
+                            Platform Fee ({invoice.platformFeeType === 'fixed' ? `${(invoice.platformFeeRate || 0).toLocaleString()} MMK` : `${invoice.platformFeeRate || 10}%`})
                           </p>
                           <p className="text-sm font-semibold text-primary">
                             +{currentPlatformFee.toLocaleString()} MMK
@@ -1455,7 +1476,9 @@ const InvoiceDetail = () => {
                                 }}
                               >
                                 Platform fees (
-                                {displayData.platformFeeRate || 10}%) :
+                                {displayData.platformFeeType === 'fixed'
+                                  ? `${(displayData.platformFeeRate || 0).toLocaleString()} MMK`
+                                  : `${displayData.platformFeeRate || 10}%`}) :
                               </span>
                               <span
                                 style={{

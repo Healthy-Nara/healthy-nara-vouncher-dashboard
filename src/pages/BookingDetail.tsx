@@ -59,6 +59,11 @@ const BookingDetail = () => {
     null,
   );
   const [invoiceAmount, setInvoiceAmount] = useState("");
+  const [invoicePlatformFeeType, setInvoicePlatformFeeType] = useState<
+    "percentage" | "fixed"
+  >("percentage");
+  const [invoicePlatformFeeRate, setInvoicePlatformFeeRate] = useState("10");
+  const [showInvoiceForm, setShowInvoiceForm] = useState(false);
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<"booking" | "customer">("booking");
 
@@ -338,7 +343,7 @@ const BookingDetail = () => {
             <ArrowLeft size={20} />
           </button>
           <div>
-            <div className="flex flex-col md:flex-row md:items-center gap-2">
+            <div className="flex md:items-center gap-2">
               <h1 className="text-xl font-extrabold text-gray-900 tracking-tight">
                 {booking.bookingNumber}
               </h1>
@@ -355,27 +360,12 @@ const BookingDetail = () => {
         </div>
         <div className="flex gap-2 flex-wrap">
           {booking.status === "Assigned" && !booking.invoice && (
-            <div className="flex items-center gap-2">
-              <input
-                type="number"
-                placeholder="Amount (MMK)"
-                value={invoiceAmount}
-                onChange={(e) => setInvoiceAmount(e.target.value)}
-                className="border border-gray-300 rounded-lg shadow-sm px-3 py-2 text-sm focus:ring-primary focus:border-primary w-40"
-              />
-              <button
-                onClick={() => {
-                  if (invoiceAmount) {
-                    invoiceMutation.mutate({ amount: Number(invoiceAmount) });
-                  }
-                }}
-                disabled={!invoiceAmount || invoiceMutation.isPending}
-                className="inline-flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-xl text-sm font-bold shadow-md hover:bg-primary-dark transition-all disabled:opacity-50"
-              >
-                <CheckCircle size={16} />
-                {invoiceMutation.isPending ? "Creating..." : "Generate Invoice"}
-              </button>
-            </div>
+            <button
+              onClick={() => setShowInvoiceForm(true)}
+              className="inline-flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-xl text-sm font-bold shadow-md hover:bg-primary-dark transition-all"
+            >
+              <Package size={16} /> Generate Invoice
+            </button>
           )}
           {booking.invoice && (
             <button
@@ -397,18 +387,122 @@ const BookingDetail = () => {
                   onClick={() => setConfirmStatus("Completed")}
                   className="inline-flex items-center gap-2 bg-green-500 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-md hover:bg-green-600 transition-all"
                 >
-                  <CircleCheckBig size={16} /> Complete
+                  <CircleCheckBig size={16} />{" "}
+                  <span className="hidden md:block">Complete</span>
                 </button>
               )}
               <button
                 onClick={() => setConfirmStatus("Cancelled")}
                 className="inline-flex items-center gap-2 border-2 border-red-300 text-red-600 px-4 py-2 rounded-xl text-sm font-bold hover:bg-red-50 transition-all"
               >
-                <XCircle size={16} /> Cancel
+                <XCircle size={16} />
+                <span className="hidden md:block">Cancel</span>
               </button>
             </div>
           )}
         </div>
+
+        {/* Invoice Form - Modal */}
+        {showInvoiceForm &&
+          booking.status === "Assigned" &&
+          !booking.invoice && (
+            <>
+              <div
+                className="fixed inset-0 z-[200] bg-black/40 backdrop-blur-[2px]"
+                onClick={() => setShowInvoiceForm(false)}
+              />
+              <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[201] bg-white shadow-2xl rounded-2xl border border-gray-100 w-[90vw] max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                  <span className="text-sm font-black text-gray-700">
+                    Generate Invoice
+                  </span>
+                  <button
+                    onClick={() => setShowInvoiceForm(false)}
+                    className="p-1.5 hover:bg-gray-200 rounded-lg transition-colors text-gray-400"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+                <div className="p-4 space-y-3">
+                  <div>
+                    <label className="block text-[10px] font-semibold text-gray-500 mb-1">
+                      Amount (MMK)
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="Enter amount"
+                      value={invoiceAmount}
+                      onChange={(e) => setInvoiceAmount(e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg shadow-sm px-3 py-2.5 text-sm focus:ring-primary focus:border-primary"
+                      autoFocus
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-gray-500 mb-1">
+                      Platform Fee
+                    </label>
+                    <div className="flex gap-2">
+                      <div className="flex rounded-lg border border-gray-300 overflow-hidden">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setInvoicePlatformFeeType("percentage")
+                          }
+                          className={`px-3 py-2 text-xs font-bold transition-all ${invoicePlatformFeeType === "percentage" ? "bg-primary text-white" : "bg-gray-100 text-gray-500"}`}
+                        >
+                          %
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setInvoicePlatformFeeType("fixed")}
+                          className={`px-3 py-2 text-xs font-bold transition-all ${invoicePlatformFeeType === "fixed" ? "bg-primary text-white" : "bg-gray-100 text-gray-500"}`}
+                        >
+                          MMK
+                        </button>
+                      </div>
+                      <input
+                        type="number"
+                        placeholder={
+                          invoicePlatformFeeType === "percentage"
+                            ? "Fee %"
+                            : "Fee MMK"
+                        }
+                        value={invoicePlatformFeeRate}
+                        onChange={(e) =>
+                          setInvoicePlatformFeeRate(e.target.value)
+                        }
+                        className="flex-1 border border-gray-300 rounded-lg shadow-sm px-3 py-2 text-sm focus:ring-primary focus:border-primary"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="p-4 border-t border-gray-100 flex gap-2">
+                  <button
+                    onClick={() => setShowInvoiceForm(false)}
+                    className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-50 transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (invoiceAmount) {
+                        invoiceMutation.mutate({
+                          amount: Number(invoiceAmount),
+                          platformFeeType: invoicePlatformFeeType,
+                          platformFeeRate: Number(invoicePlatformFeeRate),
+                        });
+                      }
+                    }}
+                    disabled={!invoiceAmount || invoiceMutation.isPending}
+                    className="flex-1 py-2.5 bg-primary text-white rounded-xl text-sm font-bold shadow-md hover:bg-primary-dark transition-all disabled:opacity-50 inline-flex items-center justify-center gap-2"
+                  >
+                    <CheckCircle size={14} />
+                    {invoiceMutation.isPending ? "Creating..." : "Confirm"}
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
       </div>
 
       {/* Tab Header */}
@@ -533,7 +627,6 @@ const BookingDetail = () => {
                           onChange={(date) =>
                             setNewDate(format(date, "dd-MM-yyyy"))
                           }
-                          minDate={new Date()}
                         />
                       </div>
                       <button
@@ -943,11 +1036,13 @@ const BookingDetail = () => {
                 >
                   {copiedDuty ? (
                     <>
-                      <CheckCircle size={12} /> Copied!
+                      <CheckCircle size={12} />{" "}
+                      <span className="hidden md:block">Copied</span>
                     </>
                   ) : (
                     <>
-                      <Copy size={12} /> Copy to Clipboard
+                      <Copy size={12} />{" "}
+                      <span className="hidden md:block">Copy to Clipboard</span>
                     </>
                   )}
                 </button>

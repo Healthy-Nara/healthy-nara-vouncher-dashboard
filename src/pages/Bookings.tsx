@@ -405,7 +405,6 @@ const Bookings = () => {
                       <CustomDatePicker
                         selected={newDate ? parseDdMmYyyy(newDate) : new Date()}
                         onChange={(date) => setNewDate(format(date, 'dd-MM-yyyy'))}
-                        minDate={new Date()}
                       />
                     </div>
                     <button onClick={() => {

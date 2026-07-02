@@ -16,6 +16,7 @@ const CreateInvoice = () => {
     dutyType: 'Day Shift',
     servicePackage: 'N/A',
     amount: 0,
+    platformFeeType: 'percentage' as 'percentage' | 'fixed',
     platformFeeRate: 10,
     date: new Date(),
     serviceStartDate: new Date(),
@@ -204,20 +205,31 @@ const CreateInvoice = () => {
               </div>
 
               <div className="md:col-span-3">
-                <label className={labelClasses}>Platform Fee (%)</label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    required
-                    min="0"
-                    max="100"
-                    step="0.1"
-                    className={`${inputClasses} font-semibold`}
-                    value={formData.platformFeeRate}
-                    onChange={(e) => setFormData({ ...formData, platformFeeRate: parseFloat(e.target.value) || 0 })}
-                  />
-                  <div className="absolute inset-y-0 right-0 pr-8 flex items-center pointer-events-none">
-                    <span className="text-gray-400 text-xs font-bold">%</span>
+                <label className={labelClasses}>Platform Fee</label>
+                <div className="flex gap-2">
+                  <div className="flex rounded-lg border border-gray-300 overflow-hidden">
+                    <button type="button" onClick={() => setFormData({ ...formData, platformFeeType: 'percentage' })}
+                      className={`px-3 py-2 text-xs font-bold transition-all ${formData.platformFeeType === 'percentage' ? 'bg-primary text-white' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}>
+                      %
+                    </button>
+                    <button type="button" onClick={() => setFormData({ ...formData, platformFeeType: 'fixed' })}
+                      className={`px-3 py-2 text-xs font-bold transition-all ${formData.platformFeeType === 'fixed' ? 'bg-primary text-white' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}>
+                      MMK
+                    </button>
+                  </div>
+                  <div className="relative flex-1">
+                    <input
+                      type="number"
+                      required
+                      min="0"
+                      step="0.1"
+                      className={`${inputClasses} font-semibold`}
+                      value={formData.platformFeeRate}
+                      onChange={(e) => setFormData({ ...formData, platformFeeRate: parseFloat(e.target.value) || 0 })}
+                    />
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                      <span className="text-gray-400 text-xs font-bold">{formData.platformFeeType === 'percentage' ? '%' : 'MMK'}</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -276,8 +288,12 @@ const CreateInvoice = () => {
                   <span className="font-bold text-gray-900 text-base">{formData.amount.toLocaleString()} MMK</span>
                 </div>
                 <div className="flex justify-between items-center text-sm">
-                  <span className="text-gray-500 font-medium tracking-tight">Platform Service Fee ({formData.platformFeeRate}%):</span>
-                  <span className="font-bold text-emerald-600 ">+{((formData.amount * formData.platformFeeRate) / 100).toLocaleString()} MMK</span>
+                  <span className="text-gray-500 font-medium tracking-tight">
+                    Platform Service Fee ({formData.platformFeeType === 'fixed' ? `${formData.platformFeeRate.toLocaleString()} MMK` : `${formData.platformFeeRate}%`}):
+                  </span>
+                  <span className="font-bold text-emerald-600 ">
+                    +{(formData.platformFeeType === 'fixed' ? formData.platformFeeRate : (formData.amount * formData.platformFeeRate) / 100).toLocaleString()} MMK
+                  </span>
                 </div>
                 <div className="pt-4 mt-2 border-t border-primary/20 flex justify-between items-end">
                   <div>
@@ -286,7 +302,7 @@ const CreateInvoice = () => {
                   </div>
                   <div className="text-right">
                     <span className="text-2xl md:text-3xl font-black text-primary tracking-tighter">
-                      {(formData.amount + (formData.amount * formData.platformFeeRate / 100)).toLocaleString()}
+                      {(formData.amount + (formData.platformFeeType === 'fixed' ? formData.platformFeeRate : (formData.amount * formData.platformFeeRate) / 100)).toLocaleString()}
                     </span>
                     <span className="ml-1.5 text-xs font-black text-primary/60">MMK</span>
                   </div>
