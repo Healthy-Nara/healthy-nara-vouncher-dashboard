@@ -12,6 +12,8 @@ import {
   Banknote,
   PieChart,
   ClipboardList,
+  ClipboardCheck,
+  Clock,
 } from "lucide-react";
 interface SidebarProps {
   isOpen: boolean;
@@ -67,6 +69,18 @@ const navItems = [
     label: "Bank Report",
     icon: PieChart,
     path: "/bank-report",
+    roles: ["admin"],
+  },
+  {
+    label: "NA Reports",
+    icon: ClipboardCheck,
+    path: "/na-reports",
+    roles: ["admin"],
+  },
+  {
+    label: "Duty Logs",
+    icon: Clock,
+    path: "/duty-logs",
     roles: ["admin"],
   },
   { label: "Activity Log", icon: History, path: "/logs", roles: ["admin"] },

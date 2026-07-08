@@ -35,6 +35,7 @@ const Caregivers = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<CaregiverForm>(emptyForm());
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [createdCredentials, setCreatedCredentials] = useState<{ username: string; password: string } | null>(null);
 
   const { data: caregivers, isLoading } = useQuery({
     queryKey: ['caregivers'],
@@ -43,8 +44,15 @@ const Caregivers = () => {
 
   const createMutation = useMutation({
     mutationFn: (data: CaregiverForm) => createCaregiver(data),
-    onSuccess: () => {
+    onSuccess: (response: any) => {
       queryClient.invalidateQueries({ queryKey: ['caregivers'] });
+      // Show generated credentials
+      if (response?.username) {
+        setCreatedCredentials({
+          username: response.username,
+          password: response.temporaryPassword || form.NRC || '123456'
+        });
+      }
       closeModal();
     },
   });
@@ -251,8 +259,8 @@ const Caregivers = () => {
                     onChange={(e) => setForm({ ...form, township: e.target.value })} placeholder="e.g. YGN" />
                 </div>
                 <div>
-                  <label className={label}>NRC</label>
-                  <input className={input} value={form.NRC}
+                  <label className={label}>NRC * (Password အဖြစ် သုံးမည်)</label>
+                  <input required className={input} value={form.NRC}
                     onChange={(e) => setForm({ ...form, NRC: e.target.value })} placeholder="NRC number" />
                 </div>
                 <div>
@@ -301,6 +309,43 @@ const Caregivers = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Credentials Success Modal */}
+      {createdCredentials && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+            <div className="text-center mb-6">
+              <div className="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-green-600 text-2xl">✓</span>
+              </div>
+              <h3 className="text-lg font-bold text-gray-900">Caregiver ဖန်တီးပြီးပါပြီ!</h3>
+              <p className="text-sm text-gray-500 mt-2">NA Login အတွက် credentials များ:</p>
+            </div>
+            
+            <div className="bg-gray-50 rounded-xl p-4 space-y-3 mb-6">
+              <div>
+                <p className="text-xs text-gray-500">Username</p>
+                <p className="font-mono font-bold text-lg text-primary">{createdCredentials.username}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Password (NRC)</p>
+                <p className="font-mono font-bold text-lg text-primary">{createdCredentials.password}</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-gray-400 text-center mb-4">
+              NA သည် http://localhost:5173/na/login တွင် ဒီ credentials ဖြင့် login ဝင်နိုင်ပါသည်
+            </p>
+
+            <button
+              onClick={() => setCreatedCredentials(null)}
+              className="w-full py-2.5 bg-primary text-white rounded-xl text-sm font-bold hover:bg-primary-dark transition-all"
+            >
+              OK
+            </button>
           </div>
         </div>
       )}

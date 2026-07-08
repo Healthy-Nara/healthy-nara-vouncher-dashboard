@@ -26,6 +26,20 @@ import Logs from './pages/Logs';
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
 
+// NA Pages
+import NALogin from './pages/na/NALogin';
+import NADashboard from './pages/na/NADashboard';
+import NAReportForm from './pages/na/NAReportForm';
+import NAReportDetail from './pages/na/NAReportDetail';
+import NAReportHistory from './pages/na/NAReportHistory';
+
+// Admin NA Pages
+import NAReports from './pages/NAReports';
+import DutyLogs from './pages/DutyLogs';
+
+// Family Page
+import FamilyReports from './pages/FamilyReports';
+
 const queryClient = new QueryClient();
 
 const PrivateRoute = ({ children, roles }: { children: React.ReactNode, roles?: string[] }) => {
@@ -55,6 +69,16 @@ function App() {
             {/* Public routes - no auth, no layout */}
             <Route path="/book/:token" element={<PublicBooking />} />
             <Route path="/login" element={<Login />} />
+
+            {/* NA routes - separate layout */}
+            <Route path="/na/login" element={<NALogin />} />
+            <Route path="/na" element={<NADashboard />} />
+            <Route path="/na/report/:id" element={<NAReportForm />} />
+            <Route path="/na/report/:id/view" element={<NAReportDetail />} />
+            <Route path="/na/reports" element={<NAReportHistory />} />
+
+            {/* Family routes - public, no auth */}
+            <Route path="/family/:token" element={<FamilyReports />} />
 
             {/* Admin routes - with auth + layout */}
             <Route path="*" element={
@@ -157,6 +181,21 @@ function App() {
                       <Route path="/logs" element={
                         <PrivateRoute roles={['admin']}>
                           <Logs />
+                        </PrivateRoute>
+                      } />
+                      <Route path="/na-reports" element={
+                        <PrivateRoute roles={['admin']}>
+                          <NAReports />
+                        </PrivateRoute>
+                      } />
+                      <Route path="/na-reports/:id" element={
+                        <PrivateRoute roles={['admin']}>
+                          <NAReportDetail />
+                        </PrivateRoute>
+                      } />
+                      <Route path="/duty-logs" element={
+                        <PrivateRoute roles={['admin']}>
+                          <DutyLogs />
                         </PrivateRoute>
                       } />
                     </Routes>
