@@ -1,10 +1,7 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getAdminDutyLogs } from '../api';
-import { 
-  Clock, CheckCircle2, Play, Square, Calendar, User, 
-  Loader2, Filter, Timer
-} from 'lucide-react';
+import { Clock, Calendar, User, Loader2, Timer } from 'lucide-react';
 
 const DutyLogs = () => {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
@@ -13,14 +10,6 @@ const DutyLogs = () => {
     queryKey: ['adminDutyLogs', selectedDate],
     queryFn: () => getAdminDutyLogs({ date: selectedDate }),
   });
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('my-MM', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-  };
 
   const formatTime = (dateString: string) => {
     if (!dateString) return '-';

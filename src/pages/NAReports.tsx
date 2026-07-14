@@ -1,11 +1,8 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { getAdminNAReports } from '../api';
-import { 
-  FileText, CheckCircle2, Clock, Calendar, User, 
-  ChevronRight, Loader2, Filter
-} from 'lucide-react';
+import { FileText, Calendar, User, ChevronRight, Loader2, Filter } from 'lucide-react';
 
 const NAReports = () => {
   const navigate = useNavigate();

@@ -1,18 +1,16 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
 import { getFamilyReports, getFamilyReportByDate } from '../api';
 import { 
   Heart, FileText, CheckCircle2, Clock, Calendar, 
   User, Droplets, Baby, Moon, Activity, AlertCircle,
-  Loader2, ChevronDown, ChevronUp
+  Loader2
 } from 'lucide-react';
 
 const FamilyReports = () => {
   const { token } = useParams<{ token: string }>();
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [expandedReport, setExpandedReport] = useState<string | null>(null);
-
   const { data: reportsData, isLoading } = useQuery({
     queryKey: ['familyReports', token],
     queryFn: () => getFamilyReports(token!),
