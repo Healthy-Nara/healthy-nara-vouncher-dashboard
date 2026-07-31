@@ -19,6 +19,7 @@ import BookingDetail from './pages/BookingDetail';
 import Schedule from './pages/Schedule';
 import DailyReport from './pages/DailyReport';
 import Payouts from './pages/Payouts';
+import Expenses from './pages/Expenses';
 import BankReport from './pages/BankReport';
 import PublicBooking from './pages/PublicBooking';
 import Login from './pages/Login';
@@ -171,6 +172,11 @@ function App() {
                       <Route path="/payouts" element={
                         <PrivateRoute roles={['admin', 'staff']}>
                           <Payouts />
+                        </PrivateRoute>
+                      } />
+                      <Route path="/expenses" element={
+                        <PrivateRoute roles={['admin']}>
+                          <Expenses />
                         </PrivateRoute>
                       } />
                       <Route path="/bank-report" element={

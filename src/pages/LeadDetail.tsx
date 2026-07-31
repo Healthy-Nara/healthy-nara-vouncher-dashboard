@@ -217,6 +217,9 @@ const LeadDetail = () => {
                       requirements: lead.requirements || "",
                       notes: lead.notes || "",
                       lostReason: lead.lostReason || "",
+                      date: lead.date
+                        ? new Date(lead.date).toISOString().slice(0, 10)
+                        : "",
                     });
                     setIsEditing(true);
                   }
@@ -279,6 +282,19 @@ const LeadDetail = () => {
                       <option value="Referral">Referral</option>
                       <option value="Other">Other</option>
                     </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-0.5">
+                      Date
+                    </label>
+                    <input
+                      type="date"
+                      value={editForm.date}
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, date: e.target.value })
+                      }
+                      className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2.5 focus:ring-primary focus:border-primary text-sm"
+                    />
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-gray-600 mb-0.5">
@@ -357,6 +373,14 @@ const LeadDetail = () => {
                       {lead.stage}
                     </span>
                   </div>
+                  {lead.date && (
+                    <div>
+                      <p className="text-xs text-gray-500">Date</p>
+                      <p className="text-sm font-semibold text-gray-900">
+                        {new Date(lead.date).toLocaleDateString()}
+                      </p>
+                    </div>
+                  )}
                   {lead.assignedStaffName && (
                     <div>
                       <p className="text-xs text-gray-500">Assigned Staff</p>

@@ -2,13 +2,14 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchFinancialReport } from '../api';
 import { useState, useMemo } from 'react';
 import { format } from 'date-fns';
-import { BarChart3, TrendingUp, TrendingDown, Wallet, Calendar, ArrowDown } from 'lucide-react';
+import { BarChart3, TrendingUp, TrendingDown, Wallet, Calendar, ArrowDown, ReceiptText } from 'lucide-react';
 import CustomDatePicker from '../components/CustomDatePicker';
 
 const BankReport = () => {
-  const [dateRange, setDateRange] = useState<'daily' | 'weekly' | 'monthly'>('monthly');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const todayStr = format(new Date(), 'dd-MM-yyyy');
+  const [dateRange, setDateRange] = useState<'daily' | 'weekly' | 'monthly'>('daily');
+  const [startDate, setStartDate] = useState(todayStr);
+  const [endDate, setEndDate] = useState(todayStr);
 
   const handleRangeChange = (range: 'daily' | 'weekly' | 'monthly') => {
     setDateRange(range);
@@ -42,6 +43,7 @@ const BankReport = () => {
       { label: 'Total Income', value: report.totalIncome, icon: TrendingUp, color: 'bg-green-100 text-green-700', border: 'border-green-200' },
       { label: 'NA Payouts', value: report.totalPayouts, icon: ArrowDown, color: 'bg-orange-100 text-orange-700', border: 'border-orange-200' },
       { label: 'Platform Fees', value: report.totalFees, icon: Wallet, color: 'bg-primary/10 text-primary', border: 'border-primary/20' },
+      { label: 'Total Expenses', value: report.totalExpenses, icon: ReceiptText, color: 'bg-red-100 text-red-700', border: 'border-red-200' },
       { label: 'Net Profit', value: report.netProfit, icon: report.netProfit >= 0 ? TrendingUp : TrendingDown, color: report.netProfit >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700', border: report.netProfit >= 0 ? 'border-emerald-200' : 'border-red-200' },
     ];
   }, [report]);
@@ -181,13 +183,14 @@ const BankReport = () => {
                       </div>
                       <div>
                         <p className="text-xs font-bold text-gray-900">{date}</p>
-                        <p className="text-[10px] text-gray-400">Net: {fmt(data.income - data.payouts)} MMK</p>
+                        <p className="text-[10px] text-gray-400">Net: {fmt(data.income - data.payouts - (data.expense || 0))} MMK</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-4 text-xs">
                       <span className="text-green-600 font-semibold">+{fmt(data.income)}</span>
                       <span className="text-orange-600 font-semibold">-{fmt(data.payouts)}</span>
                       <span className="text-primary font-semibold">Fees: {fmt(data.fees)}</span>
+                      <span className="text-red-600 font-semibold">Exp: {fmt(data.expense || 0)}</span>
                     </div>
                   </div>
                 ))}

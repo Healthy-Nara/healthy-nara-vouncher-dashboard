@@ -10,6 +10,7 @@ import {
   CalendarDays,
   CalendarSearch,
   Banknote,
+  Wallet,
   PieChart,
   ClipboardList,
   ClipboardCheck,
@@ -51,6 +52,12 @@ const navItems = [
     icon: Banknote,
     path: "/payouts",
     roles: ["admin", "staff"],
+  },
+  {
+    label: "Expenses",
+    icon: Wallet,
+    path: "/expenses",
+    roles: ["admin"],
   },
   { label: "Report", icon: BarChart3, path: "/report", roles: ["admin"] },
   {

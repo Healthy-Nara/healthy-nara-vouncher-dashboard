@@ -1,11 +1,44 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchStats } from '../api';
-import { Clock, FileText, DollarSign, Activity, PhoneCall, Calendar, CheckCircle, AlertCircle } from 'lucide-react';
+import { format } from 'date-fns';
+import CustomDatePicker from '../components/CustomDatePicker';
+import { Clock, FileText, DollarSign, Activity, PhoneCall, Calendar, CheckCircle, AlertCircle, Wallet } from 'lucide-react';
 
 const Dashboard = () => {
+  const [dateRange, setDateRange] = useState<'all' | 'daily' | 'weekly' | 'monthly'>('all');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+
+  const handleRangeChange = (range: 'all' | 'daily' | 'weekly' | 'monthly') => {
+    setDateRange(range);
+    if (range === 'all') {
+      setStartDate('');
+      setEndDate('');
+      return;
+    }
+    const today = new Date();
+    const fmt = (d: Date) => format(d, 'dd-MM-yyyy');
+    if (range === 'daily') {
+      setStartDate(fmt(today));
+      setEndDate(fmt(today));
+    } else if (range === 'weekly') {
+      const weekAgo = new Date(today);
+      weekAgo.setDate(weekAgo.getDate() - 6);
+      setStartDate(fmt(weekAgo));
+      setEndDate(fmt(today));
+    } else {
+      const first = new Date(today.getFullYear(), today.getMonth(), 1);
+      setStartDate(fmt(first));
+      setEndDate(fmt(today));
+    }
+  };
+
+  const toApiDate = (d: string) => d ? d.split('-').reverse().join('-') : '';
+
   const { data: stats, isLoading } = useQuery({
-    queryKey: ['stats'],
-    queryFn: fetchStats,
+    queryKey: ['stats', startDate, endDate],
+    queryFn: () => fetchStats(toApiDate(startDate) || undefined, toApiDate(endDate) || undefined),
   });
 
   const statCards = [
@@ -58,6 +91,14 @@ const Dashboard = () => {
       borderColor: 'border-amber-100',
     },
     {
+      title: 'Total Expenses',
+      value: `${stats?.totalExpenses?.toLocaleString() || 0} MMK`,
+      icon: <Wallet size={20} />,
+      bgColor: 'bg-red-50',
+      textColor: 'text-red-600',
+      borderColor: 'border-red-100',
+    },
+    {
       title: 'Active NAs',
       value: stats?.activeNAs || 0,
       icon: <Activity size={20} />,
@@ -82,6 +123,39 @@ const Dashboard = () => {
       <div>
         <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Dashboard</h1>
         <p className="mt-1 text-sm text-gray-500">Real-time overview of your business.</p>
+      </div>
+
+      {/* Date Filter */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex gap-1 bg-gray-100 p-0.5 rounded-lg">
+            {(['all', 'daily', 'weekly', 'monthly'] as const).map(range => (
+              <button
+                key={range}
+                onClick={() => handleRangeChange(range)}
+                className={`px-3 py-1.5 rounded-md text-xs font-bold capitalize transition-all ${
+                  dateRange === range
+                    ? 'bg-white shadow-sm text-primary'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                {range === 'all' ? 'All Time' : range}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-2">
+            <Calendar size={14} className="text-gray-400" />
+            <CustomDatePicker
+              selected={startDate ? new Date(startDate.split('-').reverse().join('-')) : new Date()}
+              onChange={(date) => setStartDate(format(date, 'dd-MM-yyyy'))}
+            />
+            <span className="text-xs text-gray-400">to</span>
+            <CustomDatePicker
+              selected={endDate ? new Date(endDate.split('-').reverse().join('-')) : new Date()}
+              onChange={(date) => setEndDate(format(date, 'dd-MM-yyyy'))}
+            />
+          </div>
+        </div>
       </div>
 
       {/* Main Stats */}

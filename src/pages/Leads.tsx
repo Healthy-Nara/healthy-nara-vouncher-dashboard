@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchLeads, createLead, deleteLead } from '../api';
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, X, Phone, MessageCircle, Users, ChevronRight, UserPlus, Clock, Trash2 } from 'lucide-react';
+import { Plus, Search, X, Phone, MessageCircle, Users, ChevronRight, UserPlus, Trash2, CalendarDays } from 'lucide-react';
 
 const ALL_STAGES = ['All', 'New', 'Contacted', 'Sale Closed', 'Active Customer', 'Lost'] as const;
 
@@ -29,10 +29,18 @@ interface LeadForm {
   channel: string;
   requirements: string;
   notes: string;
+  date: string;
 }
 
+const todayStr = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+const fmtDate = (d: any) => (d ? new Date(d).toLocaleDateString() : '');
+
 const emptyForm = (): LeadForm => ({
-  customerName: '', phoneNumber: '', channel: 'Phone', requirements: '', notes: '',
+  customerName: '', phoneNumber: '', channel: 'Phone', requirements: '', notes: '', date: todayStr(),
 });
 
 const Leads = () => {
@@ -40,6 +48,7 @@ const Leads = () => {
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [stageFilter, setStageFilter] = useState<string>('All');
+  const [dateFilter, setDateFilter] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form, setForm] = useState<LeadForm>(emptyForm());
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -54,6 +63,12 @@ const Leads = () => {
     if (stageFilter !== 'All') {
       result = result.filter((l: any) => l.stage === stageFilter);
     }
+    if (dateFilter) {
+      result = result.filter(
+        (l: any) =>
+          l.date && new Date(l.date).toISOString().slice(0, 10) === dateFilter
+      );
+    }
     if (searchTerm) {
       const s = searchTerm.toLowerCase();
       result = result.filter((l: any) =>
@@ -63,7 +78,7 @@ const Leads = () => {
       );
     }
     return result;
-  }, [allLeads, searchTerm, stageFilter]);
+  }, [allLeads, searchTerm, stageFilter, dateFilter]);
 
   const createMutation = useMutation({
     mutationFn: (data: LeadForm) => createLead(data),
@@ -81,19 +96,6 @@ const Leads = () => {
       setDeleteConfirmId(null);
     },
   });
-
-  const getTimeAgo = (dateStr: string) => {
-    const now = new Date();
-    const date = new Date(dateStr);
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    if (diffMins < 60) return `${diffMins}m ago`;
-    const diffHrs = Math.floor(diffMins / 60);
-    if (diffHrs < 24) return `${diffHrs}h ago`;
-    const diffDays = Math.floor(diffHrs / 24);
-    if (diffDays < 7) return `${diffDays}d ago`;
-    return date.toLocaleDateString();
-  };
 
   const stageCounts = useMemo(() => {
     const counts: Record<string, number> = { All: allLeads.length };
@@ -120,15 +122,36 @@ const Leads = () => {
 
       {/* Search + Filter */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 space-y-3">
-        <div className="relative">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search by name, phone, or requirements..."
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-primary focus:border-primary"
-          />
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search by name, phone, or requirements..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-primary focus:border-primary"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-gray-600 flex items-center gap-1 flex-shrink-0">
+              <CalendarDays size={14} /> Date
+            </span>
+            <input
+              type="date"
+              value={dateFilter}
+              onChange={e => setDateFilter(e.target.value)}
+              className="border border-gray-300 rounded-lg shadow-sm px-3 py-2 text-sm focus:ring-primary focus:border-primary"
+            />
+            {dateFilter && (
+              <button
+                onClick={() => setDateFilter('')}
+                className="text-xs text-gray-500 hover:text-gray-700 font-semibold"
+              >
+                Clear
+              </button>
+            )}
+          </div>
         </div>
         {/* Stage Filter Pills - Mobile */}
         <div className="flex gap-2 overflow-x-auto pb-1 md:hidden scrollbar-hide">
@@ -219,10 +242,12 @@ const Leads = () => {
                       <ChannelIcon size={10} />
                       {lead.channel}
                     </span>
-                    <span className="text-[10px] text-gray-400 flex items-center gap-1">
-                      <Clock size={10} />
-                      {getTimeAgo(lead.createdAt)}
-                    </span>
+                    {lead.date && (
+                      <span className="text-[10px] text-gray-400 flex items-center gap-1">
+                        <CalendarDays size={10} />
+                        {fmtDate(lead.date)}
+                      </span>
+                    )}
                   </div>
 
                   {lead.requirements && (
@@ -253,7 +278,7 @@ const Leads = () => {
                     <th className="px-4 py-3 text-left text-[10px] font-bold text-gray-500 uppercase">Channel</th>
                     <th className="px-4 py-3 text-left text-[10px] font-bold text-gray-500 uppercase">Stage</th>
                     <th className="px-4 py-3 text-left text-[10px] font-bold text-gray-500 uppercase">Staff</th>
-                    <th className="px-4 py-3 text-left text-[10px] font-bold text-gray-500 uppercase">Created</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-bold text-gray-500 uppercase">Date</th>
                     <th className="px-4 py-3 text-right text-[10px] font-bold text-gray-500 uppercase">Actions</th>
                   </tr>
                 </thead>
@@ -303,7 +328,7 @@ const Leads = () => {
                             </div>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-gray-500 text-xs">{getTimeAgo(lead.createdAt)}</td>
+                        <td className="px-4 py-3 text-gray-500 text-xs">{fmtDate(lead.date)}</td>
                         <td className="px-4 py-3 text-right">
                           <div className="flex items-center justify-end gap-1">
                             <button
@@ -383,6 +408,15 @@ const Leads = () => {
                   <option value="Referral">Referral</option>
                   <option value="Other">Other</option>
                 </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-0.5">Date</label>
+                <input
+                  type="date"
+                  value={form.date}
+                  onChange={e => setForm({ ...form, date: e.target.value })}
+                  className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2.5 focus:ring-primary focus:border-primary text-sm"
+                />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-0.5">Requirements</label>

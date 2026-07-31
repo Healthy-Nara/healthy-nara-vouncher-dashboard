@@ -81,8 +81,11 @@ export const deleteInvoice = async (invoiceNumber: string) => {
   return data;
 };
 
-export const fetchStats = async () => {
-  const { data } = await api.get('/stats');
+export const fetchStats = async (startDate?: string, endDate?: string) => {
+  const params = new URLSearchParams();
+  if (startDate) params.append('startDate', startDate);
+  if (endDate) params.append('endDate', endDate);
+  const { data } = await api.get(`/stats?${params.toString()}`);
   return data;
 };
 
@@ -331,6 +334,24 @@ export const fetchFinancialReport = async (startDate?: string, endDate?: string)
   if (startDate) params.append('startDate', startDate);
   if (endDate) params.append('endDate', endDate);
   const { data } = await api.get(`/reports/financial?${params.toString()}`);
+  return data;
+};
+
+// --- Expense API ---
+export const fetchExpenses = async () => {
+  const { data } = await api.get('/expenses');
+  return data;
+};
+export const createExpense = async (expenseData: any) => {
+  const { data } = await api.post('/expenses', expenseData);
+  return data;
+};
+export const updateExpense = async (id: string, expenseData: any) => {
+  const { data } = await api.put(`/expenses/${id}`, expenseData);
+  return data;
+};
+export const deleteExpense = async (id: string) => {
+  const { data } = await api.delete(`/expenses/${id}`);
   return data;
 };
 
