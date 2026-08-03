@@ -337,7 +337,7 @@ const Caregivers = () => {
             </div>
 
             <p className="text-xs text-gray-400 text-center mb-4">
-              NA သည် http://localhost:5173/na/login တွင် ဒီ credentials ဖြင့် login ဝင်နိုင်ပါသည်
+              NA သည် http://localhost:5174/login တွင် ဒီ credentials ဖြင့် login ဝင်နိုင်ပါသည်
             </p>
 
             <button

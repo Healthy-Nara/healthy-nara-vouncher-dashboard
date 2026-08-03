@@ -1,9 +1,9 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
-import { getNAReportById } from '../../api';
-import { 
-  ArrowLeft, Edit, Droplets, Baby, Moon, Activity, 
+import { getAdminNAReportById } from '../api';
+import {
+  ArrowLeft, Droplets, Baby, Moon, Activity,
   AlertCircle, CheckCircle2, Clock, Loader2
 } from 'lucide-react';
 
@@ -12,8 +12,8 @@ const NAReportDetail = () => {
   const navigate = useNavigate();
 
   const { data: report, isLoading } = useQuery({
-    queryKey: ['naReport', id],
-    queryFn: () => getNAReportById(id!),
+    queryKey: ['adminNAReport', id],
+    queryFn: () => getAdminNAReportById(id!),
     enabled: !!id,
   });
 
@@ -44,7 +44,7 @@ const NAReportDetail = () => {
       <div className="bg-white shadow-sm border-b border-primary/10">
         <div className="max-w-lg mx-auto px-4 py-4 flex items-center gap-3">
           <button
-            onClick={() => navigate('/na')}
+            onClick={() => navigate('/na-reports')}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
             <ArrowLeft size={20} />
@@ -53,22 +53,14 @@ const NAReportDetail = () => {
             <h1 className="font-bold text-gray-900">Report အသေးစိတ်</h1>
             <p className="text-xs text-gray-500">{report.childName}</p>
           </div>
-          {report.status === 'draft' && (
-            <button
-              onClick={() => navigate(`/na/report/${report._id}`)}
-              className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors"
-            >
-              <Edit size={20} />
-            </button>
-          )}
         </div>
       </div>
 
       <div className="max-w-lg mx-auto px-4 py-6 space-y-6">
         {/* Status Badge */}
         <div className={`flex items-center gap-2 p-4 rounded-xl ${
-          report.status === 'submitted' 
-            ? 'bg-green-50 border border-green-200' 
+          report.status === 'submitted'
+            ? 'bg-green-50 border border-green-200'
             : 'bg-yellow-50 border border-yellow-200'
         }`}>
           {report.status === 'submitted' ? (
@@ -143,7 +135,7 @@ const NAReportDetail = () => {
             <div>
               <p className="text-xs text-gray-500">ရေချိုးနည်း</p>
               <p className="text-sm font-medium">
-                {report.hygiene?.bathType === 'bath' ? 'ရေချိုးခြင်း' : 
+                {report.hygiene?.bathType === 'bath' ? 'ရေချိုးခြင်း' :
                  report.hygiene?.bathType === 'sponge_bath' ? 'ရေပတ်တိုက်ခြင်း' : '-'}
               </p>
             </div>

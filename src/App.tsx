@@ -28,18 +28,18 @@ import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
 
 // NA Pages
-import NALogin from './pages/na/NALogin';
-import NADashboard from './pages/na/NADashboard';
-import NAReportForm from './pages/na/NAReportForm';
-import NAReportDetail from './pages/na/NAReportDetail';
-import NAReportHistory from './pages/na/NAReportHistory';
-
 // Admin NA Pages
 import NAReports from './pages/NAReports';
+import NAReportDetail from './pages/NAReportDetail';
 import DutyLogs from './pages/DutyLogs';
 
 // Family Page
 import FamilyReports from './pages/FamilyReports';
+
+// Ticket Pages
+import Tickets from './pages/Tickets';
+import TicketDetail from './pages/TicketDetail';
+import Team from './pages/Team';
 
 const queryClient = new QueryClient();
 
@@ -48,7 +48,7 @@ const PrivateRoute = ({ children, roles }: { children: React.ReactNode, roles?: 
 
   if (isLoading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   if (!user) return <Navigate to="/login" />;
-  if (roles && !roles.includes(user.role)) return <Navigate to="/" />;
+  if (roles && user.role !== 'superadmin' && !roles.includes(user.role)) return <Navigate to="/" />;
 
   return <>{children}</>;
 };
@@ -70,13 +70,6 @@ function App() {
             {/* Public routes - no auth, no layout */}
             <Route path="/book/:token" element={<PublicBooking />} />
             <Route path="/login" element={<Login />} />
-
-            {/* NA routes - separate layout */}
-            <Route path="/na/login" element={<NALogin />} />
-            <Route path="/na" element={<NADashboard />} />
-            <Route path="/na/report/:id" element={<NAReportForm />} />
-            <Route path="/na/report/:id/view" element={<NAReportDetail />} />
-            <Route path="/na/reports" element={<NAReportHistory />} />
 
             {/* Family routes - public, no auth */}
             <Route path="/family/:token" element={<FamilyReports />} />
@@ -202,6 +195,21 @@ function App() {
                       <Route path="/duty-logs" element={
                         <PrivateRoute roles={['admin']}>
                           <DutyLogs />
+                        </PrivateRoute>
+                      } />
+                      <Route path="/tickets" element={
+                        <PrivateRoute roles={['admin', 'staff']}>
+                          <Tickets />
+                        </PrivateRoute>
+                      } />
+                      <Route path="/tickets/:id" element={
+                        <PrivateRoute roles={['admin', 'staff']}>
+                          <TicketDetail />
+                        </PrivateRoute>
+                      } />
+                      <Route path="/team" element={
+                        <PrivateRoute roles={['superadmin']}>
+                          <Team />
                         </PrivateRoute>
                       } />
                     </Routes>

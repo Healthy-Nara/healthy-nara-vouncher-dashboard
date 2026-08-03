@@ -4,7 +4,7 @@ import { fetchMe } from '../api';
 interface User {
   id: string;
   username: string;
-  role: 'admin' | 'staff';
+  role: 'superadmin' | 'admin' | 'staff';
 }
 
 interface AuthContextType {

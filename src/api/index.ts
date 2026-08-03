@@ -355,89 +355,6 @@ export const deleteExpense = async (id: string) => {
   return data;
 };
 
-// --- NA API (separate auth) ---
-const naApi = axios.create({
-  baseURL: API_BASE_URL,
-});
-
-naApi.interceptors.request.use((config) => {
-  const token = localStorage.getItem('na_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
-naApi.interceptors.response.use(
-  (response) => {
-    if (response.data && typeof response.data === 'object' && 'success' in response.data) {
-      response.data = response.data.data;
-    }
-    return response;
-  },
-  (error) => {
-    if (error.response?.data?.message) {
-      error.message = error.response.data.message;
-    }
-    return Promise.reject(error);
-  }
-);
-
-export const naLogin = async (credentials: { username: string; password: string }) => {
-  const { data } = await naApi.post('/na/auth/login', credentials);
-  return data;
-};
-
-export const fetchNAMe = async () => {
-  const { data } = await naApi.get('/na/auth/me');
-  return data;
-};
-
-export const changeNAPassword = async (passwords: { currentPassword: string; newPassword: string }) => {
-  const { data } = await naApi.put('/na/auth/change-password', passwords);
-  return data;
-};
-
-export const startNADuty = async (bookingId: string) => {
-  const { data } = await naApi.post('/na/duty/start', { bookingId });
-  return data;
-};
-
-export const finishNADuty = async (dutyLogId: string) => {
-  const { data } = await naApi.post('/na/duty/finish', { dutyLogId });
-  return data;
-};
-
-export const getNADutyStatus = async () => {
-  const { data } = await naApi.get('/na/duty/status');
-  return data;
-};
-
-export const createNAReport = async (reportData: any) => {
-  const { data } = await naApi.post('/na/reports', reportData);
-  return data;
-};
-
-export const getNAReports = async (params?: { date?: string }) => {
-  const { data } = await naApi.get('/na/reports', { params });
-  return data;
-};
-
-export const getNAReportById = async (id: string) => {
-  const { data } = await naApi.get(`/na/reports/${id}`);
-  return data;
-};
-
-export const updateNAReport = async (id: string, reportData: any) => {
-  const { data } = await naApi.put(`/na/reports/${id}`, reportData);
-  return data;
-};
-
-export const deleteNAReport = async (id: string) => {
-  const { data } = await naApi.delete(`/na/reports/${id}`);
-  return data;
-};
-
 // --- Admin NA API ---
 export const getAdminNAReports = async (params?: { date?: string; caregiverId?: string; status?: string }) => {
   const { data } = await api.get('/admin/na-reports', { params });
@@ -462,6 +379,68 @@ export const getFamilyReports = async (token: string) => {
 
 export const getFamilyReportByDate = async (token: string, date: string) => {
   const { data } = await api.get(`/family/${token}/reports/${date}`);
+  return data;
+};
+
+// --- Ticket API ---
+export const fetchTickets = async (params?: { search?: string; status?: string }) => {
+  const { data } = await api.get('/tickets', { params });
+  return data;
+};
+
+export const fetchTicketById = async (id: string) => {
+  const { data } = await api.get(`/tickets/${id}`);
+  return data;
+};
+
+export const createTicket = async (ticketData: any) => {
+  const { data } = await api.post('/tickets', ticketData);
+  return data;
+};
+
+export const assignTicket = async (id: string, userId: string | undefined) => {
+  const { data } = await api.put(`/tickets/${id}/assign`, { userId });
+  return data;
+};
+
+export const updateTicketStatus = async (id: string, status: string) => {
+  const { data } = await api.put(`/tickets/${id}/status`, { status });
+  return data;
+};
+
+export const addTicketComment = async (id: string, message: string) => {
+  const { data } = await api.post(`/tickets/${id}/comments`, { message });
+  return data;
+};
+
+export const fetchTicketUsers = async () => {
+  const { data } = await api.get('/tickets/users');
+  return data;
+};
+
+export const deleteTicket = async (id: string) => {
+  const { data } = await api.delete(`/tickets/${id}`);
+  return data;
+};
+
+// --- Team / Users API (admin) ---
+export const fetchUsers = async () => {
+  const { data } = await api.get('/users');
+  return data;
+};
+
+export const createUser = async (userData: { username: string; password: string; role?: string }) => {
+  const { data } = await api.post('/users', userData);
+  return data;
+};
+
+export const updateUser = async (id: string, userData: { role?: string; isActive?: boolean; telegramChatId?: string }) => {
+  const { data } = await api.put(`/users/${id}`, userData);
+  return data;
+};
+
+export const resetUserPassword = async (id: string, newPassword: string) => {
+  const { data } = await api.put(`/users/${id}/password`, { newPassword });
   return data;
 };
 

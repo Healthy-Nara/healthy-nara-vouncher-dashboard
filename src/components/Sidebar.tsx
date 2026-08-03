@@ -15,6 +15,8 @@ import {
   ClipboardList,
   ClipboardCheck,
   Clock,
+  LifeBuoy,
+  Settings,
 } from "lucide-react";
 interface SidebarProps {
   isOpen: boolean;
@@ -45,6 +47,12 @@ const navItems = [
     label: "Invoices",
     icon: FileText,
     path: "/invoices",
+    roles: ["admin", "staff"],
+  },
+  {
+    label: "Tickets",
+    icon: LifeBuoy,
+    path: "/tickets",
     roles: ["admin", "staff"],
   },
   {
@@ -91,6 +99,7 @@ const navItems = [
     roles: ["admin"],
   },
   { label: "Activity Log", icon: History, path: "/logs", roles: ["admin"] },
+  { label: "Accounts", icon: Settings, path: "/team", roles: ["superadmin"] },
 ];
 
 const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
@@ -101,7 +110,12 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
     path === "/"
       ? location.pathname === "/"
       : location.pathname.startsWith(path);
-  const isAdmin = user?.role === "admin";
+  // superadmin sees admin items AND superadmin-only items; other roles only their exact role
+  const canSee = (roles: string[]) => {
+    const role = user?.role;
+    if (role === "superadmin") return roles.includes("superadmin") || roles.includes("admin");
+    return roles.includes(role || "");
+  };
 
   const linkClass = (path: string) =>
     `flex items-center gap-3 px-6 py-3 text-sm font-semibold transition-colors ${
@@ -129,8 +143,7 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
         {/* Nav Links */}
         <nav className="py-4 space-y-1">
           {navItems.map((item) => {
-            if (!item.roles.includes(isAdmin ? "admin" : user?.role || ""))
-              return null;
+            if (!canSee(item.roles)) return null;
             const Icon = item.icon;
             return (
               <Link
