@@ -1,10 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchBookings, fetchParents, createBookingFromParent } from '../api';
-import { useState, useMemo } from 'react';
+import { fetchBookings, fetchParents, createBookingFromParent, importBookings } from '../api';
+import { useState, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
-import { Search, ChevronRight, Calendar, Package, User, Plus, X } from 'lucide-react';
+import { Search, ChevronRight, Calendar, Package, User, Plus, X, Upload, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
 import CustomDatePicker, { parseDdMmYyyy } from '../components/CustomDatePicker';
+import * as XLSX from 'xlsx';
 
 const ALL_STATUSES = ['All', 'Pending NA Selection', 'Assigned', 'Completed', 'Cancelled'] as const;
 
@@ -25,6 +26,112 @@ const Bookings = () => {
   const [parentForm, setParentForm] = useState({ servicePackage: '', dutyDuration: '', dutyShift: '', requestedDates: [] as string[], additionalNotes: '' });
   const [newDate, setNewDate] = useState('');
 
+  // Import State
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{ successCount: number; errors: any[] } | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
+
+  const queryClient = useQueryClient();
+
+  const importMutation = useMutation({
+    mutationFn: (data: any[]) => importBookings(data),
+    onSuccess: (res: any) => {
+      queryClient.invalidateQueries({ queryKey: ['bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['parents'] });
+      setImportResult({
+        successCount: res.importedCount || 0,
+        errors: res.errors || [],
+      });
+      setImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    },
+    onError: (err: any) => {
+      setImportError(err.message || 'Import failed. Please verify format.');
+      setImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  });
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImporting(true);
+    setImportResult(null);
+    setImportError(null);
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = event.target?.result;
+        const workbook = XLSX.read(data, { type: 'binary' });
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        const rows = XLSX.utils.sheet_to_json(sheet) as any[];
+
+        if (!rows.length) {
+          setImportError('Excel sheet is empty');
+          setImporting(false);
+          return;
+        }
+
+        // Format records
+        const formattedBookings = rows.map((row) => {
+          const rawStatus = row['Status'] || row['status'] || 'Pending NA Selection';
+          // Map pending to standard status
+          let status = 'Pending NA Selection';
+          if (String(rawStatus).toLowerCase() === 'pending') {
+            status = 'Completed'; // Map pending to Completed as requested
+          } else if (String(rawStatus).toLowerCase() === 'assigned') {
+            status = 'Assigned';
+          } else if (String(rawStatus).toLowerCase() === 'completed') {
+            status = 'Completed';
+          } else if (String(rawStatus).toLowerCase() === 'cancelled') {
+            status = 'Cancelled';
+          }
+
+          return {
+            bookingId: row['Booking ID'] || row['bookingId'] || undefined,
+            parentName: row['Parent Name'] || row['parentName'] || '',
+            parentPhone: String(row['Parent Phone'] || row['parentPhone'] || row['Phone'] || '').trim(),
+            parentTownship: row['Parent Township'] || row['parentTownship'] || '',
+            parentAddress: row['Parent Address'] || row['parentAddress'] || '',
+            childName: row['Child Name'] || row['childName'] || '',
+            childBirthDate: row['Child Birth Date'] || row['childBirthDate'] || undefined,
+            status,
+            dutyDuration: row['Duty Duration'] || row['dutyDuration'] || 'daily',
+            dutyShift: row['Duty Shift'] || row['dutyShift'] || 'day',
+            dutyStartDate: row['Duty Start Date'] || row['dutyStartDate'] || undefined,
+            additionalNotes: row['Additional Notes'] || row['additionalNotes'] || '',
+          };
+        }).filter(b => b.bookingId || (b.parentName && b.parentPhone));
+
+        if (!formattedBookings.length) {
+          setImportError('No valid bookings found. Check Parent Name and Parent Phone columns.');
+          setImporting(false);
+          return;
+        }
+
+        importMutation.mutate(formattedBookings);
+      } catch (err: any) {
+        setImportError(`Failed to parse file: ${err.message}`);
+        setImporting(false);
+      }
+    };
+
+    reader.onerror = () => {
+      setImportError('Failed to read file.');
+      setImporting(false);
+    };
+
+    reader.readAsBinaryString(file);
+  };
+
   const { data: allBookings = [], isLoading } = useQuery({
     queryKey: ['bookings'],
     queryFn: () => fetchBookings(),
@@ -35,7 +142,6 @@ const Bookings = () => {
     queryFn: () => fetchParents(),
   });
 
-  const queryClient = useQueryClient();
   const createFromParentMutation = useMutation({
     mutationFn: (data: any) => {
       const toIso = (d: string) => d ? new Date(d.split('-').reverse().join('-')).toISOString() : d;
@@ -116,14 +222,64 @@ const Bookings = () => {
           <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Bookings</h1>
           <p className="text-sm text-gray-500 mt-1">{allBookings.length} total bookings</p>
         </div>
-        <button
-          onClick={() => setShowParentModal(true)}
-          className="flex items-center gap-1.5 px-3 py-2 bg-primary text-white text-sm font-bold rounded-lg hover:bg-primary/90 transition-all"
-        >
-          <Plus size={16} />
-          Create from Parent
-        </button>
+        <div className="flex items-center gap-2">
+          <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".xlsx, .xls, .csv" className="hidden" />
+          <button onClick={handleImportClick} disabled={importing}
+            className="flex items-center gap-1.5 px-3 py-2 border border-gray-300 bg-white text-gray-700 text-sm font-bold rounded-lg hover:bg-gray-50 transition-all disabled:opacity-50"
+          >
+            {importing ? <Loader2 className="animate-spin" size={16} /> : <Upload size={16} />}
+            Import Excel
+          </button>
+          <button
+            onClick={() => setShowParentModal(true)}
+            className="flex items-center gap-1.5 px-3 py-2 bg-primary text-white text-sm font-bold rounded-lg hover:bg-primary/90 transition-all"
+          >
+            <Plus size={16} />
+            Create from Parent
+          </button>
+        </div>
       </div>
+
+      {importError && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
+          <AlertCircle className="text-red-500 shrink-0 mt-0.5" size={18} />
+          <div>
+            <h4 className="text-sm font-bold text-red-800">Import Failed</h4>
+            <p className="text-xs text-red-700 mt-1">{importError}</p>
+          </div>
+        </div>
+      )}
+
+      {importResult && (
+        <div className={`p-4 border rounded-xl flex items-start gap-3 ${importResult.errors.length > 0 ? 'bg-amber-50 border-amber-200' : 'bg-green-50 border-green-200'}`}>
+          {importResult.errors.length > 0 ? (
+            <AlertCircle className="text-amber-500 shrink-0 mt-0.5" size={18} />
+          ) : (
+            <CheckCircle className="text-green-500 shrink-0 mt-0.5" size={18} />
+          )}
+          <div>
+            <h4 className={`text-sm font-bold ${importResult.errors.length > 0 ? 'text-amber-800' : 'text-green-800'}`}>
+              Import Completed
+            </h4>
+            <p className="text-xs text-gray-700 mt-1">
+              Successfully imported <strong>{importResult.successCount}</strong> booking records.
+              {importResult.errors.length > 0 && ` Failed to import ${importResult.errors.length} records.`}
+            </p>
+            {importResult.errors.length > 0 && (
+              <div className="mt-2 max-h-32 overflow-y-auto space-y-1 bg-white/55 p-2 rounded border border-amber-200/50">
+                {importResult.errors.slice(0, 10).map((err, i) => (
+                  <p key={i} className="text-[11px] text-amber-900">
+                    Row {err.index + 2}: {err.error}
+                  </p>
+                ))}
+                {importResult.errors.length > 10 && (
+                  <p className="text-[10px] text-gray-500 italic">and {importResult.errors.length - 10} more errors...</p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Search + Filter */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 space-y-3">

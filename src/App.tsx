@@ -22,6 +22,7 @@ import Payouts from './pages/Payouts';
 import Expenses from './pages/Expenses';
 import BankReport from './pages/BankReport';
 import PublicBooking from './pages/PublicBooking';
+import PublicNewBooking from './pages/PublicNewBooking';
 import Login from './pages/Login';
 import Logs from './pages/Logs';
 import Navbar from './components/Navbar';
@@ -69,6 +70,7 @@ function App() {
           <Routes>
             {/* Public routes - no auth, no layout */}
             <Route path="/book/:token" element={<PublicBooking />} />
+            <Route path="/book-now" element={<PublicNewBooking />} />
             <Route path="/login" element={<Login />} />
 
             {/* Family routes - public, no auth */}

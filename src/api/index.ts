@@ -120,6 +120,11 @@ export const deleteParent = async (id: string) => {
   return data;
 };
 
+export const importParents = async (parents: any[]) => {
+  const { data } = await api.post('/parents/import', { parents });
+  return data;
+};
+
 // --- Caregiver API (local MongoDB) ---
 export const fetchCaregivers = async () => {
   const { data } = await api.get('/caregivers');
@@ -232,6 +237,16 @@ export const createBooking = async (bookingData: any) => {
 
 export const createBookingFromParent = async (parentData: any) => {
   const { data } = await api.post('/bookings/from-parent', parentData);
+  return data;
+};
+
+export const createPublicBooking = async (bookingData: any) => {
+  const { data } = await api.post('/bookings/public/new-booking', bookingData);
+  return data;
+};
+
+export const importBookings = async (bookings: any[]) => {
+  const { data } = await api.post('/bookings/import', { bookings });
   return data;
 };
 

@@ -25,6 +25,8 @@ const ParentDetail = () => {
     religion: '',
     nearestBusStop: '',
     durationOfBusStopToHome: '',
+    status: 'Inactive',
+    profession: '',
   });
 
   const { data: parent, isLoading } = useQuery({
@@ -57,12 +59,24 @@ const ParentDetail = () => {
       religion: parent?.religion || '',
       nearestBusStop: parent?.nearestBusStop || '',
       durationOfBusStopToHome: parent?.durationOfBusStopToHome || '',
+      status: parent?.status || 'Inactive',
+      profession: parent?.profession || '',
     });
     setIsEditing(true);
   };
 
   const formatDate = (dateStr: string) => {
     return format(new Date(dateStr), 'dd-MM-yyyy');
+  };
+
+  const PARENT_STATUSES = ['Daily', 'Weekly', 'Monthly', 'Custom', 'Inactive'] as const;
+
+  const STATUS_STYLE: Record<string, string> = {
+    Daily: 'bg-green-100 text-green-800 border-green-200',
+    Weekly: 'bg-blue-100 text-blue-800 border-blue-200',
+    Monthly: 'bg-purple-100 text-purple-800 border-purple-200',
+    Custom: 'bg-amber-100 text-amber-800 border-amber-200',
+    Inactive: 'bg-gray-100 text-gray-800 border-gray-200',
   };
 
   if (isLoading) return <div className="text-center py-12 text-gray-500">Loading...</div>;
@@ -77,7 +91,7 @@ const ParentDetail = () => {
         </button>
         <div>
           <h1 className="text-xl font-extrabold text-gray-900 tracking-tight">{parent.parentName}</h1>
-          <p className="text-sm text-gray-500 mt-0.5">{parent.contactNumber}</p>
+          <p className="text-xs text-gray-500">Parent Profile Detail</p>
         </div>
       </div>
 
@@ -139,6 +153,18 @@ const ParentDetail = () => {
                     <input type="text" value={editForm.durationOfBusStopToHome} onChange={e => setEditForm({ ...editForm, durationOfBusStopToHome: e.target.value })}
                       className="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-primary focus:border-primary" />
                   </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">Status (ဝန်ဆောင်မှုအခြေအနေ)</label>
+                    <select value={editForm.status} onChange={e => setEditForm({ ...editForm, status: e.target.value })}
+                      className="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-primary focus:border-primary">
+                      {PARENT_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">Job / Profession (အလုပ်အကိုင်)</label>
+                    <input type="text" value={editForm.profession} onChange={e => setEditForm({ ...editForm, profession: e.target.value })}
+                      className="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-primary focus:border-primary" placeholder="e.g. Engineer" />
+                  </div>
                   <div className="flex gap-2 pt-1">
                     <button onClick={() => setIsEditing(false)}
                       className="flex-1 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-50 transition-all py-2">
@@ -192,6 +218,18 @@ const ParentDetail = () => {
                       <p className="text-sm text-gray-900">{parent.durationOfBusStopToHome}</p>
                     </div>
                   )}
+                  {parent.profession && (
+                    <div>
+                      <p className="text-[10px] text-gray-500 uppercase">Job / Profession</p>
+                      <p className="text-sm text-gray-900">{parent.profession}</p>
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-[10px] text-gray-500 uppercase">Status</p>
+                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-black border uppercase tracking-wider mt-1 ${STATUS_STYLE[parent.status || 'Inactive'] || STATUS_STYLE.Inactive}`}>
+                      {parent.status || 'Inactive'}
+                    </span>
+                  </div>
                 </div>
               )}
             </div>
@@ -217,9 +255,20 @@ const ParentDetail = () => {
                         <div className="text-[11px] text-gray-500 flex items-center gap-2">
                           {child.birthDate && <span>{format(new Date(child.birthDate), 'dd-MM-yyyy')}</span>}
                           {child.gender && <span>{child.gender}</span>}
-                          {child.hasInfectiousDisease && <span className="text-red-500">Infectious</span>}
                         </div>
+                        {child.notes && (
+                          <p className="text-[11px] text-gray-500 italic mt-0.5">Note: {child.notes}</p>
+                        )}
                       </div>
+                      {child.hasInfectiousDisease ? (
+                        <span className="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700 border border-red-200">
+                          Infectious (ကူးစက်ရောဂါရှိ)
+                        </span>
+                      ) : (
+                        <span className="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-700 border border-green-200">
+                          No Sign (လက္ခဏာမရှိ)
+                        </span>
+                      )}
                     </div>
                   ))}
                 </div>
