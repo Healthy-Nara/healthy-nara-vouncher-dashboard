@@ -337,7 +337,7 @@ const BookingDetail = () => {
       <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => navigate("/bookings")}
+            onClick={() => navigate(-1)}
             className="hidden md:block p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all"
           >
             <ArrowLeft size={20} />

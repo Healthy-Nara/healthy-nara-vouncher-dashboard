@@ -23,6 +23,7 @@ import Expenses from './pages/Expenses';
 import BankReport from './pages/BankReport';
 import PublicBooking from './pages/PublicBooking';
 import PublicNewBooking from './pages/PublicNewBooking';
+import PublicBookingsList from './pages/PublicBookingsList';
 import Login from './pages/Login';
 import Logs from './pages/Logs';
 import Navbar from './components/Navbar';
@@ -152,6 +153,11 @@ function App() {
                       <Route path="/bookings" element={
                         <PrivateRoute roles={['admin', 'staff']}>
                           <Bookings />
+                        </PrivateRoute>
+                      } />
+                      <Route path="/bookings/public" element={
+                        <PrivateRoute roles={['admin', 'staff']}>
+                          <PublicBookingsList />
                         </PrivateRoute>
                       } />
                       <Route path="/bookings/:id" element={

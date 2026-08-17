@@ -38,6 +38,12 @@ const navItems = [
     roles: ["admin", "staff"],
   },
   {
+    label: "Public Bookings",
+    icon: CalendarDays,
+    path: "/bookings/public",
+    roles: ["admin", "staff"],
+  },
+  {
     label: "Schedule",
     icon: CalendarSearch,
     path: "/schedule",
