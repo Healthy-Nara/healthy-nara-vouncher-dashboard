@@ -394,6 +394,9 @@ const Invoices = () => {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase w-12">
+                      No.
+                    </th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">
                       Invoice Info
                     </th>
@@ -415,11 +418,14 @@ const Invoices = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredInvoices?.map((invoice: Invoice) => (
+                  {filteredInvoices?.map((invoice: Invoice, index: number) => (
                     <tr
                       key={invoice._id}
                       className="hover:bg-gray-50 transition-colors"
                     >
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-medium">
+                        {index + 1}
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-bold text-primary">
                           {invoice.invoiceNumber}
