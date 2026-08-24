@@ -1,4 +1,3 @@
-
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getAdminNAReportById } from '../api';
@@ -32,11 +31,6 @@ const NAReportDetail = () => {
       </div>
     );
   }
-
-  const formatTime = (dateString: string) => {
-    if (!dateString) return '-';
-    return new Date(dateString).toLocaleTimeString('my-MM', { hour: '2-digit', minute: '2-digit' });
-  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-teal-50 to-green-50">
@@ -89,34 +83,23 @@ const NAReportDetail = () => {
             <h2 className="font-bold text-gray-900">အာဟာရနှင့် အစာကျွေးခြင်း</h2>
           </div>
 
-          {report.feedingRecords?.length > 0 ? (
+          {report.records?.filter((r) => r.category === 'Nutrition and Feeding').length > 0 ? (
             <div className="space-y-3">
-              {report.feedingRecords.map((record: any, index: number) => (
+              {report.records.filter((r) => r.category === 'Nutrition and Feeding').map((record, index) => (
                 <div key={index} className="bg-gray-50 rounded-xl p-3">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="font-medium text-sm">
-                      {record.type === 'breast_milk' ? 'မိခင်နို့' : 'ဖော်စပ်နို့'}
+                    <span className="font-medium text-sm text-gray-800">
+                      {record.desc}
                     </span>
-                    <span className="text-sm text-gray-500">{record.amount}</span>
                   </div>
                   <div className="flex items-center gap-4 text-xs text-gray-500">
-                    <span>အချိန်: {formatTime(record.time)}</span>
-                    {record.burpingDone && <span className="text-green-600">✓ နို့တိုက်ပြီး</span>}
-                    {record.airReleased && <span className="text-green-600">✓ လေထုတ်ပြီး</span>}
-                    {record.spitUp && <span className="text-red-600">✓ နို့အန်</span>}
+                    <span>အချိန်: {record.time}</span>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
             <p className="text-gray-500 text-sm">အစာကျွေးချိန် မရှိပါ</p>
-          )}
-
-          {report.supplementaryFood && (
-            <div className="mt-4 p-3 bg-gray-50 rounded-xl">
-              <p className="text-xs text-gray-500">ဖြည့်စွက်စာ</p>
-              <p className="text-sm">{report.supplementaryFood}</p>
-            </div>
           )}
         </div>
 
@@ -127,29 +110,24 @@ const NAReportDetail = () => {
             <h2 className="font-bold text-gray-900">တစ်ကိုယ်ရည် သန့်ရှင်းရေး</h2>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-xs text-gray-500">ရေချိုးချိန်</p>
-              <p className="text-sm font-medium">{formatTime(report.hygiene?.bathTime)}</p>
+          {report.records?.filter((r) => r.category === 'Personal Hygiene').length > 0 ? (
+            <div className="space-y-3">
+              {report.records.filter((r) => r.category === 'Personal Hygiene').map((record, index) => (
+                <div key={index} className="bg-gray-50 rounded-xl p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-medium text-sm text-gray-800">
+                      {record.desc}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-4 text-xs text-gray-500">
+                    <span>အချိန်: {record.time}</span>
+                  </div>
+                </div>
+              ))}
             </div>
-            <div>
-              <p className="text-xs text-gray-500">ရေချိုးနည်း</p>
-              <p className="text-sm font-medium">
-                {report.hygiene?.bathType === 'bath' ? 'ရေချိုးခြင်း' :
-                 report.hygiene?.bathType === 'sponge_bath' ? 'ရေပတ်တိုက်ခြင်း' : '-'}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500">Diaper လဲလှယ်ချိန်</p>
-              <p className="text-sm font-medium">{report.hygiene?.diaperChanges || 0} အကိမ်</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500">ဆီးပူ/ဝမ်းပူမိခြင်း</p>
-              <p className={`text-sm font-medium ${report.hygiene?.rashCheck ? 'text-red-600' : 'text-green-600'}`}>
-                {report.hygiene?.rashCheck ? 'ရှိ' : 'မရှိ'}
-              </p>
-            </div>
-          </div>
+          ) : (
+            <p className="text-gray-500 text-sm">သန့်ရှင်းရေးမှတ်တမ်း မရှိပါ</p>
+          )}
         </div>
 
         {/* Sleeping */}
@@ -159,23 +137,17 @@ const NAReportDetail = () => {
             <h2 className="font-bold text-gray-900">အိပ်ချိန်</h2>
           </div>
 
-          {report.sleepRecords?.length > 0 ? (
+          {report.records?.filter((r) => r.category === 'Sleeping').length > 0 ? (
             <div className="space-y-3">
-              {report.sleepRecords.map((record: any, index: number) => (
+              {report.records.filter((r) => r.category === 'Sleeping').map((record, index) => (
                 <div key={index} className="bg-gray-50 rounded-xl p-3">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="font-medium text-sm">
-                      {record.type === 'day' ? 'နေ့ဘက်' : 'ညဘက်'}
-                    </span>
-                    <span className={`text-xs px-2 py-1 rounded-full ${
-                      record.onSchedule ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
-                    }`}>
-                      {record.onSchedule ? 'အချိန်မှန်' : 'အချိန်မမှန်'}
+                    <span className="font-medium text-sm text-gray-800">
+                      {record.desc}
                     </span>
                   </div>
                   <div className="flex items-center gap-4 text-xs text-gray-500">
-                    <span>အိပ်ချိန်: {formatTime(record.startTime)}</span>
-                    <span>နိုးချိန်: {formatTime(record.endTime)}</span>
+                    <span>အချိန်: {record.time}</span>
                   </div>
                 </div>
               ))}
@@ -192,15 +164,18 @@ const NAReportDetail = () => {
             <h2 className="font-bold text-gray-900">လှုပ်ရှားမှုနှင့် လေ့ကျင့်ခန်း</h2>
           </div>
 
-          {report.activities?.length > 0 ? (
-            <div className="space-y-2">
-              {report.activities.map((activity: any, index: number) => (
-                <div key={index} className="flex items-center justify-between bg-gray-50 rounded-xl p-3">
-                  <span className="text-sm">
-                    {activity.type === 'exercise' ? 'လေ့ကျင့်ခန်း' :
-                     activity.type === 'flash_cards' ? 'Flash Card' : 'ပုံပြင်ဖတ်ခြင်း'}
-                  </span>
-                  <span className="text-xs text-gray-500">{formatTime(activity.time)}</span>
+          {report.records?.filter((r) => r.category === 'Activity and exercise').length > 0 ? (
+            <div className="space-y-3">
+              {report.records.filter((r) => r.category === 'Activity and exercise').map((record, index) => (
+                <div key={index} className="bg-gray-50 rounded-xl p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-medium text-sm text-gray-800">
+                      {record.desc}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-4 text-xs text-gray-500">
+                    <span>အချိန်: {record.time}</span>
+                  </div>
                 </div>
               ))}
             </div>
@@ -216,9 +191,20 @@ const NAReportDetail = () => {
             <h2 className="font-bold text-gray-900">သုံးသပ်ချက်နှင့် ထူးခြားဖြစ်စဉ်များ</h2>
           </div>
 
-          {report.abnormalities ? (
-            <div className="bg-red-50 rounded-xl p-4 border border-red-200">
-              <p className="text-sm text-red-700 whitespace-pre-wrap">{report.abnormalities}</p>
+          {report.records?.filter((r) => r.category === 'Analysis and Unusual Findings').length > 0 ? (
+            <div className="space-y-3">
+              {report.records.filter((r) => r.category === 'Analysis and Unusual Findings').map((record, index) => (
+                <div key={index} className="bg-red-50 rounded-xl p-3 border border-red-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-medium text-sm text-red-700 whitespace-pre-wrap">
+                      {record.desc}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-4 text-xs text-red-500">
+                    <span>အချိန်: {record.time}</span>
+                  </div>
+                </div>
+              ))}
             </div>
           ) : (
             <p className="text-gray-500 text-sm">ထူးခြားဖြစ်စဉ် မရှိပါ</p>

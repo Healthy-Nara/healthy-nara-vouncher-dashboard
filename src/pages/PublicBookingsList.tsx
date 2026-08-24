@@ -3,7 +3,7 @@ import { fetchBookings } from '../api';
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
-import { Search, ChevronRight, Calendar, Package, User, ExternalLink } from 'lucide-react';
+import { Search, ChevronRight, Calendar, Package, User } from 'lucide-react';
 
 const STATUS_CONFIG: Record<string, { color: string; bg: string; icon: string }> = {
   'Pending NA Selection': { color: 'text-yellow-700', bg: 'bg-yellow-100', icon: '⏳' },
@@ -48,10 +48,7 @@ const PublicBookingsList = () => {
     return format(new Date(dateStr), 'dd-MM-yyyy');
   };
 
-  const openPublicLink = (token: string) => {
-    // Port 5173 is healthynara-booking client port
-    window.open(`http://localhost:5173/${token}`, '_blank');
-  };
+
 
   return (
     <div className="space-y-4 max-w-7xl mx-auto pb-6">

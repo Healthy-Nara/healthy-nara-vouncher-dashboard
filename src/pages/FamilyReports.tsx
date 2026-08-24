@@ -121,20 +121,19 @@ const FamilyReports = () => {
             </div>
 
             {/* Feeding */}
-            {singleReport.feedingRecords?.length > 0 && (
+            {singleReport.records?.filter((r: any) => r.category === 'Nutrition and Feeding').length > 0 && (
               <div className="mb-4">
                 <div className="flex items-center gap-2 mb-2">
                   <Droplets className="text-primary h-4 w-4" />
                   <span className="text-sm font-medium text-gray-700">အစာကျွေးခြင်း</span>
                 </div>
                 <div className="space-y-2">
-                  {singleReport.feedingRecords.map((record: any, idx: number) => (
-                    <div key={idx} className="bg-gray-50 rounded-lg p-2 text-sm">
-                      <span className="font-medium">
-                        {record.type === 'breast_milk' ? 'မိခင်နို့' : 'ဖော်စပ်နို့'}
+                  {singleReport.records.filter((r: any) => r.category === 'Nutrition and Feeding').map((record: any, idx: number) => (
+                    <div key={idx} className="bg-gray-50 rounded-lg p-2 text-sm flex flex-col gap-1">
+                      <span className="font-medium text-gray-800">
+                        {record.desc}
                       </span>
-                      <span className="text-gray-500 ml-2">{record.amount}</span>
-                      <span className="text-gray-400 ml-2">{formatTime(record.time)}</span>
+                      <span className="text-xs text-gray-400">အချိန်: {record.time}</span>
                     </div>
                   ))}
                 </div>
@@ -142,35 +141,39 @@ const FamilyReports = () => {
             )}
 
             {/* Hygiene */}
-            {singleReport.hygiene && (
+            {singleReport.records?.filter((r: any) => r.category === 'Personal Hygiene').length > 0 && (
               <div className="mb-4">
                 <div className="flex items-center gap-2 mb-2">
                   <Baby className="text-primary h-4 w-4" />
                   <span className="text-sm font-medium text-gray-700">သန့်ရှင်းရေး</span>
                 </div>
-                <div className="bg-gray-50 rounded-lg p-2 text-sm grid grid-cols-2 gap-2">
-                  <div>Diaper: {singleReport.hygiene.diaperChanges || 0} အကိမ်</div>
-                  <div>ဆီးပူ: {singleReport.hygiene.rashCheck ? 'ရှိ' : 'မရှိ'}</div>
+                <div className="space-y-2">
+                  {singleReport.records.filter((r: any) => r.category === 'Personal Hygiene').map((record: any, idx: number) => (
+                    <div key={idx} className="bg-gray-50 rounded-lg p-2 text-sm flex flex-col gap-1">
+                      <span className="font-medium text-gray-800">
+                        {record.desc}
+                      </span>
+                      <span className="text-xs text-gray-400">အချိန်: {record.time}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
 
             {/* Sleep */}
-            {singleReport.sleepRecords?.length > 0 && (
+            {singleReport.records?.filter((r: any) => r.category === 'Sleeping').length > 0 && (
               <div className="mb-4">
                 <div className="flex items-center gap-2 mb-2">
                   <Moon className="text-primary h-4 w-4" />
                   <span className="text-sm font-medium text-gray-700">အိပ်ချိန်</span>
                 </div>
                 <div className="space-y-2">
-                  {singleReport.sleepRecords.map((record: any, idx: number) => (
-                    <div key={idx} className="bg-gray-50 rounded-lg p-2 text-sm">
-                      <span className="font-medium">
-                        {record.type === 'day' ? 'နေ့ဘက်' : 'ညဘက်'}
+                  {singleReport.records.filter((r: any) => r.category === 'Sleeping').map((record: any, idx: number) => (
+                    <div key={idx} className="bg-gray-50 rounded-lg p-2 text-sm flex flex-col gap-1">
+                      <span className="font-medium text-gray-800">
+                        {record.desc}
                       </span>
-                      <span className="text-gray-500 ml-2">
-                        {formatTime(record.startTime)} - {formatTime(record.endTime)}
-                      </span>
+                      <span className="text-xs text-gray-400">အချိန်: {record.time}</span>
                     </div>
                   ))}
                 </div>
@@ -178,18 +181,19 @@ const FamilyReports = () => {
             )}
 
             {/* Activities */}
-            {singleReport.activities?.length > 0 && (
+            {singleReport.records?.filter((r: any) => r.category === 'Activity and exercise').length > 0 && (
               <div className="mb-4">
                 <div className="flex items-center gap-2 mb-2">
                   <Activity className="text-primary h-4 w-4" />
                   <span className="text-sm font-medium text-gray-700">လှုပ်ရှားမှု</span>
                 </div>
-                <div className="space-y-1">
-                  {singleReport.activities.map((activity: any, idx: number) => (
-                    <div key={idx} className="bg-gray-50 rounded-lg p-2 text-sm">
-                      {activity.type === 'exercise' ? 'လေ့ကျင့်ခန်း' :
-                       activity.type === 'flash_cards' ? 'Flash Card' : 'ပုံပြင်ဖတ်ခြင်း'}
-                      <span className="text-gray-400 ml-2">{formatTime(activity.time)}</span>
+                <div className="space-y-2">
+                  {singleReport.records.filter((r: any) => r.category === 'Activity and exercise').map((record: any, idx: number) => (
+                    <div key={idx} className="bg-gray-50 rounded-lg p-2 text-sm flex flex-col gap-1">
+                      <span className="font-medium text-gray-800">
+                        {record.desc}
+                      </span>
+                      <span className="text-xs text-gray-400">အချိန်: {record.time}</span>
                     </div>
                   ))}
                 </div>
@@ -197,13 +201,18 @@ const FamilyReports = () => {
             )}
 
             {/* Abnormalities */}
-            {singleReport.abnormalities && (
-              <div className="bg-red-50 rounded-xl p-3 border border-red-200">
-                <div className="flex items-center gap-2 mb-1">
-                  <AlertCircle className="text-red-500 h-4 w-4" />
-                  <span className="text-sm font-medium text-red-700">ထူးခြားဖြစ်စဉ်</span>
-                </div>
-                <p className="text-sm text-red-600">{singleReport.abnormalities}</p>
+            {singleReport.records?.filter((r: any) => r.category === 'Analysis and Unusual Findings').length > 0 && (
+              <div className="space-y-2">
+                {singleReport.records.filter((r: any) => r.category === 'Analysis and Unusual Findings').map((record: any, idx: number) => (
+                  <div key={idx} className="bg-red-50 rounded-xl p-3 border border-red-200">
+                    <div className="flex items-center gap-2 mb-1">
+                      <AlertCircle className="text-red-500 h-4 w-4" />
+                      <span className="text-sm font-medium text-red-700">ထူးခြားဖြစ်စဉ်</span>
+                    </div>
+                    <p className="text-sm text-red-600 mb-1">{record.desc}</p>
+                    <span className="text-xs text-red-400">အချိန်: {record.time}</span>
+                  </div>
+                ))}
               </div>
             )}
           </div>
