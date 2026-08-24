@@ -3,8 +3,9 @@ import { fetchCaregiverStats, updateCaregiver } from '../api';
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Phone, MapPin, Calendar, ChevronRight, Edit2, Banknote, TrendingUp, Clock, User } from 'lucide-react';
+import { ArrowLeft, Phone, MapPin, Calendar, ChevronRight, Edit2, Banknote, TrendingUp, Clock, User, FileText } from 'lucide-react';
 import CustomDatePicker from '../components/CustomDatePicker';
+import { CaregiverCVModal } from '../components/CaregiverCVModal';
 
 const STATUS_CONFIG: Record<string, { color: string; bg: string; icon: string }> = {
   'Pending NA Selection': { color: 'text-yellow-700', bg: 'bg-yellow-100', icon: '⏳' },
@@ -17,6 +18,7 @@ const CaregiverDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [showCVModal, setShowCVModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({
     caregiverName: '',
@@ -81,15 +83,35 @@ const CaregiverDetail = () => {
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <button onClick={() => navigate('/caregivers')} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all">
-          <ArrowLeft size={20} />
-        </button>
-        <div>
-          <h1 className="text-xl font-extrabold text-gray-900 tracking-tight">{c.caregiverName}</h1>
-          <p className="text-sm text-gray-500 mt-0.5">{c.contactNumber}</p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <button onClick={() => navigate('/caregivers')} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all">
+            <ArrowLeft size={20} />
+          </button>
+          <div>
+            <h1 className="text-xl font-extrabold text-gray-900 tracking-tight">{c.caregiverName}</h1>
+            <p className="text-sm text-gray-500 mt-0.5">{c.contactNumber}</p>
+          </div>
         </div>
+
+        <button
+          onClick={() => setShowCVModal(true)}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs sm:text-sm font-bold rounded-xl shadow-sm transition-all"
+        >
+          <FileText size={16} />
+          <span>Generate CV</span>
+        </button>
       </div>
+
+      <CaregiverCVModal
+        isOpen={showCVModal}
+        onClose={() => setShowCVModal(false)}
+        caregiver={c}
+        stats={{
+          bookingCount: stats.bookingCount,
+          completedCount: stats.bookings?.filter((b: any) => b.status === 'Completed').length,
+        }}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Panel */}

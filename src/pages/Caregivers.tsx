@@ -3,8 +3,9 @@ import { fetchCaregivers, createCaregiver, updateCaregiver, deleteCaregiver } fr
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, Pencil, Trash2, X, Eye } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, X, Eye, FileText } from 'lucide-react';
 import CustomDatePicker from '../components/CustomDatePicker';
+import { CaregiverCVModal } from '../components/CaregiverCVModal';
 
 const GENDERS = ['Male', 'Female'] as const;
 
@@ -32,6 +33,7 @@ const Caregivers = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedCV, setSelectedCV] = useState<any>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<CaregiverForm>(emptyForm());
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -178,16 +180,20 @@ const Caregivers = () => {
                     <td className="px-4 py-3 text-gray-600">{c.NRC || '—'}</td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-1">
+                        <button onClick={(e) => { e.stopPropagation(); setSelectedCV(c); }}
+                          className="p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all flex items-center gap-1" title="Generate CV">
+                          <FileText size={15} />
+                        </button>
                         <button onClick={(e) => { e.stopPropagation(); navigate(`/caregivers/${c._id}`); }}
                           className="p-1.5 text-gray-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-all" title="View">
                           <Eye size={15} />
                         </button>
                         <button onClick={(e) => { e.stopPropagation(); openEdit(c); }}
-                          className="p-1.5 text-gray-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-all">
+                          className="p-1.5 text-gray-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-all" title="Edit">
                           <Pencil size={15} />
                         </button>
                         <button onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(c._id); }}
-                          className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all">
+                          className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all" title="Delete">
                           <Trash2 size={15} />
                         </button>
                       </div>
@@ -348,6 +354,15 @@ const Caregivers = () => {
             </button>
           </div>
         </div>
+      )}
+
+      {/* Caregiver CV Modal */}
+      {selectedCV && (
+        <CaregiverCVModal
+          isOpen={!!selectedCV}
+          onClose={() => setSelectedCV(null)}
+          caregiver={selectedCV}
+        />
       )}
     </div>
   );
