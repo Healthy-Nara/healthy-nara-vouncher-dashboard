@@ -83,9 +83,9 @@ const NAReportDetail = () => {
             <h2 className="font-bold text-gray-900">အာဟာရနှင့် အစာကျွေးခြင်း</h2>
           </div>
 
-          {report.records?.filter((r) => r.category === 'Nutrition and Feeding').length > 0 ? (
+          {report.records?.filter((r: any) => r.category === 'Nutrition and Feeding').length > 0 ? (
             <div className="space-y-3">
-              {report.records.filter((r) => r.category === 'Nutrition and Feeding').map((record, index) => (
+              {report.records.filter((r: any) => r.category === 'Nutrition and Feeding').map((record: any, index: number) => (
                 <div key={index} className="bg-gray-50 rounded-xl p-3">
                   <div className="flex items-center justify-between mb-2">
                     <span className="font-medium text-sm text-gray-800">
@@ -110,9 +110,9 @@ const NAReportDetail = () => {
             <h2 className="font-bold text-gray-900">တစ်ကိုယ်ရည် သန့်ရှင်းရေး</h2>
           </div>
 
-          {report.records?.filter((r) => r.category === 'Personal Hygiene').length > 0 ? (
+          {report.records?.filter((r: any) => r.category === 'Personal Hygiene').length > 0 ? (
             <div className="space-y-3">
-              {report.records.filter((r) => r.category === 'Personal Hygiene').map((record, index) => (
+              {report.records.filter((r: any) => r.category === 'Personal Hygiene').map((record: any, index: number) => (
                 <div key={index} className="bg-gray-50 rounded-xl p-3">
                   <div className="flex items-center justify-between mb-2">
                     <span className="font-medium text-sm text-gray-800">
@@ -137,9 +137,9 @@ const NAReportDetail = () => {
             <h2 className="font-bold text-gray-900">အိပ်ချိန်</h2>
           </div>
 
-          {report.records?.filter((r) => r.category === 'Sleeping').length > 0 ? (
+          {report.records?.filter((r: any) => r.category === 'Sleeping').length > 0 ? (
             <div className="space-y-3">
-              {report.records.filter((r) => r.category === 'Sleeping').map((record, index) => (
+              {report.records.filter((r: any) => r.category === 'Sleeping').map((record: any, index: number) => (
                 <div key={index} className="bg-gray-50 rounded-xl p-3">
                   <div className="flex items-center justify-between mb-2">
                     <span className="font-medium text-sm text-gray-800">
@@ -164,9 +164,9 @@ const NAReportDetail = () => {
             <h2 className="font-bold text-gray-900">လှုပ်ရှားမှုနှင့် လေ့ကျင့်ခန်း</h2>
           </div>
 
-          {report.records?.filter((r) => r.category === 'Activity and exercise').length > 0 ? (
+          {report.records?.filter((r: any) => r.category === 'Activity and exercise').length > 0 ? (
             <div className="space-y-3">
-              {report.records.filter((r) => r.category === 'Activity and exercise').map((record, index) => (
+              {report.records.filter((r: any) => r.category === 'Activity and exercise').map((record: any, index: number) => (
                 <div key={index} className="bg-gray-50 rounded-xl p-3">
                   <div className="flex items-center justify-between mb-2">
                     <span className="font-medium text-sm text-gray-800">
@@ -191,9 +191,9 @@ const NAReportDetail = () => {
             <h2 className="font-bold text-gray-900">သုံးသပ်ချက်နှင့် ထူးခြားဖြစ်စဉ်များ</h2>
           </div>
 
-          {report.records?.filter((r) => r.category === 'Analysis and Unusual Findings').length > 0 ? (
+          {report.records?.filter((r: any) => r.category === 'Analysis and Unusual Findings').length > 0 ? (
             <div className="space-y-3">
-              {report.records.filter((r) => r.category === 'Analysis and Unusual Findings').map((record, index) => (
+              {report.records.filter((r: any) => r.category === 'Analysis and Unusual Findings').map((record: any, index: number) => (
                 <div key={index} className="bg-red-50 rounded-xl p-3 border border-red-200">
                   <div className="flex items-center justify-between mb-2">
                     <span className="font-medium text-sm text-red-700 whitespace-pre-wrap">

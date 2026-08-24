@@ -31,13 +31,6 @@ const FamilyReports = () => {
     });
   };
 
-  const formatTime = (dateString: string) => {
-    if (!dateString) return '-';
-    return new Date(dateString).toLocaleTimeString('my-MM', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    });
-  };
 
   if (isLoading) {
     return (
