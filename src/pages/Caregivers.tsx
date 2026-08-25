@@ -17,6 +17,13 @@ interface CaregiverForm {
   NRC: string;
   address: string;
   birthdate: string;
+  religion: string;
+  weight: string;
+  height: string;
+  educationStatus: string;
+  trainingSchool: string;
+  experienceYears: string;
+  experienceCases: string;
   bankInfo: string;
   specialization: string;
   note: string;
@@ -25,6 +32,11 @@ interface CaregiverForm {
 const emptyForm = (): CaregiverForm => ({
   caregiverName: '', contactNumber: '', gender: 'Female',
   township: '', NRC: '', address: '', birthdate: '',
+  religion: 'Buddhist', weight: '', height: '',
+  educationStatus: 'High School Graduated',
+  trainingSchool: 'Aung Chan Thar TC',
+  experienceYears: '2 years',
+  experienceCases: 'Newborn Care Only',
   bankInfo: '', specialization: '', note: '',
 });
 
@@ -96,6 +108,13 @@ const Caregivers = () => {
       NRC: c.NRC || '',
       address: c.address || '',
       birthdate: c.birthdate ? format(new Date(c.birthdate), 'dd-MM-yyyy') : '',
+      religion: c.religion || 'Buddhist',
+      weight: c.weight || '',
+      height: c.height || '',
+      educationStatus: c.educationStatus || '',
+      trainingSchool: c.trainingSchool || '',
+      experienceYears: c.experienceYears || '',
+      experienceCases: c.experienceCases || '',
       bankInfo: c.bankInfo || '',
       specialization: c.specialization || '',
       note: c.note || '',
@@ -283,7 +302,56 @@ const Caregivers = () => {
                 </div>
               </div>
 
-              {/* Optional Fields */}
+              {/* Physical & Background Details */}
+              <div className="border-t border-gray-200 pt-4 space-y-4">
+                <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider">Physical & Background</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className={label}>Religion</label>
+                    <input className={input} value={form.religion}
+                      onChange={(e) => setForm({ ...form, religion: e.target.value })} placeholder="e.g. Buddhist" />
+                  </div>
+                  <div>
+                    <label className={label}>Weight</label>
+                    <input className={input} value={form.weight}
+                      onChange={(e) => setForm({ ...form, weight: e.target.value })} placeholder="e.g. 120 lb" />
+                  </div>
+                  <div>
+                    <label className={label}>Height</label>
+                    <input className={input} value={form.height}
+                      onChange={(e) => setForm({ ...form, height: e.target.value })} placeholder="e.g. 5 ft 3 inches" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Education & Experience Details */}
+              <div className="border-t border-gray-200 pt-4 space-y-4">
+                <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider">Education & Experience</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className={label}>Education Status</label>
+                    <input className={input} value={form.educationStatus}
+                      onChange={(e) => setForm({ ...form, educationStatus: e.target.value })} placeholder="e.g. High School Graduated" />
+                  </div>
+                  <div>
+                    <label className={label}>Training School</label>
+                    <input className={input} value={form.trainingSchool}
+                      onChange={(e) => setForm({ ...form, trainingSchool: e.target.value })} placeholder="e.g. Aung Chan Thar TC" />
+                  </div>
+                  <div>
+                    <label className={label}>Experienced Years</label>
+                    <input className={input} value={form.experienceYears}
+                      onChange={(e) => setForm({ ...form, experienceYears: e.target.value })} placeholder="e.g. 2 years" />
+                  </div>
+                  <div>
+                    <label className={label}>Experienced Cases</label>
+                    <input className={input} value={form.experienceCases}
+                      onChange={(e) => setForm({ ...form, experienceCases: e.target.value })} placeholder="e.g. Newborn Care Only" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Optional & Other Fields */}
               <div className="border-t border-gray-200 pt-4 space-y-4">
                 <div>
                   <label className={label}>Bank Info (optional)</label>

@@ -28,6 +28,13 @@ const CaregiverDetail = () => {
     NRC: '',
     address: '',
     birthdate: '',
+    religion: 'Buddhist',
+    weight: '',
+    height: '',
+    educationStatus: '',
+    trainingSchool: '',
+    experienceYears: '',
+    experienceCases: '',
     bankInfo: '',
     specialization: '',
     note: '',
@@ -62,6 +69,13 @@ const CaregiverDetail = () => {
       NRC: c?.NRC || '',
       address: c?.address || '',
       birthdate: c?.birthdate ? format(new Date(c.birthdate), 'dd-MM-yyyy') : '',
+      religion: c?.religion || 'Buddhist',
+      weight: c?.weight || '',
+      height: c?.height || '',
+      educationStatus: c?.educationStatus || '',
+      trainingSchool: c?.trainingSchool || '',
+      experienceYears: c?.experienceYears || '',
+      experienceCases: c?.experienceCases || '',
       bankInfo: c?.bankInfo || '',
       specialization: c?.specialization || '',
       note: c?.note || '',
@@ -161,6 +175,45 @@ const CaregiverDetail = () => {
                       className="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-primary focus:border-primary" />
                   </div>
                   <div>
+                    <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">Religion</label>
+                    <input type="text" value={editForm.religion} onChange={e => setEditForm({ ...editForm, religion: e.target.value })}
+                      className="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-primary focus:border-primary" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">Weight</label>
+                      <input type="text" value={editForm.weight} onChange={e => setEditForm({ ...editForm, weight: e.target.value })}
+                        className="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-primary focus:border-primary" placeholder="e.g. 120 lb" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">Height</label>
+                      <input type="text" value={editForm.height} onChange={e => setEditForm({ ...editForm, height: e.target.value })}
+                        className="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-primary focus:border-primary" placeholder="e.g. 5 ft 3 in" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">Education Status</label>
+                    <input type="text" value={editForm.educationStatus} onChange={e => setEditForm({ ...editForm, educationStatus: e.target.value })}
+                      className="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-primary focus:border-primary" placeholder="e.g. High School Graduated" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">Training School</label>
+                    <input type="text" value={editForm.trainingSchool} onChange={e => setEditForm({ ...editForm, trainingSchool: e.target.value })}
+                      className="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-primary focus:border-primary" placeholder="e.g. Aung Chan Thar TC" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">Experience Years</label>
+                      <input type="text" value={editForm.experienceYears} onChange={e => setEditForm({ ...editForm, experienceYears: e.target.value })}
+                        className="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-primary focus:border-primary" placeholder="e.g. 2 years" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">Experience Cases</label>
+                      <input type="text" value={editForm.experienceCases} onChange={e => setEditForm({ ...editForm, experienceCases: e.target.value })}
+                        className="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-primary focus:border-primary" placeholder="e.g. Newborn Care" />
+                    </div>
+                  </div>
+                  <div>
                     <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">Address</label>
                     <textarea rows={2} value={editForm.address} onChange={e => setEditForm({ ...editForm, address: e.target.value })}
                       className="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-primary focus:border-primary" />
@@ -216,6 +269,56 @@ const CaregiverDetail = () => {
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-primary/10 text-primary capitalize">
                         {c.gender}
                       </span>
+                    </div>
+                  )}
+                  {c.religion && (
+                    <div>
+                      <p className="text-[10px] text-gray-500 uppercase">Religion</p>
+                      <p className="text-sm text-gray-900">{c.religion}</p>
+                    </div>
+                  )}
+                  {(c.weight || c.height) && (
+                    <div className="grid grid-cols-2 gap-2">
+                      {c.weight && (
+                        <div>
+                          <p className="text-[10px] text-gray-500 uppercase">Weight</p>
+                          <p className="text-sm text-gray-900">{c.weight}</p>
+                        </div>
+                      )}
+                      {c.height && (
+                        <div>
+                          <p className="text-[10px] text-gray-500 uppercase">Height</p>
+                          <p className="text-sm text-gray-900">{c.height}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {c.educationStatus && (
+                    <div>
+                      <p className="text-[10px] text-gray-500 uppercase">Education Status</p>
+                      <p className="text-sm text-gray-900">{c.educationStatus}</p>
+                    </div>
+                  )}
+                  {c.trainingSchool && (
+                    <div>
+                      <p className="text-[10px] text-gray-500 uppercase">Training School</p>
+                      <p className="text-sm text-gray-900">{c.trainingSchool}</p>
+                    </div>
+                  )}
+                  {(c.experienceYears || c.experienceCases) && (
+                    <div className="grid grid-cols-2 gap-2">
+                      {c.experienceYears && (
+                        <div>
+                          <p className="text-[10px] text-gray-500 uppercase">Experience Years</p>
+                          <p className="text-sm text-gray-900">{c.experienceYears}</p>
+                        </div>
+                      )}
+                      {c.experienceCases && (
+                        <div>
+                          <p className="text-[10px] text-gray-500 uppercase">Experience Cases</p>
+                          <p className="text-sm text-gray-900">{c.experienceCases}</p>
+                        </div>
+                      )}
                     </div>
                   )}
                   {c.township && (

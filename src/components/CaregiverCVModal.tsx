@@ -1,9 +1,8 @@
-import React, { useRef } from 'react';
-import { X, Download, Printer, ShieldCheck, Phone, MapPin, Award, CheckCircle2, User, HeartPulse, FileText, Image as ImageIcon } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { X, Download, Printer, ShieldCheck, Phone, MapPin, Award, CheckCircle2, User, HeartPulse, FileText, Image as ImageIcon, GraduationCap, Briefcase, Scale, Ruler, Building2, Sparkles } from 'lucide-react';
 import { format } from 'date-fns';
 import halogo from '../assets/halogo.png';
 import patternBg from '../assets/pattern.png';
-import autosign from '../assets/autosign.png';
 import { downloadAsImage, downloadAsPDF } from '../utils/export';
 
 interface CaregiverCVModalProps {
@@ -19,6 +18,13 @@ interface CaregiverCVModalProps {
     address?: string;
     birthdate?: string;
     specialization?: string;
+    religion?: string;
+    weight?: string;
+    height?: string;
+    educationStatus?: string;
+    trainingSchool?: string;
+    experienceYears?: string;
+    experienceCases?: string;
     note?: string;
     createdAt?: string;
   };
@@ -35,6 +41,8 @@ export const CaregiverCVModal: React.FC<CaregiverCVModalProps> = ({
   stats,
 }) => {
   const cvContainerRef = useRef<HTMLDivElement>(null);
+  const [showPhone, setShowPhone] = useState(false);
+  const [showNRC, setShowNRC] = useState(false);
 
   if (!isOpen || !caregiver) return null;
 
@@ -60,11 +68,11 @@ export const CaregiverCVModal: React.FC<CaregiverCVModalProps> = ({
   const age = calculateAge(caregiver.birthdate);
   const formattedBirthdate = caregiver.birthdate
     ? format(new Date(caregiver.birthdate), 'dd MMMM yyyy')
-    : 'N/A';
+    : null;
 
-  const specializations = caregiver.specialization
-    ? caregiver.specialization.split(',').map((s) => s.trim()).filter(Boolean)
-    : ['Elderly Care', 'General Nursing Care', 'Patient Support'];
+  const experienceCasesList = caregiver.experienceCases
+    ? caregiver.experienceCases.split(',').map((s) => s.trim()).filter(Boolean)
+    : ['Newborn Care Only'];
 
   const handlePrint = () => {
     window.print();
@@ -75,25 +83,57 @@ export const CaregiverCVModal: React.FC<CaregiverCVModalProps> = ({
       <div className="relative w-full max-w-4xl bg-white rounded-2xl shadow-2xl overflow-hidden my-auto print:shadow-none print:w-full print:max-w-none print:rounded-none">
 
         {/* Action Header - Hidden during print */}
-        <div className="px-6 py-4 bg-gray-900 text-white flex items-center justify-between border-b border-gray-800 print:hidden">
+        <div className="px-6 py-4 bg-gray-900 text-white flex flex-wrap items-center justify-between gap-3 border-b border-gray-800 print:hidden">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
               <FileText size={18} />
             </div>
             <div>
-              <h2 className="text-base font-bold text-white leading-none">Caregiver Curriculum Vitae</h2>
+              <h2 className="text-base font-bold text-white leading-none">Nurse Aid Profile & CV</h2>
               <p className="text-xs text-gray-400 mt-1">Preview and export official verified profile</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          {/* Toggle Buttons & Actions */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Phone & NRC Toggles */}
+            <div className="flex items-center gap-1.5 bg-gray-800 border border-gray-700 rounded-lg p-1 mr-1">
+              <span className="text-[11px] font-bold text-gray-400 px-1.5 hidden sm:inline">Show:</span>
+              <button
+                type="button"
+                onClick={() => setShowPhone(!showPhone)}
+                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold transition-all ${
+                  showPhone
+                    ? 'bg-emerald-600 text-white shadow-sm'
+                    : 'bg-gray-700/60 text-gray-400 hover:text-gray-200'
+                }`}
+                title="Toggle Phone Number on CV"
+              >
+                <Phone size={12} />
+                <span>Phone {showPhone ? '✓' : ''}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowNRC(!showNRC)}
+                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold transition-all ${
+                  showNRC
+                    ? 'bg-emerald-600 text-white shadow-sm'
+                    : 'bg-gray-700/60 text-gray-400 hover:text-gray-200'
+                }`}
+                title="Toggle NRC on CV"
+              >
+                <ShieldCheck size={12} />
+                <span>NRC {showNRC ? '✓' : ''}</span>
+              </button>
+            </div>
+
             <button
               onClick={() => downloadAsImage(cvId, fileName)}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-xs font-semibold text-gray-200 transition-all border border-gray-700"
               title="Download as PNG Image"
             >
               <ImageIcon size={14} />
-              <span>PNG Image</span>
+              <span>PNG</span>
             </button>
             <button
               onClick={() => downloadAsPDF(cvId, fileName)}
@@ -152,14 +192,14 @@ export const CaregiverCVModal: React.FC<CaregiverCVModalProps> = ({
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="text-2xl font-black text-emerald-600 tracking-tight">
-                      Healthy Nara
+                      Nurse Aid Profile
                     </span>
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-300">
                       Verified
                     </span>
                   </div>
                   <p className="text-[11px] font-semibold text-gray-500 tracking-wide uppercase mt-0.5">
-                    Healthcare & Caregiver Services
+                    Healthy Nara Healthcare & Caregiver Services
                   </p>
                 </div>
               </div>
@@ -206,8 +246,13 @@ export const CaregiverCVModal: React.FC<CaregiverCVModalProps> = ({
                       </span>
                     )}
                     {age && (
-                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-white text-gray-700 border border-gray-200 shadow-sm">
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-white text-emerald-800 border border-emerald-200 shadow-sm">
                         {age} Years Old
+                      </span>
+                    )}
+                    {caregiver.religion && (
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-white text-teal-800 border border-teal-200 shadow-sm">
+                        {caregiver.religion}
                       </span>
                     )}
                   </div>
@@ -217,14 +262,14 @@ export const CaregiverCVModal: React.FC<CaregiverCVModalProps> = ({
                     <span>Certified Nursing Aide (NA) / Professional Caregiver</span>
                   </p>
 
-                  {/* Specializations Tags */}
+                  {/* Experienced Cases Tags */}
                   <div className="flex flex-wrap items-center justify-center sm:justify-start gap-1.5 mt-3">
-                    {specializations.map((spec, idx) => (
+                    {experienceCasesList.map((cCase, idx) => (
                       <span
                         key={idx}
                         className="px-2.5 py-1 rounded-lg text-xs font-bold bg-white text-emerald-800 border border-emerald-200 shadow-sm"
                       >
-                        ✓ {spec}
+                        ✓ {cCase}
                       </span>
                     ))}
                   </div>
@@ -235,38 +280,78 @@ export const CaregiverCVModal: React.FC<CaregiverCVModalProps> = ({
             {/* Main Content Grid */}
             <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 gap-6 mt-6">
 
-              {/* Left Column: Personal & Contact Information */}
+              {/* Left Column: Personal & Physical Information */}
               <div className="space-y-6">
 
-                {/* Contact & Personal Details Card */}
+                {/* Personal & Physical Details Card */}
                 <div className="bg-white/90 backdrop-blur-sm border border-gray-200 rounded-xl p-5 shadow-sm">
                   <div className="flex items-center gap-2 pb-3 mb-3 border-b border-gray-100 text-emerald-700 font-extrabold text-xs uppercase tracking-wider">
                     <User size={15} />
-                    <span>Personal Information</span>
+                    <span>Personal & Physical Details</span>
                   </div>
 
-                  <div className="space-y-3.5 text-xs">
-                    <div>
-                      <p className="text-[10px] font-bold text-gray-400 uppercase">NRC / National ID</p>
-                      <p className="font-semibold text-gray-900 mt-0.5 font-mono">
-                        {caregiver.NRC || 'Verified on Record'}
-                      </p>
+                  <div className="space-y-3 text-xs">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase">Age</p>
+                        <p className="font-semibold text-gray-900 mt-0.5">
+                          {age ? `${age} years` : 'N/A'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase">Religion</p>
+                        <p className="font-semibold text-gray-900 mt-0.5">
+                          {caregiver.religion || 'Buddhist'}
+                        </p>
+                      </div>
                     </div>
 
-                    <div>
-                      <p className="text-[10px] font-bold text-gray-400 uppercase">Date of Birth</p>
-                      <p className="font-semibold text-gray-900 mt-0.5">
-                        {formattedBirthdate} {age ? `(${age} Years)` : ''}
-                      </p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase flex items-center gap-1">
+                          <Scale size={11} className="text-gray-400" /> Weight
+                        </p>
+                        <p className="font-semibold text-gray-900 mt-0.5">
+                          {caregiver.weight || '—'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase flex items-center gap-1">
+                          <Ruler size={11} className="text-gray-400" /> Height
+                        </p>
+                        <p className="font-semibold text-gray-900 mt-0.5">
+                          {caregiver.height || '—'}
+                        </p>
+                      </div>
                     </div>
 
-                    <div>
-                      <p className="text-[10px] font-bold text-gray-400 uppercase">Contact Number</p>
-                      <p className="font-semibold text-emerald-700 mt-0.5 flex items-center gap-1.5">
-                        <Phone size={13} className="text-emerald-500" />
-                        <span>{caregiver.contactNumber || 'N/A'}</span>
-                      </p>
-                    </div>
+                    {showNRC && (
+                      <div>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase">NRC / National ID</p>
+                        <p className="font-semibold text-gray-900 mt-0.5 font-mono">
+                          {caregiver.NRC || 'Verified on Record'}
+                        </p>
+                      </div>
+                    )}
+
+                    {showPhone && (
+                      <div>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase">Contact Number</p>
+                        <p className="font-semibold text-emerald-700 mt-0.5 flex items-center gap-1.5">
+                          <Phone size={13} className="text-emerald-500" />
+                          <span>{caregiver.contactNumber || 'N/A'}</span>
+                        </p>
+                      </div>
+                    )}
+
+                    {formattedBirthdate && (
+                      <div>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase">Date of Birth</p>
+                        <p className="font-semibold text-gray-900 mt-0.5">
+                          {formattedBirthdate}
+                        </p>
+                      </div>
+                    )}
 
                     <div>
                       <p className="text-[10px] font-bold text-gray-400 uppercase">Township & Location</p>
@@ -316,8 +401,55 @@ export const CaregiverCVModal: React.FC<CaregiverCVModalProps> = ({
 
               </div>
 
-              {/* Right Column: Skills, Duties & Background Note */}
+              {/* Right Column: Qualifications, Experience & Core Skills */}
               <div className="space-y-6">
+
+                {/* Education & Professional Qualifications Card */}
+                <div className="bg-white/90 backdrop-blur-sm border border-gray-200 rounded-xl p-5 shadow-sm">
+                  <div className="flex items-center gap-2 pb-3 mb-3 border-b border-gray-100 text-emerald-700 font-extrabold text-xs uppercase tracking-wider">
+                    <GraduationCap size={15} />
+                    <span>Education & Experience</span>
+                  </div>
+
+                  <div className="space-y-3 text-xs">
+                    <div>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase flex items-center gap-1">
+                        <GraduationCap size={12} className="text-emerald-600" /> Education Status
+                      </p>
+                      <p className="font-semibold text-gray-900 mt-0.5">
+                        {caregiver.educationStatus || 'High School Graduated'}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase flex items-center gap-1">
+                        <Building2 size={12} className="text-emerald-600" /> Training School
+                      </p>
+                      <p className="font-semibold text-gray-900 mt-0.5">
+                        {caregiver.trainingSchool || 'Aung Chan Thar TC'}
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 pt-1">
+                      <div>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase flex items-center gap-1">
+                          <Briefcase size={12} className="text-emerald-600" /> Experienced Years
+                        </p>
+                        <p className="font-semibold text-emerald-700 mt-0.5">
+                          {caregiver.experienceYears || '2 years'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase flex items-center gap-1">
+                          <Sparkles size={12} className="text-emerald-600" /> Experienced Cases
+                        </p>
+                        <p className="font-semibold text-gray-900 mt-0.5">
+                          {caregiver.experienceCases || 'Newborn Care Only'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
                 {/* Core Competencies & Nursing Aide Skills */}
                 <div className="bg-white/90 backdrop-blur-sm border border-gray-200 rounded-xl p-5 shadow-sm">
@@ -326,10 +458,10 @@ export const CaregiverCVModal: React.FC<CaregiverCVModalProps> = ({
                     <span>Core Nursing & Care Skills</span>
                   </div>
 
-                  <ul className="space-y-2.5 text-xs text-gray-700">
+                  <ul className="space-y-2 text-xs text-gray-700">
                     <li className="flex items-start gap-2">
                       <span className="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">✓</span>
-                      <span><strong>Vital Signs Monitoring:</strong> သွေးပေါင်၊ သွေးတွင်းအောက်ဆီဂျင်၊ အပူချိန်နှင့် သွေးချို တိုင်းတာစစ်ဆေးပေးခြင်း။</span>
+                      <span><strong>Vital Signs Monitoring:</strong> သွေးပေါင်၊ သွေးတွင်းအောက်ဆီဂျင်၊ အပူချိန် တိုင်းတာစစ်ဆေးခြင်း။</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">✓</span>
@@ -337,15 +469,11 @@ export const CaregiverCVModal: React.FC<CaregiverCVModalProps> = ({
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">✓</span>
-                      <span><strong>Personal Hygiene & Mobility:</strong> ရေချိုး၊ သန့်ရှင်းရေး၊ အဝတ်အစားလဲလှယ်ခြင်းနှင့် လမ်းလျှောက် အကူအညီပေးခြင်း။</span>
+                      <span><strong>Personal Hygiene & Mobility:</strong> ရေချိုး၊ သန့်ရှင်းရေးနှင့် လမ်းလျှောက် အကူအညီပေးခြင်း။</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">✓</span>
-                      <span><strong>Nutrition & Diet Support:</strong> သင့်လျော်သော အာဟာရကျွေးမွေးခြင်းနှင့် ကျန်းမာရေးနှင့်ညီညွတ်စွာ ကြီးကြပ်ပေးခြင်း။</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">✓</span>
-                      <span><strong>Emergency & Daily Logging:</strong> နေ့စဉ် ကျန်းမာရေးအခြေအနေ မှတ်တမ်းတင်ခြင်းနှင့် အရေးပေါ်အခြေအနေ တုံ့ပြန်ကူညီခြင်း။</span>
+                      <span><strong>Nutrition & Diet Support:</strong> သင့်လျော်သော အာဟာရကျွေးမွေးခြင်းနှင့် ကြီးကြပ်ပေးခြင်း။</span>
                     </li>
                   </ul>
                 </div>
@@ -357,47 +485,12 @@ export const CaregiverCVModal: React.FC<CaregiverCVModalProps> = ({
                     <span>Background & Notes</span>
                   </div>
 
-                  <p className="text-xs text-gray-700 leading-relaxed italic bg-gray-50/80 p-3.5 rounded-lg border border-gray-100">
+                  <p className="text-xs text-gray-700 leading-relaxed italic bg-gray-50/80 p-3 rounded-lg border border-gray-100">
                     {caregiver.note ||
-                      'Healthy Nara ၏ စံချိန်စံညွှန်းများနှင့်အညီ လေ့ကျင့်သင်ကြားထားပြီး စိတ်ရှည်ကြင်နာစွာဖြင့် လူနာနှင့် ကလေးငယ်များကို အထူးဂရုပြု စောင့်ရှောက်ပေးနိုင်သော အတွေ့အကြုံရှိ ကျွမ်းကျင်ဝန်ထမ်း ဖြစ်ပါသည်။'}
+                      'Healthy Nara ၏ စံချိန်စံညွှန်းများနှင့်အညီ လေ့ကျင့်သင်ကြားထားပြီး စိတ်ရှည်ကြင်နာစွာဖြင့် ကလေးငယ်နှင့် မိခင်များကို အထူးဂရုပြု စောင့်ရှောက်ပေးနိုင်သော အတွေ့အကြုံရှိ ကျွမ်းကျင်ဝန်ထမ်း ဖြစ်ပါသည်။'}
                   </p>
                 </div>
 
-              </div>
-
-            </div>
-
-            {/* Official Certification & Footer Section */}
-            <div className="relative z-10 mt-10 pt-6 border-t-2 border-emerald-500/20 flex flex-col sm:flex-row items-center justify-between gap-6">
-
-              {/* Healthy Nara Verification Notes */}
-              <div className="space-y-1 text-center sm:text-left max-w-sm">
-                <div className="flex items-center justify-center sm:justify-start gap-1.5 text-xs font-bold text-gray-900">
-                  <ShieldCheck size={16} className="text-emerald-600" />
-                  <span>Healthy Nara Official Verification</span>
-                </div>
-                <p className="text-[10px] text-gray-500 leading-relaxed">
-                  ဤ Curriculum Vitae (CV) သည် Healthy Nara Healthcare Platform မှ စိစစ်အတည်ပြုထားသော တရားဝင် ဝန်ထမ်းအချက်အလက် ဖြစ်ပါသည်။
-                </p>
-                <div className="flex items-center justify-center sm:justify-start gap-4 text-[10px] font-semibold text-emerald-700 pt-1">
-                  <span>🌐 healthynara.com</span>
-                  <span>✉️ info@healthynara.com</span>
-                </div>
-              </div>
-
-              {/* Authorized Seal & Signature */}
-              <div className="flex items-center gap-4">
-                <div className="text-center sm:text-right">
-                  <img
-                    src={autosign}
-                    alt="Authorized Signature"
-                    className="h-12 w-auto object-contain mx-auto sm:ml-auto"
-                  />
-                  <div className="border-t border-gray-300 pt-1 mt-1">
-                    <p className="text-[11px] font-extrabold text-gray-800">Authorized Signature</p>
-                    <p className="text-[9px] font-bold text-emerald-600 uppercase">Healthy Nara Care Team</p>
-                  </div>
-                </div>
               </div>
 
             </div>
