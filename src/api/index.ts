@@ -381,6 +381,11 @@ export const getAdminNAReportById = async (id: string) => {
   return data;
 };
 
+export const generateNAReportAISummary = async (id: string) => {
+  const { data } = await api.post(`/admin/na-reports/${id}/ai-summary`);
+  return data;
+};
+
 export const getAdminDutyLogs = async (params?: { date?: string; caregiverId?: string }) => {
   const { data } = await api.get('/admin/duty-logs', { params });
   return data;
