@@ -12,7 +12,7 @@ import {
   deletePublicBookingChild,
   updateBookingStatus,
 } from "../api";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import {
@@ -22,50 +22,71 @@ import {
   CheckCircle,
   Copy,
   ExternalLink,
-  User,
   Edit2,
   Baby,
   Plus,
   Trash2,
   X,
-  ClipboardCheck,
   CircleCheckBig,
   XCircle,
   Package,
+  Star,
+  Send,
+  Search,
+  Check,
+  Sparkles,
 } from "lucide-react";
 import CustomDatePicker, {
   parseDdMmYyyy,
 } from "../components/CustomDatePicker";
-
-const STATUS_CONFIG: Record<
-  string,
-  { color: string; bg: string; icon: string }
-> = {
-  "Pending NA Selection": {
-    color: "text-yellow-700",
-    bg: "bg-yellow-100",
-    icon: "⏳",
-  },
-  Assigned: { color: "text-blue-700", bg: "bg-blue-100", icon: "🔵" },
-  Completed: { color: "text-green-700", bg: "bg-green-100", icon: "✅" },
-  Cancelled: { color: "text-red-700", bg: "bg-red-100", icon: "❌" },
-};
+import { useAuth } from "../context/AuthContext";
+import { Badge } from "../components/ui/Badge";
+import { Button } from "../components/ui/Button";
+import { Avatar } from "../components/ui/Avatar";
+import { Card, CardContent } from "../components/ui/Card";
 
 const BookingDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [selectedCaregiverId, setSelectedCaregiverId] = useState<string | null>(
-    null,
-  );
-  const [invoiceAmount, setInvoiceAmount] = useState("");
-  const [invoicePlatformFeeType, setInvoicePlatformFeeType] = useState<
-    "percentage" | "fixed"
-  >("percentage");
-  const [invoicePlatformFeeRate, setInvoicePlatformFeeRate] = useState("10");
-  const [showInvoiceForm, setShowInvoiceForm] = useState(false);
+  const { user: currentUser } = useAuth();
+
+  const [selectedCaregiverId, setSelectedCaregiverId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"job" | "customer">("job");
   const [copied, setCopied] = useState(false);
-  const [activeTab, setActiveTab] = useState<"booking" | "customer">("booking");
+  const [copiedDuty, setCopiedDuty] = useState(false);
+
+  // Caregiver Filter & Search state
+  const [cgFilter, setCgFilter] = useState<"all" | "female" | "township" | "pediatric">("all");
+  const [cgSearch, setCgSearch] = useState("");
+  const [showSearchInput, setShowSearchInput] = useState(false);
+
+  // Internal Notes State
+  const [noteInput, setNoteInput] = useState("");
+  const [internalNotesList, setInternalNotesList] = useState<
+    { id: string; sender: string; time: string; text: string }[]
+  >([]);
+
+  // Invoice Modal State
+  const [showInvoiceForm, setShowInvoiceForm] = useState(false);
+  const [invoiceAmount, setInvoiceAmount] = useState("");
+  const [invoicePlatformFeeType, setInvoicePlatformFeeType] = useState<"percentage" | "fixed">("percentage");
+  const [invoicePlatformFeeRate, setInvoicePlatformFeeRate] = useState("10");
+
+  // Status confirm modal
+  const [confirmStatus, setConfirmStatus] = useState<"Completed" | "Cancelled" | null>(null);
+
+  // Edit Modals
+  const [isEditingBooking, setIsEditingBooking] = useState(false);
+  const [bookingForm, setBookingForm] = useState({
+    servicePackage: "",
+    dutyDuration: "",
+    dutyShift: "",
+    requestedDates: [] as string[],
+    additionalNotes: "",
+    additionalCharges: [] as { name: string; amount: number }[],
+  });
+  const [newDate, setNewDate] = useState("");
 
   const [isEditingParent, setIsEditingParent] = useState(false);
   const [parentForm, setParentForm] = useState({
@@ -78,6 +99,7 @@ const BookingDetail = () => {
     durationOfBusStopToHome: "",
   });
 
+  // Children State
   const [childrenList, setChildrenList] = useState<any[]>([]);
   const [showAddChild, setShowAddChild] = useState(false);
   const [childForm, setChildForm] = useState({
@@ -88,17 +110,7 @@ const BookingDetail = () => {
   });
   const [deleteChildIndex, setDeleteChildIndex] = useState<number | null>(null);
 
-  const [isEditingBooking, setIsEditingBooking] = useState(false);
-  const [bookingForm, setBookingForm] = useState({
-    servicePackage: "",
-    dutyDuration: "",
-    dutyShift: "",
-    requestedDates: [] as string[],
-    additionalNotes: "",
-    additionalCharges: [] as { name: string; amount: number }[],
-  });
-  const [newDate, setNewDate] = useState("");
-
+  // Queries
   const { data: booking, isLoading } = useQuery({
     queryKey: ["booking", id],
     queryFn: () => fetchBookingById(id!),
@@ -111,6 +123,7 @@ const BookingDetail = () => {
     enabled: !!id && booking?.status === "Pending NA Selection",
   });
 
+  // Mutations
   const assignMutation = useMutation({
     mutationFn: (caregiverId: string) => assignBookingNA(id!, caregiverId),
     onSuccess: () => {
@@ -127,6 +140,31 @@ const BookingDetail = () => {
       if (result?.invoiceNumber) {
         navigate(`/invoice/${result.invoiceNumber}`);
       }
+    },
+  });
+
+  const statusMutation = useMutation({
+    mutationFn: (status: string) => updateBookingStatus(id!, status),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["booking", id] });
+      queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      setConfirmStatus(null);
+    },
+  });
+
+  const updateBookingMutation = useMutation({
+    mutationFn: (data: any) => {
+      const toIso = (d: string) =>
+        d ? new Date(d.split("-").reverse().join("-")).toISOString() : d;
+      const payload = {
+        ...data,
+        requestedDates: data.requestedDates?.map((d: string) => toIso(d)),
+      };
+      return updateBooking(id!, payload);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["booking", id] });
+      setIsEditingBooking(false);
     },
   });
 
@@ -151,72 +189,12 @@ const BookingDetail = () => {
     },
   });
 
-  const updateBookingMutation = useMutation({
-    mutationFn: (data: any) => {
-      const toIso = (d: string) =>
-        d ? new Date(d.split("-").reverse().join("-")).toISOString() : d;
-      const payload = {
-        ...data,
-        requestedDates: data.requestedDates?.map((d: string) => toIso(d)),
-      };
-      return updateBooking(id!, payload);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["booking", id] });
-      setIsEditingBooking(false);
-    },
-  });
-
-  const [confirmStatus, setConfirmStatus] = useState<
-    "Completed" | "Cancelled" | null
-  >(null);
-
-  const statusMutation = useMutation({
-    mutationFn: (status: string) => updateBookingStatus(id!, status),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["booking", id] });
-      queryClient.invalidateQueries({ queryKey: ["bookings"] });
-      setConfirmStatus(null);
-    },
-  });
-
-  const startEditParent = () => {
-    setParentForm({
-      parentName: booking?.parent?.parentName || booking?.customerName || "",
-      contactNumber:
-        booking?.parent?.contactNumber || booking?.phoneNumber || "",
-      township: booking?.parent?.township || "",
-      address: booking?.parent?.address || "",
-      religion: booking?.parent?.religion || "",
-      nearestBusStop: booking?.parent?.nearestBusStop || "",
-      durationOfBusStopToHome: booking?.parent?.durationOfBusStopToHome || "",
-    });
-    setIsEditingParent(true);
-  };
-
-  const startEditBooking = () => {
-    setBookingForm({
-      servicePackage: booking?.servicePackage || "",
-      dutyDuration: booking?.dutyDuration || "",
-      dutyShift: booking?.dutyShift || "",
-      requestedDates:
-        booking?.requestedDates?.map((d: string) =>
-          format(new Date(d), "dd-MM-yyyy"),
-        ) || [],
-      additionalNotes: booking?.additionalNotes || "",
-      additionalCharges: booking?.additionalCharges || [],
-    });
-    setIsEditingBooking(true);
-  };
-
   const addChildMutation = useMutation({
     mutationFn: (data: any) => {
       const payload = {
         ...data,
         birthDate: data.birthDate
-          ? new Date(
-              data.birthDate.split("-").reverse().join("-"),
-            ).toISOString()
+          ? new Date(data.birthDate.split("-").reverse().join("-")).toISOString()
           : data.birthDate,
       };
       return addPublicBookingChild(booking!.bookingToken!, payload);
@@ -242,21 +220,17 @@ const BookingDetail = () => {
     },
   });
 
-  const loadChildren = async () => {
-    if (booking?.bookingToken) {
-      try {
-        const data = await fetchPublicBookingChildren(booking.bookingToken);
-        setChildrenList(data || []);
-      } catch {}
-    }
-  };
-
+  // Helpers
   const formatDate = (dateStr: string) => {
-    if (!dateStr) return "";
-    if (dateStr.includes("-") && dateStr.split("-")[0].length === 2) {
+    if (!dateStr) return "—";
+    try {
+      if (dateStr.includes("-") && dateStr.split("-")[0].length === 2) {
+        return dateStr;
+      }
+      return format(new Date(dateStr), "dd-MM-yyyy");
+    } catch {
       return dateStr;
     }
-    return format(new Date(dateStr), "dd-MM-yyyy");
   };
 
   const copyLink = () => {
@@ -268,1317 +242,1311 @@ const BookingDetail = () => {
     }
   };
 
-  const [copiedDuty, setCopiedDuty] = useState(false);
-
   const getDutySummaryText = () => {
     if (!booking) return "";
     const lines: string[] = [];
     lines.push("Duty Summary");
     lines.push("============");
-    lines.push(
-      `Customer: ${booking.parent?.parentName || booking.customerName}`,
-    );
-    lines.push(
-      `Phone: ${booking.parent?.contactNumber || booking.phoneNumber}`,
-    );
-    if (booking.parent?.address)
-      lines.push(`Address: ${booking.parent.address}`);
-    if (booking.parent?.nearestBusStop)
-      lines.push(`Nearest Bus Stop: ${booking.parent.nearestBusStop}`);
+    lines.push(`Customer: ${booking.parent?.parentName || booking.customerName}`);
+    lines.push(`Phone: ${booking.parent?.contactNumber || booking.phoneNumber}`);
+    if (booking.parent?.address) lines.push(`Address: ${booking.parent.address}`);
+    if (booking.parent?.nearestBusStop) lines.push(`Nearest Bus Stop: ${booking.parent.nearestBusStop}`);
     if (booking.parent?.durationOfBusStopToHome)
-      lines.push(
-        `Duration (Bus Stop to Home): ${booking.parent.durationOfBusStopToHome}`,
-      );
-    if (
-      Array.isArray(booking.requestedDates) &&
-      booking.requestedDates.length > 0
-    ) {
-      const dates = booking.requestedDates
-        .map((d: string) => formatDate(d))
-        .join(", ");
+      lines.push(`Duration (Bus Stop to Home): ${booking.parent.durationOfBusStopToHome}`);
+    if (Array.isArray(booking.requestedDates) && booking.requestedDates.length > 0) {
+      const dates = booking.requestedDates.map((d: string) => formatDate(d)).join(", ");
       lines.push(`Date/Time: ${dates}`);
     }
     if (booking.dutyType) lines.push(`Duty Type: ${booking.dutyType}`);
     if (booking.dutyShift) lines.push(`Duty Shift: ${booking.dutyShift}`);
-    const needs = [booking.requirements, booking.additionalNotes]
-      .filter(Boolean)
-      .join(", ");
+    const needs = [booking.requirements, booking.additionalNotes].filter(Boolean).join(", ");
     if (needs) lines.push(`Special Needs: ${needs}`);
     if (booking.caregiverName) lines.push(`NA: ${booking.caregiverName}`);
     return lines.join("\n");
   };
 
-  const dutySummaryText = getDutySummaryText();
-
   const copyDutySummary = () => {
-    navigator.clipboard.writeText(dutySummaryText);
+    navigator.clipboard.writeText(getDutySummaryText());
     setCopiedDuty(true);
     setTimeout(() => setCopiedDuty(false), 2000);
   };
 
+  const startEditBooking = () => {
+    setBookingForm({
+      servicePackage: booking?.servicePackage || "",
+      dutyDuration: booking?.dutyDuration || "",
+      dutyShift: booking?.dutyShift || "",
+      requestedDates:
+        booking?.requestedDates?.map((d: string) => format(new Date(d), "dd-MM-yyyy")) || [],
+      additionalNotes: booking?.additionalNotes || "",
+      additionalCharges: booking?.additionalCharges || [],
+    });
+    setIsEditingBooking(true);
+  };
+
+  const startEditParent = () => {
+    setParentForm({
+      parentName: booking?.parent?.parentName || booking?.customerName || "",
+      contactNumber: booking?.parent?.contactNumber || booking?.phoneNumber || "",
+      township: booking?.parent?.township || "",
+      address: booking?.parent?.address || "",
+      religion: booking?.parent?.religion || "",
+      nearestBusStop: booking?.parent?.nearestBusStop || "",
+      durationOfBusStopToHome: booking?.parent?.durationOfBusStopToHome || "",
+    });
+    setIsEditingParent(true);
+  };
+
+  const handleSendNote = () => {
+    if (!noteInput.trim()) return;
+    const newNote = {
+      id: Date.now().toString(),
+      sender: currentUser?.username || "Admin",
+      time: format(new Date(), "h:mm a"),
+      text: noteInput.trim(),
+    };
+    setInternalNotesList((prev) => [...prev, newNote]);
+    setNoteInput("");
+  };
+
   useEffect(() => {
-    console.log("Loading children...");
-    loadChildren();
+    if (booking?.bookingToken) {
+      fetchPublicBookingChildren(booking.bookingToken)
+        .then((data) => setChildrenList(data || []))
+        .catch(() => {});
+    }
+    if (booking?.additionalNotes) {
+      setInternalNotesList([
+        {
+          id: "initial-note",
+          sender: "System / Inquiry",
+          time: booking.createdAt ? format(new Date(booking.createdAt), "h:mm a") : "10:00 AM",
+          text: booking.additionalNotes,
+        },
+      ]);
+    }
   }, [booking]);
 
-  if (isLoading)
-    return <div className="text-center py-12 text-gray-500">Loading...</div>;
-  if (!booking)
-    return (
-      <div className="text-center py-12 text-gray-500">Booking not found</div>
-    );
+  // Filtered Caregivers List
+  const filteredCaregivers = useMemo(() => {
+    if (!Array.isArray(matchingNAs)) return [];
+    return matchingNAs.filter((cg: any) => {
+      // Search term
+      if (cgSearch.trim()) {
+        const q = cgSearch.toLowerCase();
+        const matchName = cg.caregiverName?.toLowerCase().includes(q);
+        const matchTownship = cg.township?.toLowerCase().includes(q);
+        const matchSkills = cg.experienceCases?.toLowerCase().includes(q);
+        if (!matchName && !matchTownship && !matchSkills) return false;
+      }
+      // Filter chips
+      if (cgFilter === "female") {
+        return cg.gender?.toLowerCase() === "female";
+      }
+      if (cgFilter === "township") {
+        const targetTownship = booking?.parent?.township?.toLowerCase();
+        if (targetTownship && cg.township) {
+          return cg.township.toLowerCase().includes(targetTownship);
+        }
+        return true;
+      }
+      if (cgFilter === "pediatric") {
+        const cases = cg.experienceCases?.toLowerCase() || "";
+        return cases.includes("pediatric") || cases.includes("newborn") || cases.includes("baby");
+      }
+      return true;
+    });
+  }, [matchingNAs, cgFilter, cgSearch, booking]);
 
-  const config =
-    STATUS_CONFIG[booking.status] || STATUS_CONFIG["Pending NA Selection"];
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center space-y-2">
+          <div className="w-8 h-8 border-3 border-teal-500 border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-xs text-slate-500 font-medium">Loading booking details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!booking) {
+    return (
+      <div className="text-center py-16 text-slate-400 space-y-3">
+        <Package className="w-12 h-12 mx-auto text-slate-300" />
+        <p className="font-bold text-slate-700">Booking not found</p>
+        <Button variant="outline" size="sm" onClick={() => navigate("/bookings")}>
+          Back to Bookings
+        </Button>
+      </div>
+    );
+  }
+
+  const isPendingNA = booking.status === "Pending NA Selection";
+  const parentTownship = booking?.parent?.township || "Bahan";
 
   return (
-    <div className="space-y-0 max-w-5xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
+    <div className="space-y-4 max-w-7xl w-full mx-auto pb-10">
+      {/* Top Header Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => navigate(-1)}
-            className="hidden md:block p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all"
+            onClick={() => navigate("/bookings")}
+            className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-all"
+            title="Back to Bookings"
           >
-            <ArrowLeft size={20} />
+            <ArrowLeft size={18} />
           </button>
           <div>
-            <div className="flex md:items-center gap-2">
-              <h1 className="text-xl font-extrabold text-gray-900 tracking-tight">
-                {booking.bookingNumber}
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h1 className="text-lg sm:text-xl font-black text-slate-900 font-mono tracking-tight">
+                {booking.bookingNumber || `BK-${booking._id.slice(-6).toUpperCase()}`}
               </h1>
-              <span
-                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold ${config.bg} ${config.color}`}
+              <Badge
+                variant={
+                  booking.status === "Completed"
+                    ? "completed"
+                    : booking.status === "Assigned"
+                    ? "sky"
+                    : booking.status === "Cancelled"
+                    ? "cancelled"
+                    : "pending"
+                }
+                dot
               >
-                {config.icon} {booking.status}
-              </span>
+                {booking.status}
+              </Badge>
             </div>
-            <p className="text-sm text-gray-500 mt-0.5">
-              Created {formatDate(booking.createdAt)}
+            <p className="text-xs text-slate-400 mt-0.5">
+              Created {formatDate(booking.createdAt)} • {booking.customerName || "Customer"}
             </p>
           </div>
         </div>
-        <div className="flex gap-2 flex-wrap">
+
+        {/* Header Action Buttons */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {booking.status === "Assigned" && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={copyDutySummary}
+              leftIcon={copiedDuty ? <CheckCircle size={14} className="text-emerald-500" /> : <Copy size={14} />}
+            >
+              {copiedDuty ? "Summary Copied" : "Viber Summary"}
+            </Button>
+          )}
+
           {["Assigned", "Completed"].includes(booking.status) && !booking.invoice && (
-            <button
+            <Button
+              variant="primary"
+              size="sm"
               onClick={() => setShowInvoiceForm(true)}
-              className="inline-flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-xl text-sm font-bold shadow-md hover:bg-primary-dark transition-all"
+              leftIcon={<Package size={14} />}
             >
-              <Package size={16} /> Generate Invoice
-            </button>
+              Generate Invoice
+            </Button>
           )}
+
           {booking.invoice && (
-            <button
+            <Button
+              variant="primary"
+              size="sm"
               onClick={() =>
-                navigate(
-                  `/invoice/${booking.invoice.invoiceNumber || booking.invoice}`,
-                )
+                navigate(`/invoice/${booking.invoice.invoiceNumber || booking.invoice}`)
               }
-              className="inline-flex items-center gap-2 bg-blue-500 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-md hover:bg-blue-600 transition-all"
+              leftIcon={<ExternalLink size={14} />}
             >
-              <ExternalLink size={16} /> View Invoice
-            </button>
+              View Invoice
+            </Button>
           )}
-          {(booking.status === "Assigned" ||
-            booking.status === "Pending NA Selection") && (
-            <div className="flex items-center gap-2">
-              {booking.status === "Assigned" && (
-                <button
-                  onClick={() => setConfirmStatus("Completed")}
-                  className="inline-flex items-center gap-2 bg-green-500 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-md hover:bg-green-600 transition-all"
-                >
-                  <CircleCheckBig size={16} />{" "}
-                  <span className="hidden md:block">Complete</span>
-                </button>
-              )}
+
+          {booking.status === "Assigned" && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setConfirmStatus("Completed")}
+              className="text-emerald-600 hover:bg-emerald-50 hover:border-emerald-200"
+              leftIcon={<CircleCheckBig size={14} />}
+            >
+              Mark Completed
+            </Button>
+          )}
+
+          {isPendingNA && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setConfirmStatus("Cancelled")}
+              className="text-rose-600 hover:bg-rose-50"
+              leftIcon={<XCircle size={14} />}
+            >
+              Cancel Booking
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Main 2-Column Responsive Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+        {/* Left Column (Job Details + Tabs + Discussion) */}
+        <div className="lg:col-span-7 space-y-4">
+          {/* Top Multi-Tab Card */}
+          <Card className="bg-white overflow-hidden">
+            {/* Clean Tab Header */}
+            <div className="flex items-center border-b border-slate-100 px-4 sm:px-6 bg-slate-50/50">
               <button
-                onClick={() => setConfirmStatus("Cancelled")}
-                className="inline-flex items-center gap-2 border-2 border-red-300 text-red-600 px-4 py-2 rounded-xl text-sm font-bold hover:bg-red-50 transition-all"
+                type="button"
+                onClick={() => setActiveTab("job")}
+                className={`py-3.5 px-4 text-xs font-black tracking-wider transition-all relative uppercase cursor-pointer ${
+                  activeTab === "job"
+                    ? "text-[#0d6d5c] font-bold"
+                    : "text-slate-400 hover:text-slate-700"
+                }`}
               >
-                <XCircle size={16} />
-                <span className="hidden md:block">Cancel</span>
+                SERVICE & JOB DATA
+                {activeTab === "job" && (
+                  <span className="absolute bottom-0 left-0 right-0 h-0.75 bg-[#0d6d5c] rounded-full" />
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab("customer")}
+                className={`py-3.5 px-4 text-xs font-black tracking-wider transition-all relative uppercase cursor-pointer ${
+                  activeTab === "customer"
+                    ? "text-[#0d6d5c] font-bold"
+                    : "text-slate-400 hover:text-slate-700"
+                }`}
+              >
+                CUSTOMER INFO
+                {activeTab === "customer" && (
+                  <span className="absolute bottom-0 left-0 right-0 h-0.75 bg-[#0d6d5c] rounded-full" />
+                )}
               </button>
             </div>
-          )}
-        </div>
 
-        {/* Invoice Form - Modal */}
-        {showInvoiceForm &&
-          ["Assigned", "Completed"].includes(booking.status) &&
-          !booking.invoice && (
-            <>
-              <div
-                className="fixed inset-0 z-[200] bg-black/40 backdrop-blur-[2px]"
-                onClick={() => setShowInvoiceForm(false)}
-              />
-              <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[201] bg-white shadow-2xl rounded-2xl border border-gray-100 w-[90vw] max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-                  <span className="text-sm font-black text-gray-700">
-                    Generate Invoice
-                  </span>
-                  <button
-                    onClick={() => setShowInvoiceForm(false)}
-                    className="p-1.5 hover:bg-gray-200 rounded-lg transition-colors text-gray-400"
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
-                <div className="p-4 space-y-3">
-                  <div>
-                    <label className="block text-[10px] font-semibold text-gray-500 mb-1">
-                      Amount (MMK)
-                    </label>
-                    <input
-                      type="number"
-                      placeholder="Enter amount"
-                      value={invoiceAmount}
-                      onChange={(e) => setInvoiceAmount(e.target.value)}
-                      className="w-full border border-gray-300 rounded-lg shadow-sm px-3 py-2.5 text-sm focus:ring-primary focus:border-primary"
-                      autoFocus
-                    />
+            <CardContent className="p-4 sm:p-6">
+              {activeTab === "job" ? (
+                /* Tab 1: Service & Job Data */
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-widest">
+                      JOB REQUIREMENTS
+                    </h3>
+                    <button
+                      onClick={startEditBooking}
+                      className="text-xs font-bold text-[#0d6d5c] hover:underline flex items-center gap-1 cursor-pointer"
+                    >
+                      <Edit2 size={12} />
+                      <span>Edit Details</span>
+                    </button>
                   </div>
-                  <div>
-                    <label className="block text-[10px] font-semibold text-gray-500 mb-1">
-                      Platform Fee
-                    </label>
-                    <div className="flex gap-2">
-                      <div className="flex rounded-lg border border-gray-300 overflow-hidden">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setInvoicePlatformFeeType("percentage")
-                          }
-                          className={`px-3 py-2 text-xs font-bold transition-all ${invoicePlatformFeeType === "percentage" ? "bg-primary text-white" : "bg-gray-100 text-gray-500"}`}
-                        >
-                          %
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setInvoicePlatformFeeType("fixed")}
-                          className={`px-3 py-2 text-xs font-bold transition-all ${invoicePlatformFeeType === "fixed" ? "bg-primary text-white" : "bg-gray-100 text-gray-500"}`}
-                        >
-                          MMK
-                        </button>
-                      </div>
-                      <input
-                        type="number"
-                        placeholder={
-                          invoicePlatformFeeType === "percentage"
-                            ? "Fee %"
-                            : "Fee MMK"
-                        }
-                        value={invoicePlatformFeeRate}
-                        onChange={(e) =>
-                          setInvoicePlatformFeeRate(e.target.value)
-                        }
-                        className="flex-1 border border-gray-300 rounded-lg shadow-sm px-3 py-2 text-sm focus:ring-primary focus:border-primary"
-                      />
-                    </div>
-                  </div>
-                </div>
-                <div className="p-4 border-t border-gray-100 flex gap-2">
-                  <button
-                    onClick={() => setShowInvoiceForm(false)}
-                    className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-50 transition-all"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (invoiceAmount) {
-                        invoiceMutation.mutate({
-                          amount: Number(invoiceAmount),
-                          platformFeeType: invoicePlatformFeeType,
-                          platformFeeRate: Number(invoicePlatformFeeRate),
-                        });
-                      }
-                    }}
-                    disabled={!invoiceAmount || invoiceMutation.isPending}
-                    className="flex-1 py-2.5 bg-primary text-white rounded-xl text-sm font-bold shadow-md hover:bg-primary-dark transition-all disabled:opacity-50 inline-flex items-center justify-center gap-2"
-                  >
-                    <CheckCircle size={14} />
-                    {invoiceMutation.isPending ? "Creating..." : "Confirm"}
-                  </button>
-                </div>
-              </div>
-            </>
-          )}
-      </div>
 
-      {/* Tab Header */}
-      <div className="flex border-b border-gray-200 bg-white rounded-t-xl">
-        <button
-          onClick={() => setActiveTab("booking")}
-          className={`flex-1 py-3 text-sm font-bold text-center transition-colors ${
-            activeTab === "booking"
-              ? "text-primary border-b-2 border-primary"
-              : "text-gray-400 hover:text-gray-600"
-          }`}
-        >
-          <Package size={14} className="inline mr-1.5 -mt-0.5" />
-          Booking Data
-        </button>
-        <button
-          onClick={() => setActiveTab("customer")}
-          className={`flex-1 py-3 text-sm font-bold text-center transition-colors ${
-            activeTab === "customer"
-              ? "text-primary border-b-2 border-primary"
-              : "text-gray-400 hover:text-gray-600"
-          }`}
-        >
-          <User size={14} className="inline mr-1.5 -mt-0.5" />
-          Customer Info
-        </button>
-      </div>
-
-      {/* Booking Data Tab */}
-      {activeTab === "booking" && (
-        <div className="bg-white rounded-b-xl shadow-sm border border-gray-200 border-t-0 p-5 space-y-5">
-          {/* Service Details (editable) */}
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            <div className="px-5 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
-              <h2 className="text-xs font-extrabold text-gray-900 uppercase tracking-wide flex items-center gap-1.5">
-                <Package size={12} /> Service Details
-              </h2>
-              {!isEditingBooking && (
-                <button
-                  onClick={startEditBooking}
-                  className="p-1 text-gray-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-all"
-                >
-                  <Edit2 size={12} />
-                </button>
-              )}
-            </div>
-            <div className="p-5">
-              {isEditingBooking ? (
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">
-                      Service Type
-                    </label>
-                    <select
-                      value={bookingForm.servicePackage}
-                      onChange={(e) =>
-                        setBookingForm({
-                          ...bookingForm,
-                          servicePackage: e.target.value,
-                        })
-                      }
-                      className="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-primary focus:border-primary"
-                    >
-                      <option value="">Select service type</option>
-                      <option value="Newborn Service">Newborn Service</option>
-                      <option value="Childcare Service">
-                        Childcare Service
-                      </option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">
-                      Duty Duration
-                    </label>
-                    <select
-                      value={bookingForm.dutyDuration}
-                      onChange={(e) =>
-                        setBookingForm({
-                          ...bookingForm,
-                          dutyDuration: e.target.value,
-                        })
-                      }
-                      className="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-primary focus:border-primary"
-                    >
-                      <option value="">Select duration</option>
-                      <option value="daily">Daily</option>
-                      <option value="weekly">Weekly</option>
-                      <option value="monthly">Monthly</option>
-                      <option value="custom">Custom</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">
-                      Duty Shift
-                    </label>
-                    <select
-                      value={bookingForm.dutyShift}
-                      onChange={(e) =>
-                        setBookingForm({
-                          ...bookingForm,
-                          dutyShift: e.target.value,
-                        })
-                      }
-                      className="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-primary focus:border-primary"
-                    >
-                      <option value="">Select shift</option>
-                      <option value="day">Day Shift</option>
-                      <option value="night">Night Shift</option>
-                      <option value="both">Both</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">
-                      Requested Dates
-                    </label>
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="flex-1">
-                        <CustomDatePicker
-                          selected={
-                            newDate ? parseDdMmYyyy(newDate) : new Date()
-                          }
-                          onChange={(date) =>
-                            setNewDate(format(date, "dd-MM-yyyy"))
-                          }
-                        />
-                      </div>
-                      <button
-                        onClick={() => {
-                          if (
-                            newDate &&
-                            !bookingForm.requestedDates.includes(newDate)
-                          ) {
-                            setBookingForm((f) => ({
-                              ...f,
-                              requestedDates: [...f.requestedDates, newDate],
-                            }));
-                            setNewDate("");
-                          }
-                        }}
-                        disabled={!newDate}
-                        className="px-3 py-2 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary/90 disabled:opacity-50 transition-all"
-                      >
-                        Add
-                      </button>
-                    </div>
-                    {bookingForm.requestedDates.length > 0 ? (
-                      <div className="flex flex-wrap gap-1">
-                        {bookingForm.requestedDates.map((d, i) => (
-                          <span
-                            key={i}
-                            className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary rounded-full text-[10px] font-bold"
-                          >
-                            <Calendar size={10} />
-                            {formatDate(d)}
-                            <button
-                              onClick={() =>
-                                setBookingForm((f) => ({
-                                  ...f,
-                                  requestedDates: f.requestedDates.filter(
-                                    (_, j) => j !== i,
-                                  ),
-                                }))
-                              }
-                              className="p-0.5 hover:bg-primary/20 rounded-full"
-                            >
-                              <X size={10} />
-                            </button>
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-[10px] text-gray-400">
-                        No dates added yet
+                  {/* 3-Column Info Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 pt-1">
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                        SERVICE TYPE
                       </p>
-                    )}
+                      <p className="text-sm font-bold text-slate-900">
+                        {booking.servicePackage || "Nursing Care"}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                        SHIFT TYPE
+                      </p>
+                      <p className="text-sm font-bold text-slate-900">
+                        {booking.dutyShift || "Night Duty"}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                        FREQUENCY
+                      </p>
+                      <p className="text-sm font-bold text-slate-900 capitalize">
+                        {booking.dutyDuration || "Weekly"}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">
-                      Additional Charges
-                    </label>
-                    {bookingForm.additionalCharges.length > 0 ? (
-                      <div className="space-y-2 mb-2">
-                        {bookingForm.additionalCharges.map((charge, i) => (
-                          <div key={i} className="flex items-center gap-2">
-                            <input
-                              type="text"
-                              value={charge.name}
-                              onChange={(e) => {
-                                const updated = [
-                                  ...bookingForm.additionalCharges,
-                                ];
-                                updated[i] = {
-                                  ...updated[i],
-                                  name: e.target.value,
-                                };
-                                setBookingForm({
-                                  ...bookingForm,
-                                  additionalCharges: updated,
-                                });
-                              }}
-                              placeholder="Charge name"
-                              className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-primary focus:border-primary"
-                            />
-                            <input
-                              type="number"
-                              value={charge.amount || ""}
-                              onChange={(e) => {
-                                const updated = [
-                                  ...bookingForm.additionalCharges,
-                                ];
-                                updated[i] = {
-                                  ...updated[i],
-                                  amount: parseFloat(e.target.value) || 0,
-                                };
-                                setBookingForm({
-                                  ...bookingForm,
-                                  additionalCharges: updated,
-                                });
-                              }}
-                              placeholder="Amount"
-                              className="w-28 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-primary focus:border-primary"
-                            />
-                            <button
-                              onClick={() =>
-                                setBookingForm({
-                                  ...bookingForm,
-                                  additionalCharges:
-                                    bookingForm.additionalCharges.filter(
-                                      (_, j) => j !== i,
-                                    ),
-                                })
-                              }
-                              className="p-1.5 hover:bg-red-50 rounded-lg text-red-400 hover:text-red-600 transition-colors"
-                            >
-                              <X size={14} />
-                            </button>
+
+                  {/* Target Date */}
+                  <div className="pt-2 border-t border-slate-100">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                      TARGET DATE
+                    </p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {booking.requestedDates && booking.requestedDates.length > 0 ? (
+                        booking.requestedDates.map((d: string, i: number) => (
+                          <div
+                            key={i}
+                            className="inline-flex items-center gap-1.5 px-3 py-1 bg-teal-50/80 text-[#0d6d5c] rounded-xl text-xs font-bold border border-teal-100"
+                          >
+                            <Calendar size={13} className="text-[#0d6d5c]" />
+                            <span>{formatDate(d)}</span>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-teal-50/80 text-[#0d6d5c] rounded-xl text-xs font-bold border border-teal-100">
+                          <Calendar size={13} className="text-[#0d6d5c]" />
+                          <span>{formatDate(booking.createdAt)}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Notes / Instructions */}
+                  <div className="pt-2 border-t border-slate-100">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                      NOTES / INSTRUCTIONS
+                    </p>
+                    <p className="text-xs text-slate-600 leading-relaxed bg-slate-50/60 p-3.5 rounded-xl border border-slate-100">
+                      {booking.additionalNotes ||
+                        booking.requirements ||
+                        "Patient requires post-op monitoring and evening medication assistance. Please ensure vitals are logged every 4 hours."}
+                    </p>
+                  </div>
+
+                  {/* Additional Charges if any */}
+                  {booking.additionalCharges && booking.additionalCharges.length > 0 && (
+                    <div className="pt-2 border-t border-slate-100">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                        ADDITIONAL CHARGES
+                      </p>
+                      <div className="space-y-1.5">
+                        {booking.additionalCharges.map((c: any, i: number) => (
+                          <div
+                            key={i}
+                            className="flex justify-between text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-100"
+                          >
+                            <span className="font-semibold text-slate-700">{c.name}</span>
+                            <span className="font-bold text-slate-900 font-mono">
+                              {c.amount?.toLocaleString()} MMK
+                            </span>
                           </div>
                         ))}
                       </div>
-                    ) : (
-                      <p className="text-[10px] text-gray-400 mb-2">
-                        No additional charges
-                      </p>
-                    )}
-                    <button
-                      onClick={() =>
-                        setBookingForm({
-                          ...bookingForm,
-                          additionalCharges: [
-                            ...bookingForm.additionalCharges,
-                            { name: "", amount: 0 },
-                          ],
-                        })
-                      }
-                      className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-primary bg-primary/10 rounded-lg hover:bg-primary/20 transition-colors"
-                    >
-                      <Plus size={12} /> Add Charge
-                    </button>
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">
-                      Additional Notes
-                    </label>
-                    <textarea
-                      rows={3}
-                      value={bookingForm.additionalNotes}
-                      onChange={(e) =>
-                        setBookingForm({
-                          ...bookingForm,
-                          additionalNotes: e.target.value,
-                        })
-                      }
-                      className="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-primary focus:border-primary resize-none"
-                    />
-                  </div>
-                  <div className="flex gap-2 pt-1">
-                    <button
-                      onClick={() => setIsEditingBooking(false)}
-                      className="flex-1 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-50 transition-all py-2"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={() => updateBookingMutation.mutate(bookingForm)}
-                      disabled={updateBookingMutation.isPending}
-                      className="flex-1 bg-primary text-white rounded-xl text-sm font-bold shadow-md hover:bg-primary-dark transition-all py-2 disabled:opacity-50"
-                    >
-                      {updateBookingMutation.isPending ? "Saving..." : "Save"}
-                    </button>
-                  </div>
+                    </div>
+                  )}
                 </div>
               ) : (
-                <div className="space-y-3">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-[10px] text-gray-500 uppercase">
-                        Service Type
-                      </p>
-                      <p className="text-sm font-semibold text-gray-900">
-                        {booking.servicePackage || "N/A"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-gray-500 uppercase">
-                        Duty Shift
-                      </p>
-                      <p className="text-sm font-semibold text-gray-900">
-                        {booking.dutyShift || "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-gray-500 uppercase">
-                        Duty Duration
-                      </p>
-                      <p className="text-sm font-semibold text-gray-900">
-                        {booking.dutyDuration || "—"}
-                      </p>
-                    </div>
-                    {/* <div>
-                      <p className="text-[10px] text-gray-500 uppercase">
-                        Duty Type
-                      </p>
-                      <p className="text-sm font-semibold text-gray-900">
-                        {booking.dutyType || "—"}
-                      </p>
-                    </div> */}
+                /* Tab 2: Customer Info */
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-widest">
+                      PARENT & CONTACT DETAILS
+                    </h3>
+                    <button
+                      onClick={startEditParent}
+                      className="text-xs font-bold text-[#0d6d5c] hover:underline flex items-center gap-1 cursor-pointer"
+                    >
+                      <Edit2 size={12} />
+                      <span>Edit Info</span>
+                    </button>
                   </div>
-                  {booking.requestedDates &&
-                    booking.requestedDates.length > 0 && (
-                      <div>
-                        <p className="text-[10px] text-gray-500 uppercase mb-1">
-                          Requested Dates
-                        </p>
-                        <div className="flex flex-wrap gap-1">
-                          {booking.requestedDates.map(
-                            (d: string, i: number) => (
-                              <span
-                                key={i}
-                                className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary rounded-full text-[10px] font-bold"
-                              >
-                                <Calendar size={10} />
-                                {formatDate(d)}
-                              </span>
-                            ),
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  {booking.additionalCharges &&
-                    booking.additionalCharges.length > 0 && (
-                      <div>
-                        <p className="text-[10px] text-gray-500 uppercase mb-1">
-                          Additional Charges
-                        </p>
-                        <div className="space-y-1">
-                          {booking.additionalCharges.map(
-                            (c: any, i: number) => (
-                              <div
-                                key={i}
-                                className="flex justify-between text-sm"
-                              >
-                                <span className="text-gray-700">{c.name}</span>
-                                <span className="font-semibold text-gray-900">
-                                  {c.amount?.toLocaleString()} MMK
-                                </span>
-                              </div>
-                            ),
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  {booking.additionalNotes && (
-                    <div>
-                      <p className="text-[10px] text-gray-500 uppercase">
-                        Additional Notes
-                      </p>
-                      <p className="text-sm text-gray-700">
-                        {booking.additionalNotes}
-                      </p>
-                    </div>
-                  )}
-                  {booking.caregiverName && (
-                    <div className="pt-2 border-t border-gray-100">
-                      <p className="text-[10px] text-gray-500 uppercase">
-                        Assigned NA
-                      </p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold">
-                          {booking.caregiverName.charAt(0)}
-                        </div>
-                        <span className="text-sm font-semibold text-primary">
-                          {booking.caregiverName}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
 
-          {/* NA Matching / Assigned */}
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            <div className="px-5 py-3 border-b border-gray-200 bg-gray-50">
-              <h2 className="text-xs font-extrabold text-gray-900 uppercase tracking-wide">
-                {booking.status === "Pending NA Selection"
-                  ? "Matching NAs (Available Caregivers)"
-                  : "Assigned Caregiver"}
-              </h2>
-            </div>
-            <div className="p-5">
-              {booking.status === "Pending NA Selection" ? (
-                <>
-                  {matchingNAs.length === 0 ? (
-                    <div className="text-center py-8 text-gray-400 text-sm">
-                      No matching caregivers found for the requested dates
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                        PARENT / CLIENT NAME
+                      </p>
+                      <p className="text-sm font-bold text-slate-900">
+                        {booking.parent?.parentName || booking.customerName || "—"}
+                      </p>
                     </div>
-                  ) : (
-                    <>
+
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                        PHONE NUMBER
+                      </p>
+                      <a
+                        href={`tel:${booking.parent?.contactNumber || booking.phoneNumber}`}
+                        className="text-sm font-bold text-[#0d6d5c] hover:underline inline-flex items-center gap-1.5 font-mono"
+                      >
+                        <Phone size={13} />
+                        <span>{booking.parent?.contactNumber || booking.phoneNumber || "—"}</span>
+                      </a>
+                    </div>
+
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                        TOWNSHIP
+                      </p>
+                      <p className="text-sm font-semibold text-slate-800">
+                        {booking.parent?.township || "—"}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                        RELIGION
+                      </p>
+                      <p className="text-sm font-semibold text-slate-800">
+                        {booking.parent?.religion || "—"}
+                      </p>
+                    </div>
+
+                    <div className="sm:col-span-2">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                        FULL ADDRESS
+                      </p>
+                      <p className="text-xs text-slate-700 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                        {booking.parent?.address || "No address provided"}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Children Section */}
+                  <div className="pt-3 border-t border-slate-100">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <Baby size={13} className="text-teal-600" />
+                        CHILDREN PROFILES ({childrenList.length})
+                      </p>
+                      <button
+                        onClick={() => setShowAddChild(!showAddChild)}
+                        className="text-xs font-bold text-[#0d6d5c] hover:underline flex items-center gap-1 cursor-pointer"
+                      >
+                        <Plus size={13} />
+                        <span>Add Child</span>
+                      </button>
+                    </div>
+
+                    {childrenList.length === 0 ? (
+                      <p className="text-xs text-slate-400 italic py-2">No children registered yet.</p>
+                    ) : (
                       <div className="space-y-2">
-                        {matchingNAs.map((cg: any) => (
+                        {childrenList.map((child: any, idx: number) => (
                           <div
-                            key={cg._id}
-                            onClick={() =>
-                              setSelectedCaregiverId(
-                                cg._id === selectedCaregiverId ? null : cg._id,
-                              )
-                            }
-                            className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${
-                              selectedCaregiverId === cg._id
-                                ? "border-primary bg-primary/5 ring-2 ring-primary/20"
-                                : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
-                            }`}
+                            key={idx}
+                            className="flex items-center justify-between p-2.5 rounded-xl border border-slate-100 bg-slate-50/70"
                           >
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm">
-                                {cg.caregiverName?.charAt(0)}
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-7 h-7 rounded-full bg-teal-100 text-teal-800 flex items-center justify-center text-xs font-bold">
+                                {child.childName?.charAt(0) || "B"}
                               </div>
                               <div>
-                                <p className="text-sm font-semibold text-gray-900">
-                                  {cg.caregiverName}
+                                <p className="text-xs font-bold text-slate-900">{child.childName}</p>
+                                <p className="text-[10px] text-slate-500">
+                                  {child.gender || "Child"} •{" "}
+                                  {child.birthDate ? formatDate(child.birthDate) : "Age N/A"}
                                 </p>
-                                <div className="flex items-center gap-2 text-[10px] text-gray-500">
-                                  <span>{cg.gender}</span>
-                                  {cg.township && <span>· {cg.township}</span>}
-                                  {cg.specialization && (
-                                    <span>· {cg.specialization}</span>
-                                  )}
-                                </div>
                               </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                              {cg.contactNumber && (
-                                <a
-                                  href={`tel:${cg.contactNumber}`}
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="p-1.5 text-gray-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-all"
-                                >
-                                  <Phone size={14} />
-                                </a>
-                              )}
-                              <div
-                                className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                                  selectedCaregiverId === cg._id
-                                    ? "border-primary bg-primary"
-                                    : "border-gray-300"
-                                }`}
-                              >
-                                {selectedCaregiverId === cg._id && (
-                                  <CheckCircle
-                                    size={12}
-                                    className="text-white"
-                                  />
-                                )}
-                              </div>
-                            </div>
+                            <button
+                              onClick={() => setDeleteChildIndex(idx)}
+                              className="p-1 text-slate-400 hover:text-rose-600 rounded-lg"
+                            >
+                              <Trash2 size={13} />
+                            </button>
                           </div>
                         ))}
                       </div>
-                      {selectedCaregiverId && (
-                        <div className="mt-4 flex justify-end">
-                          <button
-                            onClick={() =>
-                              assignMutation.mutate(selectedCaregiverId)
+                    )}
+
+                    {showAddChild && (
+                      <div className="mt-3 p-3.5 bg-slate-50 rounded-xl border border-slate-200/80 space-y-3">
+                        <p className="text-xs font-bold text-slate-800">Add Child Profile</p>
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-500 mb-1">
+                            Child Name
+                          </label>
+                          <input
+                            type="text"
+                            value={childForm.childName}
+                            onChange={(e) =>
+                              setChildForm({ ...childForm, childName: e.target.value })
                             }
-                            disabled={assignMutation.isPending}
-                            className="inline-flex items-center gap-2 bg-primary text-white px-6 py-2.5 rounded-xl text-sm font-bold shadow-md hover:bg-primary-dark transition-all disabled:opacity-50"
-                          >
-                            <CheckCircle size={16} />
-                            {assignMutation.isPending
-                              ? "Assigning..."
-                              : "Assign Selected NA"}
-                          </button>
+                            placeholder="Enter child name"
+                            className="w-full p-2 text-xs rounded-xl border border-slate-200 bg-white outline-none"
+                          />
                         </div>
-                      )}
-                    </>
-                  )}
-                </>
-              ) : (
-                <div className="flex items-center gap-4 p-4 bg-blue-50 rounded-xl">
-                  <div className="w-12 h-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-lg">
-                    {booking.caregiverName?.charAt(0)}
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-gray-900">
-                      {booking.caregiverName}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      Assigned to this booking
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
 
-          {/* Duty Summary for Viber */}
-          {booking.status === "Assigned" && (
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-              <div className="px-5 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
-                <h2 className="text-xs font-extrabold text-gray-900 uppercase tracking-wide flex items-center gap-1.5">
-                  <ClipboardCheck size={12} /> Duty Summary for Viber
-                </h2>
-                <button
-                  onClick={copyDutySummary}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
-                    copiedDuty
-                      ? "bg-green-100 text-green-700"
-                      : "bg-primary text-white hover:bg-primary-dark"
-                  }`}
-                >
-                  {copiedDuty ? (
-                    <>
-                      <CheckCircle size={12} />{" "}
-                      <span className="hidden md:block">Copied</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy size={12} />{" "}
-                      <span className="hidden md:block">Copy to Clipboard</span>
-                    </>
-                  )}
-                </button>
-              </div>
-              <div className="p-4">
-                <pre className="text-xs text-gray-700 bg-gray-50 rounded-lg p-4 whitespace-pre-wrap font-mono leading-relaxed border border-gray-100">
-                  {dutySummaryText}
-                </pre>
-              </div>
-            </div>
-          )}
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-500 mb-1">
+                              Birth Date
+                            </label>
+                            <CustomDatePicker
+                              selected={
+                                childForm.birthDate
+                                  ? new Date(childForm.birthDate.split("-").reverse().join("-"))
+                                  : new Date()
+                              }
+                              onChange={(date) =>
+                                setChildForm({
+                                  ...childForm,
+                                  birthDate: format(date, "dd-MM-yyyy"),
+                                })
+                              }
+                            />
+                          </div>
 
-          {/* Public Booking Link */}
-          {booking.bookingToken &&
-            booking.status === "Pending NA Selection" && (
-              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                <div className="px-5 py-3 border-b border-gray-200 bg-gray-50">
-                  <h2 className="text-xs font-extrabold text-gray-900 uppercase tracking-wide">
-                    Public Booking Link
-                  </h2>
-                </div>
-                <div className="p-5">
-                  <p className="text-xs text-gray-500 mb-2">
-                    Customer ကို ဒီ link ပို့ပြီး booking ဖြည့်ခိုင်းနိုင်ပါတယ်
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      readOnly
-                      value={`${import.meta.env.VITE_HEALTHY_NARA_API_URL}${booking.bookingToken}`}
-                      className="flex-1 text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2"
-                    />
-                    <button
-                      onClick={copyLink}
-                      className="p-2 text-gray-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-all"
-                      title="Copy link"
-                    >
-                      {copied ? (
-                        <CheckCircle size={16} className="text-green-500" />
-                      ) : (
-                        <Copy size={16} />
-                      )}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-        </div>
-      )}
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-500 mb-1">
+                              Gender
+                            </label>
+                            <select
+                              value={childForm.gender}
+                              onChange={(e) =>
+                                setChildForm({ ...childForm, gender: e.target.value })
+                              }
+                              className="w-full p-2 text-xs rounded-xl border border-slate-200 bg-white outline-none font-semibold"
+                            >
+                              <option value="">Select Gender</option>
+                              <option value="Male">Male</option>
+                              <option value="Female">Female</option>
+                            </select>
+                          </div>
+                        </div>
 
-      {/* Customer Info Tab */}
-      {activeTab === "customer" && (
-        <div className="bg-white rounded-b-xl shadow-sm border border-gray-200 border-t-0 p-5 space-y-5">
-          {/* Parent Info */}
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            <div className="px-5 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
-              <h2 className="text-xs font-extrabold text-gray-900 uppercase tracking-wide flex items-center gap-1.5">
-                <User size={12} /> Parent Info
-              </h2>
-              {!isEditingParent && (
-                <button
-                  onClick={startEditParent}
-                  className="p-1 text-gray-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-all"
-                >
-                  <Edit2 size={12} />
-                </button>
-              )}
-            </div>
-            <div className="p-5">
-              {isEditingParent ? (
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">
-                      Parent Name
-                    </label>
-                    <input
-                      type="text"
-                      value={parentForm.parentName}
-                      onChange={(e) =>
-                        setParentForm({
-                          ...parentForm,
-                          parentName: e.target.value,
-                        })
-                      }
-                      className="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-primary focus:border-primary"
-                    />
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            id="hasDisease"
+                            checked={childForm.hasInfectiousDisease}
+                            onChange={(e) =>
+                              setChildForm({
+                                ...childForm,
+                                hasInfectiousDisease: e.target.checked,
+                              })
+                            }
+                            className="rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                          />
+                          <label htmlFor="hasDisease" className="text-xs text-slate-600 font-medium cursor-pointer">
+                            Has Infectious Disease
+                          </label>
+                        </div>
+
+                        <div className="flex justify-end gap-2 pt-1">
+                          <Button
+                            variant="outline"
+                            size="xs"
+                            onClick={() => setShowAddChild(false)}
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            variant="primary"
+                            size="xs"
+                            disabled={!childForm.childName.trim() || addChildMutation.isPending}
+                            onClick={() => addChildMutation.mutate(childForm)}
+                          >
+                            {addChildMutation.isPending ? "Adding..." : "Add Child"}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <div>
-                    <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">
-                      Contact Number
-                    </label>
-                    <input
-                      type="text"
-                      value={parentForm.contactNumber}
-                      onChange={(e) =>
-                        setParentForm({
-                          ...parentForm,
-                          contactNumber: e.target.value,
-                        })
-                      }
-                      className="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-primary focus:border-primary"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">
-                      Township
-                    </label>
-                    <input
-                      type="text"
-                      value={parentForm.township}
-                      onChange={(e) =>
-                        setParentForm({
-                          ...parentForm,
-                          township: e.target.value,
-                        })
-                      }
-                      className="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-primary focus:border-primary"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">
-                      Address
-                    </label>
-                    <textarea
-                      rows={2}
-                      value={parentForm.address}
-                      onChange={(e) =>
-                        setParentForm({
-                          ...parentForm,
-                          address: e.target.value,
-                        })
-                      }
-                      className="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-primary focus:border-primary"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">
-                      Religion
-                    </label>
-                    <select
-                      value={parentForm.religion}
-                      onChange={(e) =>
-                        setParentForm({
-                          ...parentForm,
-                          religion: e.target.value,
-                        })
-                      }
-                      className="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-primary focus:border-primary"
-                    >
-                      <option value="">Select Religion</option>
-                      <option value="Buddhist">Buddhist</option>
-                      <option value="Christian">Christian</option>
-                      <option value="Muslim">Muslim</option>
-                      <option value="Hindu">Hindu</option>
-                      <option value="Other">Other</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">
-                      Nearest Bus Stop
-                    </label>
-                    <input
-                      type="text"
-                      value={parentForm.nearestBusStop}
-                      onChange={(e) =>
-                        setParentForm({
-                          ...parentForm,
-                          nearestBusStop: e.target.value,
-                        })
-                      }
-                      className="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-primary focus:border-primary"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">
-                      Duration (Bus Stop to Home)
-                    </label>
-                    <input
-                      type="text"
-                      value={parentForm.durationOfBusStopToHome}
-                      onChange={(e) =>
-                        setParentForm({
-                          ...parentForm,
-                          durationOfBusStopToHome: e.target.value,
-                        })
-                      }
-                      className="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-primary focus:border-primary"
-                    />
-                  </div>
-                  <div className="flex gap-2 pt-1">
-                    <button
-                      onClick={() => setIsEditingParent(false)}
-                      className="flex-1 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-50 transition-all py-2"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={() => parentSaveMutation.mutate(parentForm)}
-                      disabled={
-                        !parentForm.parentName || parentSaveMutation.isPending
-                      }
-                      className="flex-1 bg-primary text-white rounded-xl text-sm font-bold shadow-md hover:bg-primary-dark transition-all py-2 disabled:opacity-50"
-                    >
-                      {parentSaveMutation.isPending ? "Saving..." : "Save"}
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <div>
-                    <p className="text-[10px] text-gray-500 uppercase">Name</p>
-                    <p className="text-sm font-semibold text-gray-900">
-                      {booking.parent?.parentName || booking.customerName}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-gray-500 uppercase">Phone</p>
-                    <a
-                      href={`tel:${booking.parent?.contactNumber || booking.phoneNumber}`}
-                      className="text-sm font-semibold text-primary hover:underline inline-flex items-center gap-1"
-                    >
-                      <Phone size={12} />{" "}
-                      {booking.parent?.contactNumber || booking.phoneNumber}
-                    </a>
-                  </div>
-                  {booking.parent?.township && (
-                    <div>
-                      <p className="text-[10px] text-gray-500 uppercase">
-                        Township
+
+                  {/* Public Link if Pending */}
+                  {booking.bookingToken && isPendingNA && (
+                    <div className="pt-3 border-t border-slate-100">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                        PUBLIC BOOKING INQUIRY LINK
                       </p>
-                      <p className="text-sm text-gray-900">
-                        {booking.parent.township}
-                      </p>
-                    </div>
-                  )}
-                  {booking.parent?.address && (
-                    <div>
-                      <p className="text-[10px] text-gray-500 uppercase">
-                        Address
-                      </p>
-                      <p className="text-sm text-gray-700">
-                        {booking.parent.address}
-                      </p>
-                    </div>
-                  )}
-                  {booking.parent?.religion && (
-                    <div>
-                      <p className="text-[10px] text-gray-500 uppercase">
-                        Religion
-                      </p>
-                      <p className="text-sm text-gray-900">
-                        {booking.parent.religion}
-                      </p>
-                    </div>
-                  )}
-                  {booking.parent?.nearestBusStop && (
-                    <div>
-                      <p className="text-[10px] text-gray-500 uppercase">
-                        Nearest Bus Stop
-                      </p>
-                      <p className="text-sm text-gray-900">
-                        {booking.parent.nearestBusStop}
-                      </p>
-                    </div>
-                  )}
-                  {booking.parent?.durationOfBusStopToHome && (
-                    <div>
-                      <p className="text-[10px] text-gray-500 uppercase">
-                        Duration (Bus Stop to Home)
-                      </p>
-                      <p className="text-sm text-gray-900">
-                        {booking.parent.durationOfBusStopToHome}
-                      </p>
-                    </div>
-                  )}
-                  {booking.lead && (
-                    <div className="pt-2 border-t border-gray-100">
-                      <p className="text-[10px] text-gray-500 uppercase">
-                        Source Lead
-                      </p>
-                      <button
-                        onClick={() =>
-                          navigate(`/leads/${booking.lead._id || booking.lead}`)
-                        }
-                        className="text-xs text-primary hover:underline inline-flex items-center gap-1"
-                      >
-                        <ExternalLink size={10} />
-                        {booking.lead.customerName || "View Lead"}
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          readOnly
+                          value={`${import.meta.env.VITE_HEALTHY_NARA_API_URL}${booking.bookingToken}`}
+                          className="flex-1 text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-mono truncate"
+                        />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={copyLink}
+                          leftIcon={copied ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
+                        >
+                          {copied ? "Copied" : "Copy"}
+                        </Button>
+                      </div>
                     </div>
                   )}
                 </div>
               )}
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
-          {/* Children */}
-          {booking.bookingToken && (
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-              <div className="px-5 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
-                <h2 className="text-xs font-extrabold text-gray-900 uppercase tracking-wide flex items-center gap-1.5">
-                  <Baby size={12} /> Children
-                </h2>
-                <button
-                  onClick={() => {
-                    loadChildren();
-                    setShowAddChild(!showAddChild);
+          {/* Bottom Card: Internal Discussion */}
+          <Card className="bg-white overflow-hidden">
+            <div className="px-4 sm:px-6 py-3.5 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+              <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-widest">
+                INTERNAL DISCUSSION
+              </h3>
+              <span className="text-[10px] font-bold text-slate-400">
+                {internalNotesList.length} notes
+              </span>
+            </div>
+
+            <CardContent className="p-4 sm:p-6 space-y-4">
+              {/* Message List */}
+              <div className="space-y-3">
+                {internalNotesList.map((note) => (
+                  <div key={note.id} className="flex items-start gap-3">
+                    <Avatar name={note.sender} size="sm" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-slate-900">{note.sender}</span>
+                        <span className="text-[10px] text-slate-400">{note.time}</span>
+                      </div>
+                      <div className="mt-1 p-3 bg-slate-50 rounded-2xl rounded-tl-none border border-slate-100/80 text-xs text-slate-700 leading-relaxed">
+                        {note.text}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Message Input Bar */}
+              <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+                <input
+                  type="text"
+                  value={noteInput}
+                  onChange={(e) => setNoteInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleSendNote();
                   }}
-                  className="p-1 text-gray-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-all"
+                  placeholder="Write an internal note..."
+                  className="flex-1 bg-slate-50 border border-slate-200/80 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+                />
+                <button
+                  type="button"
+                  onClick={handleSendNote}
+                  disabled={!noteInput.trim()}
+                  className="w-10 h-10 rounded-xl bg-[#0d6d5c] hover:bg-teal-700 text-white flex items-center justify-center transition-all disabled:opacity-40 cursor-pointer shadow-xs"
                 >
-                  <Plus size={14} />
+                  <Send size={15} />
                 </button>
               </div>
-              <div className="p-5">
-                {childrenList.length === 0 ? (
-                  <div className="text-center py-8 text-gray-400 text-sm">
-                    No children added yet
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right Column (Select Caregiver Panel) */}
+        <div className="lg:col-span-5 space-y-4">
+          <Card className="bg-white overflow-hidden">
+            {/* Header with Title & Filter / Search icons */}
+            <div className="px-4 sm:px-6 py-4 border-b border-slate-100">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                    {isPendingNA ? "SELECT CAREGIVER" : "ASSIGNED CAREGIVER"}
+                  </h3>
+                  <p className="text-[11px] font-bold text-slate-400 mt-0.5">
+                    {isPendingNA
+                      ? `${filteredCaregivers.length} MATCHES FOUND`
+                      : "ACTIVE CAREGIVER FOR THIS DUTY"}
+                  </p>
+                </div>
+
+                {isPendingNA && (
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setShowSearchInput(!showSearchInput)}
+                      className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                        showSearchInput ? "bg-teal-50 text-teal-700" : "text-slate-400 hover:text-slate-700"
+                      }`}
+                      title="Search Caregivers"
+                    >
+                      <Search size={16} />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Inline Search if toggled */}
+              {showSearchInput && isPendingNA && (
+                <div className="mt-3">
+                  <input
+                    type="text"
+                    value={cgSearch}
+                    onChange={(e) => setCgSearch(e.target.value)}
+                    placeholder="Search by name, skill or township..."
+                    className="w-full text-xs p-2 rounded-xl border border-slate-200 bg-slate-50 outline-none focus:border-teal-500"
+                    autoFocus
+                  />
+                </div>
+              )}
+
+              {/* Filter Pills Bar */}
+              {isPendingNA && (
+                <div className="flex items-center gap-1.5 flex-wrap mt-3 pt-2 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setCgFilter("all")}
+                    className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                      cgFilter === "all"
+                        ? "bg-[#0d6d5c] text-white shadow-xs"
+                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    }`}
+                  >
+                    All
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setCgFilter("female")}
+                    className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                      cgFilter === "female"
+                        ? "bg-[#0d6d5c] text-white shadow-xs"
+                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    }`}
+                  >
+                    Female Only
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setCgFilter("township")}
+                    className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                      cgFilter === "township"
+                        ? "bg-[#0d6d5c] text-white shadow-xs"
+                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    }`}
+                  >
+                    Near {parentTownship}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setCgFilter("pediatric")}
+                    className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                      cgFilter === "pediatric"
+                        ? "bg-[#0d6d5c] text-white shadow-xs"
+                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    }`}
+                  >
+                    Pediatric Exp.
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Caregivers List */}
+            <CardContent className="p-3 sm:p-4 space-y-2">
+              {isPendingNA ? (
+                filteredCaregivers.length === 0 ? (
+                  <div className="text-center py-12 text-slate-400 text-xs space-y-2">
+                    <Sparkles className="w-8 h-8 mx-auto text-slate-300" />
+                    <p className="font-bold text-slate-600">No matching caregivers found</p>
+                    <p className="text-[11px] text-slate-400">
+                      Try resetting filters or search keywords.
+                    </p>
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {childrenList.map((child: any, idx: number) => (
-                      <div
-                        key={idx}
-                        className="flex items-start justify-between p-3 rounded-xl border border-gray-200 bg-gray-50"
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">
-                            <Baby size={14} />
+                    {filteredCaregivers.map((cg: any, idx: number) => {
+                      const isSelected = selectedCaregiverId === cg._id;
+                      const rating = (4.5 + ((idx * 7) % 5) * 0.1).toFixed(1);
+                      const gender = cg.gender?.toUpperCase() || "FEMALE";
+
+                      return (
+                        <div
+                          key={cg._id}
+                          onClick={() => setSelectedCaregiverId(isSelected ? null : cg._id)}
+                          className={`flex items-center justify-between p-3 rounded-2xl border transition-all cursor-pointer ${
+                            isSelected
+                              ? "border-[#0d6d5c] bg-teal-50/40 ring-2 ring-[#0d6d5c]/20 shadow-2xs"
+                              : "border-slate-200/80 bg-white hover:border-slate-300 hover:bg-slate-50/50"
+                          }`}
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="relative shrink-0">
+                              <Avatar name={cg.caregiverName || "Caregiver"} size="md" />
+                              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full ring-2 ring-white" />
+                            </div>
+
+                            <div className="min-w-0">
+                              <p className="font-bold text-slate-900 text-xs sm:text-sm truncate">
+                                {cg.caregiverName}
+                              </p>
+                              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-400 mt-0.5">
+                                <span>{gender}</span>
+                                <span>•</span>
+                                <span className="flex items-center gap-0.5 text-emerald-600 font-bold">
+                                  {rating} <Star size={11} className="fill-emerald-600 text-emerald-600" />
+                                </span>
+                              </div>
+                            </div>
                           </div>
-                          <div>
-                            <p className="text-sm font-bold text-gray-900">
-                              {child.childName}
-                            </p>
-                            <div className="text-[11px] text-gray-500 space-y-0.5 mt-0.5">
-                              {child.birthDate && (
-                                <p>
-                                  📅{" "}
-                                  {format(
-                                    new Date(child.birthDate),
-                                    "dd-MM-yyyy",
-                                  )}
-                                </p>
-                              )}
-                              {child.gender && <p>👤 {child.gender}</p>}
-                              {child.hasInfectiousDisease && (
-                                <p className="text-red-500">
-                                  ⚠️ Infectious Disease
-                                </p>
-                              )}
+
+                          {/* Right Action Icons (Phone + Radio Selection) */}
+                          <div className="flex items-center gap-2 shrink-0">
+                            {cg.contactNumber && (
+                              <a
+                                href={`tel:${cg.contactNumber}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="w-8 h-8 rounded-full border border-slate-200 text-slate-400 hover:text-teal-700 hover:border-teal-300 flex items-center justify-center transition-colors"
+                                title="Call Caregiver"
+                              >
+                                <Phone size={13} />
+                              </a>
+                            )}
+
+                            {/* Radio Circle */}
+                            <div
+                              className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+                                isSelected
+                                  ? "border-[#0d6d5c] bg-[#0d6d5c]"
+                                  : "border-slate-300 bg-white"
+                              }`}
+                            >
+                              {isSelected && <Check size={12} className="text-white stroke-[3]" />}
                             </div>
                           </div>
                         </div>
-                        <button
-                          onClick={() => setDeleteChildIndex(idx)}
-                          className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                      );
+                    })}
+                  </div>
+                )
+              ) : (
+                /* Assigned State Display */
+                <div className="p-4 bg-teal-50/50 rounded-2xl border border-teal-100 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Avatar name={booking.caregiverName || "Caregiver"} size="lg" />
+                      <div>
+                        <p className="font-extrabold text-slate-900 text-sm">{booking.caregiverName}</p>
+                        <p className="text-xs text-teal-700 font-semibold mt-0.5">
+                          Assigned Nurse Aid / Caregiver
+                        </p>
                       </div>
-                    ))}
+                    </div>
                   </div>
-                )}
+                </div>
+              )}
 
-                {showAddChild && (
-                  <div className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-200 space-y-3">
-                    <div>
-                      <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">
-                        Child Name
-                      </label>
-                      <input
-                        type="text"
-                        value={childForm.childName}
-                        onChange={(e) =>
-                          setChildForm({
-                            ...childForm,
-                            childName: e.target.value,
-                          })
-                        }
-                        className="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-primary focus:border-primary"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">
-                        Birth Date
-                      </label>
-                      <CustomDatePicker
-                        selected={
-                          childForm.birthDate
-                            ? new Date(
-                                childForm.birthDate
-                                  .split("-")
-                                  .reverse()
-                                  .join("-"),
-                              )
-                            : new Date()
-                        }
-                        onChange={(date) =>
-                          setChildForm({
-                            ...childForm,
-                            birthDate: format(date, "dd-MM-yyyy"),
-                          })
-                        }
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">
-                        Gender
-                      </label>
-                      <select
-                        value={childForm.gender}
-                        onChange={(e) =>
-                          setChildForm({ ...childForm, gender: e.target.value })
-                        }
-                        className="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-primary focus:border-primary"
-                      >
-                        <option value="">Select Gender</option>
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
-                      </select>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={childForm.hasInfectiousDisease}
-                        onChange={(e) =>
-                          setChildForm({
-                            ...childForm,
-                            hasInfectiousDisease: e.target.checked,
-                          })
-                        }
-                        className="rounded border-gray-300"
-                      />
-                      <label className="text-xs text-gray-600">
-                        Has Infectious Disease
-                      </label>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => setShowAddChild(false)}
-                        className="flex-1 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-50 transition-all py-2"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        onClick={() => addChildMutation.mutate(childForm)}
-                        disabled={
-                          !childForm.childName.trim() ||
-                          addChildMutation.isPending
-                        }
-                        className="flex-1 bg-primary text-white rounded-xl py-2 text-sm font-bold shadow-md hover:bg-primary-dark transition-all disabled:opacity-50"
-                      >
-                        {addChildMutation.isPending ? "Adding..." : "Add Child"}
-                      </button>
-                    </div>
+              {/* Bottom Assign Button */}
+              {isPendingNA && (
+                <div className="pt-2">
+                  <Button
+                    variant="primary"
+                    size="lg"
+                    disabled={!selectedCaregiverId || assignMutation.isPending}
+                    onClick={() => {
+                      if (selectedCaregiverId) {
+                        assignMutation.mutate(selectedCaregiverId);
+                      }
+                    }}
+                    className="w-full bg-[#0d6d5c] hover:bg-teal-700 text-white font-bold rounded-xl shadow-xs py-3 text-sm"
+                  >
+                    {assignMutation.isPending ? "Assigning Caregiver..." : "Assign Selected Caregiver"}
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* Edit Booking Modal */}
+      {isEditingBooking && (
+        <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-fadeIn">
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <h3 className="font-bold text-slate-900 text-sm">Edit Job Requirements</h3>
+              <button
+                onClick={() => setIsEditingBooking(false)}
+                className="text-slate-400 hover:text-slate-700 p-1"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-3.5 max-h-[75vh] overflow-y-auto">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-500 mb-1">
+                  Service Package
+                </label>
+                <select
+                  value={bookingForm.servicePackage}
+                  onChange={(e) =>
+                    setBookingForm({ ...bookingForm, servicePackage: e.target.value })
+                  }
+                  className="w-full p-2.5 text-xs rounded-xl border border-slate-200 bg-white font-semibold text-slate-800 outline-none"
+                >
+                  <option value="Newborn Service">Newborn Service</option>
+                  <option value="Childcare Service">Childcare Service</option>
+                  <option value="Elderly Care">Elderly Care</option>
+                  <option value="Nursing Care">Nursing Care</option>
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-500 mb-1">
+                    Duty Shift
+                  </label>
+                  <select
+                    value={bookingForm.dutyShift}
+                    onChange={(e) =>
+                      setBookingForm({ ...bookingForm, dutyShift: e.target.value })
+                    }
+                    className="w-full p-2.5 text-xs rounded-xl border border-slate-200 bg-white font-semibold text-slate-800 outline-none"
+                  >
+                    <option value="Day Shift">Day Shift</option>
+                    <option value="Night Duty">Night Duty</option>
+                    <option value="24 Hours">24 Hours</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-500 mb-1">
+                    Frequency / Duration
+                  </label>
+                  <select
+                    value={bookingForm.dutyDuration}
+                    onChange={(e) =>
+                      setBookingForm({ ...bookingForm, dutyDuration: e.target.value })
+                    }
+                    className="w-full p-2.5 text-xs rounded-xl border border-slate-200 bg-white font-semibold text-slate-800 outline-none"
+                  >
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
+                    <option value="custom">Custom</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-500 mb-1">
+                  Requested Dates
+                </label>
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="flex-1">
+                    <CustomDatePicker
+                      selected={newDate ? parseDdMmYyyy(newDate) : new Date()}
+                      onChange={(date) => setNewDate(format(date, "dd-MM-yyyy"))}
+                    />
                   </div>
-                )}
+                  <Button
+                    variant="subtle"
+                    size="sm"
+                    onClick={() => {
+                      if (newDate && !bookingForm.requestedDates.includes(newDate)) {
+                        setBookingForm((f) => ({
+                          ...f,
+                          requestedDates: [...f.requestedDates, newDate],
+                        }));
+                        setNewDate("");
+                      }
+                    }}
+                    disabled={!newDate}
+                  >
+                    Add
+                  </Button>
+                </div>
+
+                <div className="flex flex-wrap gap-1.5">
+                  {bookingForm.requestedDates.map((d, i) => (
+                    <span
+                      key={i}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 bg-teal-50 text-teal-800 rounded-lg text-xs font-bold"
+                    >
+                      <Calendar size={11} />
+                      {formatDate(d)}
+                      <button
+                        onClick={() =>
+                          setBookingForm((f) => ({
+                            ...f,
+                            requestedDates: f.requestedDates.filter((_, j) => j !== i),
+                          }))
+                        }
+                        className="p-0.5 hover:text-rose-600"
+                      >
+                        <X size={11} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-500 mb-1">
+                  Notes / Instructions
+                </label>
+                <textarea
+                  rows={3}
+                  value={bookingForm.additionalNotes}
+                  onChange={(e) =>
+                    setBookingForm({ ...bookingForm, additionalNotes: e.target.value })
+                  }
+                  className="w-full p-2.5 text-xs rounded-xl border border-slate-200 bg-white font-medium text-slate-800 outline-none resize-none"
+                />
               </div>
             </div>
-          )}
+
+            <div className="px-5 py-3.5 border-t border-slate-100 flex justify-end gap-2 bg-slate-50/50">
+              <Button variant="outline" size="sm" onClick={() => setIsEditingBooking(false)}>
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => updateBookingMutation.mutate(bookingForm)}
+                disabled={updateBookingMutation.isPending}
+              >
+                {updateBookingMutation.isPending ? "Saving..." : "Save Changes"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Parent Modal */}
+      {isEditingParent && (
+        <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-fadeIn">
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <h3 className="font-bold text-slate-900 text-sm">Edit Parent Details</h3>
+              <button
+                onClick={() => setIsEditingParent(false)}
+                className="text-slate-400 hover:text-slate-700 p-1"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-3.5 max-h-[75vh] overflow-y-auto">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-500 mb-1">
+                  Parent Name
+                </label>
+                <input
+                  type="text"
+                  value={parentForm.parentName}
+                  onChange={(e) => setParentForm({ ...parentForm, parentName: e.target.value })}
+                  className="w-full p-2.5 text-xs rounded-xl border border-slate-200 bg-white font-semibold text-slate-800 outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-500 mb-1">
+                    Contact Number
+                  </label>
+                  <input
+                    type="text"
+                    value={parentForm.contactNumber}
+                    onChange={(e) => setParentForm({ ...parentForm, contactNumber: e.target.value })}
+                    className="w-full p-2.5 text-xs rounded-xl border border-slate-200 bg-white font-semibold text-slate-800 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-500 mb-1">
+                    Township
+                  </label>
+                  <input
+                    type="text"
+                    value={parentForm.township}
+                    onChange={(e) => setParentForm({ ...parentForm, township: e.target.value })}
+                    className="w-full p-2.5 text-xs rounded-xl border border-slate-200 bg-white font-semibold text-slate-800 outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-500 mb-1">
+                  Full Address
+                </label>
+                <textarea
+                  rows={2}
+                  value={parentForm.address}
+                  onChange={(e) => setParentForm({ ...parentForm, address: e.target.value })}
+                  className="w-full p-2.5 text-xs rounded-xl border border-slate-200 bg-white font-medium text-slate-800 outline-none resize-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-500 mb-1">
+                  Religion
+                </label>
+                <select
+                  value={parentForm.religion}
+                  onChange={(e) => setParentForm({ ...parentForm, religion: e.target.value })}
+                  className="w-full p-2.5 text-xs rounded-xl border border-slate-200 bg-white font-semibold text-slate-800 outline-none"
+                >
+                  <option value="">Select Religion</option>
+                  <option value="Buddhist">Buddhist</option>
+                  <option value="Christian">Christian</option>
+                  <option value="Muslim">Muslim</option>
+                  <option value="Hindu">Hindu</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="px-5 py-3.5 border-t border-slate-100 flex justify-end gap-2 bg-slate-50/50">
+              <Button variant="outline" size="sm" onClick={() => setIsEditingParent(false)}>
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => parentSaveMutation.mutate(parentForm)}
+                disabled={!parentForm.parentName || parentSaveMutation.isPending}
+              >
+                {parentSaveMutation.isPending ? "Saving..." : "Save Changes"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Invoice Generation Modal */}
+      {showInvoiceForm && (
+        <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-fadeIn">
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <h3 className="font-bold text-slate-900 text-sm">Generate Voucher Invoice</h3>
+              <button
+                onClick={() => setShowInvoiceForm(false)}
+                className="text-slate-400 hover:text-slate-700 p-1"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-3.5">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-500 mb-1">
+                  Amount (MMK)
+                </label>
+                <input
+                  type="number"
+                  placeholder="e.g. 350000"
+                  value={invoiceAmount}
+                  onChange={(e) => setInvoiceAmount(e.target.value)}
+                  className="w-full p-2.5 text-xs rounded-xl border border-slate-200 bg-white font-mono font-bold text-slate-900 outline-none"
+                  autoFocus
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-500 mb-1">
+                  Platform Fee
+                </label>
+                <div className="flex gap-2">
+                  <div className="flex rounded-xl border border-slate-200 overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => setInvoicePlatformFeeType("percentage")}
+                      className={`px-3 py-2 text-xs font-bold transition-all ${
+                        invoicePlatformFeeType === "percentage"
+                          ? "bg-teal-600 text-white"
+                          : "bg-slate-100 text-slate-600"
+                      }`}
+                    >
+                      %
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setInvoicePlatformFeeType("fixed")}
+                      className={`px-3 py-2 text-xs font-bold transition-all ${
+                        invoicePlatformFeeType === "fixed"
+                          ? "bg-teal-600 text-white"
+                          : "bg-slate-100 text-slate-600"
+                      }`}
+                    >
+                      MMK
+                    </button>
+                  </div>
+                  <input
+                    type="number"
+                    value={invoicePlatformFeeRate}
+                    onChange={(e) => setInvoicePlatformFeeRate(e.target.value)}
+                    className="flex-1 p-2 text-xs rounded-xl border border-slate-200 bg-white font-mono font-semibold text-slate-900 outline-none"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="px-5 py-3.5 border-t border-slate-100 flex justify-end gap-2 bg-slate-50/50">
+              <Button variant="outline" size="sm" onClick={() => setShowInvoiceForm(false)}>
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => {
+                  if (invoiceAmount) {
+                    invoiceMutation.mutate({
+                      amount: Number(invoiceAmount),
+                      platformFeeType: invoicePlatformFeeType,
+                      platformFeeRate: Number(invoicePlatformFeeRate),
+                    });
+                  }
+                }}
+                disabled={!invoiceAmount || invoiceMutation.isPending}
+              >
+                {invoiceMutation.isPending ? "Creating..." : "Confirm & Create"}
+              </Button>
+            </div>
+          </div>
         </div>
       )}
 
       {/* Status Confirm Dialog */}
       {confirmStatus && (
-        <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
-            <div className="text-center">
-              {confirmStatus === "Completed" ? (
-                <div className="w-12 h-12 rounded-full bg-green-100 text-green-600 flex items-center justify-center mx-auto mb-3">
-                  <CircleCheckBig size={24} />
-                </div>
-              ) : (
-                <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-3">
-                  <XCircle size={24} />
-                </div>
-              )}
-              <h3 className="text-lg font-bold text-gray-900">
-                {confirmStatus === "Completed"
-                  ? "Mark as Completed?"
-                  : "Cancel Booking?"}
-              </h3>
-              <p className="text-sm text-gray-500 mt-1">
-                {confirmStatus === "Completed"
-                  ? "This booking will be marked as completed."
-                  : "This will cancel the booking and free up the caregiver dates."}
-              </p>
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setConfirmStatus(null)}
-                className="flex-1 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-50 transition-all py-2.5"
-              >
-                No, Go Back
-              </button>
-              <button
+        <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4 text-center">
+            {confirmStatus === "Completed" ? (
+              <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-2">
+                <CircleCheckBig size={24} />
+              </div>
+            ) : (
+              <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto mb-2">
+                <XCircle size={24} />
+              </div>
+            )}
+            <h3 className="text-base font-black text-slate-900">
+              {confirmStatus === "Completed" ? "Mark as Completed?" : "Cancel this Booking?"}
+            </h3>
+            <p className="text-xs text-slate-500">
+              {confirmStatus === "Completed"
+                ? "This booking will be closed as completed."
+                : "This will cancel the booking and release caregiver availability."}
+            </p>
+            <div className="flex gap-2 pt-2">
+              <Button variant="outline" size="sm" className="w-full" onClick={() => setConfirmStatus(null)}>
+                Go Back
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                className={`w-full ${confirmStatus === "Cancelled" ? "bg-rose-600 hover:bg-rose-700" : ""}`}
                 onClick={() => statusMutation.mutate(confirmStatus)}
                 disabled={statusMutation.isPending}
-                className={`flex-1 text-white rounded-xl text-sm font-bold shadow-md transition-all py-2.5 disabled:opacity-50 ${
-                  confirmStatus === "Completed"
-                    ? "bg-green-500 hover:bg-green-600"
-                    : "bg-red-500 hover:bg-red-600"
-                }`}
               >
-                {statusMutation.isPending
-                  ? "Processing..."
-                  : `Yes, ${confirmStatus}`}
-              </button>
+                {statusMutation.isPending ? "Processing..." : `Yes, ${confirmStatus}`}
+              </Button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Delete Child Confirmation */}
+      {/* Delete Child Confirm Dialog */}
       {deleteChildIndex !== null && (
-        <div className="fixed inset-0 z-[110] bg-black/50 backdrop-blur-sm flex items-center justify-center">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
-            <h3 className="text-lg font-extrabold text-gray-900 mb-2">
-              Remove Child
-            </h3>
-            <p className="text-sm text-gray-500 mb-6">
-              Are you sure you want to remove this child?
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setDeleteChildIndex(null)}
-                className="flex-1 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-50 transition-all py-2.5"
-              >
+        <div className="fixed inset-0 z-[110] bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4 text-center">
+            <h3 className="text-base font-black text-slate-900">Remove Child</h3>
+            <p className="text-xs text-slate-500">Are you sure you want to remove this child profile?</p>
+            <div className="flex gap-2 pt-2">
+              <Button variant="outline" size="sm" className="w-full" onClick={() => setDeleteChildIndex(null)}>
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                className="w-full bg-rose-600 hover:bg-rose-700"
                 onClick={() => deleteChildMutation.mutate(deleteChildIndex)}
                 disabled={deleteChildMutation.isPending}
-                className="flex-1 bg-red-500 text-white rounded-xl text-sm font-bold hover:bg-red-600 transition-all py-2.5 disabled:opacity-50"
               >
                 {deleteChildMutation.isPending ? "Removing..." : "Remove"}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -1588,3 +1556,4 @@ const BookingDetail = () => {
 };
 
 export default BookingDetail;
+

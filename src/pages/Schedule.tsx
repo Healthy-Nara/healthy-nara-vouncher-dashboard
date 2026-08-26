@@ -1,28 +1,45 @@
+import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchSchedule } from '../api';
-import { useState, useMemo } from 'react';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Calendar, User, Package } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  CalendarDays,
+  Loader2,
+  Calendar,
+} from 'lucide-react';
+import { Button } from '../components/ui/Button';
+import { Badge } from '../components/ui/Badge';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
+import { PageHeader } from '../components/ui/PageHeader';
+import { Avatar } from '../components/ui/Avatar';
 
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const MONTHS = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-const STATUS_COLORS: Record<string, string> = {
-  'Assigned': 'bg-blue-100 text-blue-700 border-blue-200',
-  'Completed': 'bg-green-100 text-green-700 border-green-200',
-  'Pending NA Selection': 'bg-yellow-100 text-yellow-700 border-yellow-200',
-  'Cancelled': 'bg-red-100 text-red-700 border-red-200',
-};
-
-const Schedule = () => {
+export const Schedule = () => {
   const navigate = useNavigate();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
-  const { data: bookings = [], isLoading } = useQuery({
+  const { data: bookings = [], isLoading } = useQuery<any[]>({
     queryKey: ['schedule'],
-    queryFn: fetchSchedule,
+    queryFn: () => fetchSchedule(),
   });
 
   const year = currentDate.getFullYear();
@@ -38,7 +55,8 @@ const Schedule = () => {
     return days;
   }, [firstDay, daysInMonth]);
 
-  const formatDateKey = (d: number) => `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  const formatDateKey = (d: number) =>
+    `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 
   const bookingsByDate = useMemo(() => {
     const map: Record<string, any[]> = {};
@@ -55,154 +73,216 @@ const Schedule = () => {
   const selectedBookings = selectedDate ? bookingsByDate[selectedDate] || [] : [];
 
   const today = new Date();
-  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(
+    today.getDate()
+  ).padStart(2, '0')}`;
 
   const prevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
   const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
-
-  const formatDate = (dateStr: string) => {
-    return format(new Date(dateStr), 'dd-MM');
+  const goToday = () => {
+    setCurrentDate(new Date());
+    setSelectedDate(todayKey);
   };
 
   return (
-    <div className="space-y-4 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Schedule</h1>
-          <p className="text-sm text-gray-500 mt-1">Master duty calendar</p>
-        </div>
-      </div>
+    <div className="space-y-6">
+      {/* Top Page Header */}
+      <PageHeader
+        category="DUTY ALLOCATION"
+        title="Schedule Calendar"
+        subtitle="Manage master caregiver shift calendar and daily duty assignments."
+        actions={
+          <Button variant="outline" size="sm" onClick={goToday}>
+            Today
+          </Button>
+        }
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Calendar */}
-        <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          {/* Month Navigation */}
-          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 bg-gray-50">
-            <button onClick={prevMonth} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all">
-              <ChevronLeft size={20} />
-            </button>
-            <h2 className="text-lg font-extrabold text-gray-900">{MONTHS[month]} {year}</h2>
-            <button onClick={nextMonth} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all">
-              <ChevronRight size={20} />
-            </button>
-          </div>
+        {/* Calendar Card */}
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={prevMonth}
+                className="w-8 h-8 rounded-xl"
+              >
+                <ChevronLeft size={16} />
+              </Button>
+              <CardTitle>
+                {MONTHS[month]} {year}
+              </CardTitle>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={nextMonth}
+                className="w-8 h-8 rounded-xl"
+              >
+                <ChevronRight size={16} />
+              </Button>
+            </div>
+            <span className="text-xs font-bold text-slate-400">
+              Click a date to view shifts
+            </span>
+          </CardHeader>
 
-          {/* Day Headers */}
-          <div className="grid grid-cols-7 border-b border-gray-200">
-            {DAYS.map(day => (
-              <div key={day} className="px-2 py-2 text-center text-[10px] font-bold text-gray-500 uppercase">
-                {day}
+          <CardContent className="p-0">
+            {isLoading ? (
+              <div className="text-center py-20 text-slate-400 text-sm">
+                <Loader2 className="w-6 h-6 animate-spin mx-auto text-teal-500 mb-2" />
+                Loading duty schedule...
               </div>
-            ))}
-          </div>
-
-          {/* Calendar Grid */}
-          {isLoading ? (
-            <div className="p-12 text-center text-gray-500">Loading schedule...</div>
-          ) : (
-            <div className="grid grid-cols-7">
-              {calendarDays.map((day, idx) => {
-                if (day === null) return <div key={`empty-${idx}`} className="min-h-[80px] border-b border-r border-gray-100 bg-gray-50/50" />;
-                const dateKey = formatDateKey(day);
-                const dayBookings = bookingsByDate[dateKey] || [];
-                const isToday = dateKey === todayKey;
-                const isSelected = dateKey === selectedDate;
-
-                return (
-                  <div
-                    key={day}
-                    onClick={() => setSelectedDate(dateKey)}
-                    className={`min-h-[80px] border-b border-r border-gray-100 p-1.5 cursor-pointer transition-all hover:bg-primary/5 ${
-                      isSelected ? 'bg-primary/10 ring-2 ring-primary/30' : ''
-                    }`}
-                  >
-                    <div className={`text-xs font-bold mb-1 ${
-                      isToday ? 'bg-primary text-white w-6 h-6 rounded-full flex items-center justify-center' : 'text-gray-700'
-                    }`}>
-                      {day}
-                    </div>
-                    <div className="space-y-0.5">
-                      {dayBookings.slice(0, 3).map((b: any, i: number) => (
-                        <div
-                          key={i}
-                          className={`text-[9px] font-medium px-1 py-0.5 rounded truncate border ${
-                            STATUS_COLORS[b.status] || 'bg-gray-100 text-gray-600 border-gray-200'
-                          }`}
-                        >
-                          {b.caregiverName?.slice(0, 8) || b.customerName?.slice(0, 8)}
-                        </div>
-                      ))}
-                      {dayBookings.length > 3 && (
-                        <div className="text-[9px] text-gray-400 font-medium">+{dayBookings.length - 3} more</div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Selected Date Detail */}
-        <div className="lg:col-span-1">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden sticky top-20">
-            <div className="px-5 py-4 border-b border-gray-200 bg-gray-50">
-              <h2 className="text-sm font-extrabold text-gray-900 uppercase tracking-wide">
-                {selectedDate ? formatDate(selectedDate) : 'Select a date'}
-              </h2>
-              {selectedDate && (
-                <p className="text-xs text-gray-500 mt-0.5">{selectedBookings.length} assignment(s)</p>
-              )}
-            </div>
-            <div className="p-5">
-              {!selectedDate ? (
-                <div className="text-center py-8 text-gray-400 text-sm">
-                  <Calendar size={32} className="mx-auto mb-2 opacity-50" />
-                  <p>Click on a date to view assignments</p>
-                </div>
-              ) : selectedBookings.length === 0 ? (
-                <div className="text-center py-8 text-gray-400 text-sm">
-                  <p>No assignments on this date</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {selectedBookings.map((booking: any) => (
+            ) : (
+              <div>
+                {/* Day of week headers */}
+                <div className="grid grid-cols-7 border-b border-slate-100 bg-slate-50/50">
+                  {DAYS.map((day) => (
                     <div
-                      key={booking._id}
-                      onClick={() => navigate(`/bookings/${booking._id}`)}
-                      className="p-3 rounded-xl border border-gray-200 hover:border-primary/30 hover:bg-primary/5 cursor-pointer transition-all"
+                      key={day}
+                      className="px-2 py-2.5 text-center text-[11px] font-extrabold text-slate-400 uppercase tracking-wider"
                     >
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <p className="text-xs font-bold text-gray-900">{booking.bookingNumber}</p>
-                          <p className="text-xs text-gray-500 mt-0.5">{booking.customerName}</p>
-                        </div>
-                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
-                          STATUS_COLORS[booking.status] || 'bg-gray-100 text-gray-600'
-                        }`}>
-                          {booking.status === 'Pending NA Selection' ? 'Pending' : booking.status}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 mt-2 text-[10px] text-gray-500">
-                        {booking.caregiverName && (
-                          <span className="inline-flex items-center gap-1">
-                            <User size={10} />
-                            {booking.caregiverName}
-                          </span>
-                        )}
-                        <span className="inline-flex items-center gap-1">
-                          <Package size={10} />
-                          {booking.dutyType}
-                        </span>
-                      </div>
+                      {day}
                     </div>
                   ))}
                 </div>
-              )}
+
+                {/* Calendar Days Matrix */}
+                <div className="grid grid-cols-7 divide-x divide-y divide-slate-100">
+                  {calendarDays.map((day, idx) => {
+                    if (!day) {
+                      return <div key={`empty-${idx}`} className="h-24 bg-slate-50/30" />;
+                    }
+
+                    const dateKey = formatDateKey(day);
+                    const dayItems = bookingsByDate[dateKey] || [];
+                    const isTodayDate = dateKey === todayKey;
+                    const isSelected = selectedDate === dateKey;
+
+                    return (
+                      <div
+                        key={dateKey}
+                        onClick={() => setSelectedDate(dateKey)}
+                        className={`h-24 p-2 transition-all cursor-pointer flex flex-col justify-between ${
+                          isSelected
+                            ? 'bg-teal-50/80 ring-2 ring-teal-500 ring-inset'
+                            : 'hover:bg-slate-50/80'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span
+                            className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                              isTodayDate
+                                ? 'bg-teal-500 text-white font-black shadow-xs'
+                                : isSelected
+                                ? 'text-teal-800 font-extrabold'
+                                : 'text-slate-700'
+                            }`}
+                          >
+                            {day}
+                          </span>
+                          {dayItems.length > 0 && (
+                            <span className="text-[10px] font-extrabold text-teal-600 bg-teal-50 px-1.5 py-0.2 rounded-md">
+                              {dayItems.length}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Shift Badges Snippets */}
+                        <div className="space-y-1 overflow-hidden">
+                          {dayItems.slice(0, 2).map((item: any, iIdx: number) => (
+                            <div
+                              key={iIdx}
+                              className="truncate text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-white border border-slate-200/80 text-slate-700 shadow-xs"
+                            >
+                              {item.selectedCaregiver?.caregiverName || item.customerName}
+                            </div>
+                          ))}
+                          {dayItems.length > 2 && (
+                            <p className="text-[9px] font-extrabold text-teal-600 pl-1">
+                              +{dayItems.length - 2} more
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Selected Date Details Sidebar Card */}
+        <Card>
+          <CardHeader>
+            <div>
+              <CardTitle>
+                {selectedDate
+                  ? format(new Date(selectedDate), 'dd MMMM yyyy')
+                  : 'Selected Date'}
+              </CardTitle>
+              <CardDescription>
+                {selectedDate
+                  ? `${selectedBookings.length} duty appointments`
+                  : 'Select a day on the calendar'}
+              </CardDescription>
             </div>
-          </div>
-        </div>
+          </CardHeader>
+
+          <CardContent className="p-0">
+            {!selectedDate ? (
+              <div className="text-center py-16 text-slate-400 text-sm space-y-2 p-6">
+                <Calendar className="w-10 h-10 mx-auto text-slate-300" />
+                <p className="font-bold text-slate-600">No date selected</p>
+                <p className="text-xs text-slate-400">
+                  Click on any day in the monthly calendar to inspect all shift assignments.
+                </p>
+              </div>
+            ) : selectedBookings.length === 0 ? (
+              <div className="text-center py-16 text-slate-400 text-sm space-y-2 p-6">
+                <CalendarDays className="w-10 h-10 mx-auto text-slate-300" />
+                <p className="font-bold text-slate-600">No shifts scheduled</p>
+                <p className="text-xs text-slate-400">There are no duty bookings for this date.</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100 max-h-[500px] overflow-y-auto">
+                {selectedBookings.map((b: any) => (
+                  <div
+                    key={b._id}
+                    onClick={() => navigate(`/bookings/${b._id}`)}
+                    className="p-4 hover:bg-slate-50 transition-colors cursor-pointer group space-y-2"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-extrabold text-slate-900 text-xs font-mono group-hover:text-teal-600 transition-colors">
+                        {b.bookingNumber || `BK-${b._id.slice(-6).toUpperCase()}`}
+                      </span>
+                      <Badge variant="teal" dot>
+                        {b.status || 'Active'}
+                      </Badge>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Avatar name={b.customerName || 'Customer'} size="xs" />
+                      <div>
+                        <p className="font-bold text-slate-800 text-xs">{b.customerName}</p>
+                        <p className="text-[10px] text-slate-400">{b.servicePackage || 'Newborn Care'}</p>
+                      </div>
+                    </div>
+
+                    {b.selectedCaregiver && (
+                      <div className="flex items-center justify-between pt-1 text-xs text-teal-800 bg-teal-50/60 p-2 rounded-xl border border-teal-100">
+                        <span className="font-bold">Caregiver:</span>
+                        <span className="font-extrabold">{b.selectedCaregiver.caregiverName}</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

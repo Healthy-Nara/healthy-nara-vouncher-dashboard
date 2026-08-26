@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { X, Download, Printer, ShieldCheck, Phone, MapPin, Award, CheckCircle2, User, HeartPulse, FileText, Image as ImageIcon, GraduationCap, Briefcase, Scale, Ruler, Building2, Sparkles } from 'lucide-react';
+import { X, Download, Printer, ShieldCheck, Phone, MapPin, Award, CheckCircle2, User, HeartPulse, FileText, Image as ImageIcon, GraduationCap, Briefcase, Scale, Ruler, Building2, Sparkles, MessageSquareQuote, Star } from 'lucide-react';
 import { format } from 'date-fns';
 import halogo from '../assets/halogo.png';
 import patternBg from '../assets/pattern.png';
@@ -79,33 +79,43 @@ export const CaregiverCVModal: React.FC<CaregiverCVModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex justify-center items-start p-3 sm:p-6 print:p-0 print:bg-white print:static">
-      <div className="relative w-full max-w-4xl bg-white rounded-2xl shadow-2xl overflow-hidden my-auto print:shadow-none print:w-full print:max-w-none print:rounded-none">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 backdrop-blur-xs flex justify-center items-start p-2 sm:p-4 md:p-6 print:p-0 print:bg-white print:static">
+      <div className="relative w-full max-w-5xl bg-white rounded-2xl shadow-2xl overflow-hidden my-auto print:shadow-none print:w-full print:max-w-none print:rounded-none">
 
-        {/* Action Header - Hidden during print */}
-        <div className="px-6 py-4 bg-gray-900 text-white flex flex-wrap items-center justify-between gap-3 border-b border-gray-800 print:hidden">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
-              <FileText size={18} />
+        {/* Responsive Action Header - Hidden during print */}
+        <div className="px-4 py-3 sm:px-6 sm:py-4 bg-gray-950 text-white flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-b border-gray-800 print:hidden">
+          {/* Title & Subtitle */}
+          <div className="flex items-center justify-between sm:justify-start gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
+                <FileText size={18} />
+              </div>
+              <div>
+                <h2 className="text-sm sm:text-base font-bold text-white leading-tight">Nurse Aid Profile & CV</h2>
+                <p className="text-[11px] text-gray-400">Preview & export verified A4 profile</p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-base font-bold text-white leading-none">Nurse Aid Profile & CV</h2>
-              <p className="text-xs text-gray-400 mt-1">Preview and export official verified profile</p>
-            </div>
+            {/* Close Button on Mobile (Top Right) */}
+            <button
+              onClick={onClose}
+              className="sm:hidden p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-all cursor-pointer"
+            >
+              <X size={20} />
+            </button>
           </div>
 
-          {/* Toggle Buttons & Actions */}
-          <div className="flex flex-wrap items-center gap-2">
+          {/* Action Toolbar */}
+          <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2 pt-1 sm:pt-0 border-t sm:border-t-0 border-gray-800">
             {/* Phone & NRC Toggles */}
-            <div className="flex items-center gap-1.5 bg-gray-800 border border-gray-700 rounded-lg p-1 mr-1">
-              <span className="text-[11px] font-bold text-gray-400 px-1.5 hidden sm:inline">Show:</span>
+            <div className="flex items-center gap-1 bg-gray-900 border border-gray-800 rounded-xl p-1">
+              <span className="text-[10px] font-bold text-gray-400 px-1.5 hidden md:inline">Show:</span>
               <button
                 type="button"
                 onClick={() => setShowPhone(!showPhone)}
-                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold transition-all ${
+                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   showPhone
-                    ? 'bg-emerald-600 text-white shadow-sm'
-                    : 'bg-gray-700/60 text-gray-400 hover:text-gray-200'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'bg-gray-800 text-gray-400 hover:text-gray-200'
                 }`}
                 title="Toggle Phone Number on CV"
               >
@@ -115,10 +125,10 @@ export const CaregiverCVModal: React.FC<CaregiverCVModalProps> = ({
               <button
                 type="button"
                 onClick={() => setShowNRC(!showNRC)}
-                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold transition-all ${
+                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   showNRC
-                    ? 'bg-emerald-600 text-white shadow-sm'
-                    : 'bg-gray-700/60 text-gray-400 hover:text-gray-200'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'bg-gray-800 text-gray-400 hover:text-gray-200'
                 }`}
                 title="Toggle NRC on CV"
               >
@@ -127,47 +137,56 @@ export const CaregiverCVModal: React.FC<CaregiverCVModalProps> = ({
               </button>
             </div>
 
-            <button
-              onClick={() => downloadAsImage(cvId, fileName)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-xs font-semibold text-gray-200 transition-all border border-gray-700"
-              title="Download as PNG Image"
-            >
-              <ImageIcon size={14} />
-              <span>PNG</span>
-            </button>
-            <button
-              onClick={() => downloadAsPDF(cvId, fileName)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold text-white transition-all shadow-sm"
-              title="Download as PDF"
-            >
-              <Download size={14} />
-              <span>PDF</span>
-            </button>
-            <button
-              onClick={handlePrint}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-xs font-semibold text-gray-200 transition-all border border-gray-700"
-              title="Print Document"
-            >
-              <Printer size={14} />
-              <span>Print</span>
-            </button>
-            <button
-              onClick={onClose}
-              className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-all ml-1"
-            >
-              <X size={20} />
-            </button>
+            {/* Export Buttons */}
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => downloadAsImage(cvId, fileName)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-xs font-semibold text-gray-200 transition-all border border-gray-700 cursor-pointer"
+                title="Download as PNG Image"
+              >
+                <ImageIcon size={14} />
+                <span>PNG</span>
+              </button>
+              <button
+                onClick={() => downloadAsPDF(cvId, fileName)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white transition-all shadow-xs cursor-pointer"
+                title="Download as PDF"
+              >
+                <Download size={14} />
+                <span>PDF</span>
+              </button>
+              <button
+                onClick={handlePrint}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-xs font-semibold text-gray-200 transition-all border border-gray-700 cursor-pointer hidden md:inline-flex"
+                title="Print Document"
+              >
+                <Printer size={14} />
+                <span>Print</span>
+              </button>
+              <button
+                onClick={onClose}
+                className="hidden sm:inline-flex p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-all cursor-pointer ml-1"
+              >
+                <X size={20} />
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Scrollable Document Container */}
-        <div className="p-4 sm:p-8 bg-gray-100/70 overflow-x-auto flex justify-center print:p-0 print:bg-white">
+        {/* Scrollable Document Container with Pan Hint on Mobile */}
+        <div className="p-3 sm:p-6 bg-slate-200/90 overflow-x-auto flex justify-start lg:justify-center print:p-0 print:bg-white">
 
-          {/* Printable CV Sheet with Soft Receipt-style Watermark */}
+          {/* Printable CV Sheet with Fixed Desktop A4 Width (794px) to ensure identical export format on Mobile & Laptop */}
           <div
             id={cvId}
             ref={cvContainerRef}
-            className="relative w-full max-w-[794px] min-h-[1050px] bg-white border border-gray-200 shadow-md p-8 sm:p-12 text-gray-800 overflow-hidden font-sans print:border-none print:shadow-none print:p-8"
+            style={{
+              width: '794px',
+              minWidth: '794px',
+              minHeight: '1050px',
+              boxSizing: 'border-box',
+            }}
+            className="relative bg-white border border-gray-300 shadow-xl p-10 text-gray-800 overflow-hidden font-sans rounded-xl print:border-none print:shadow-none print:p-8"
           >
             {/* Repeating Background Pattern Watermark Overlay (Invoice Style) */}
             <div
@@ -175,8 +194,8 @@ export const CaregiverCVModal: React.FC<CaregiverCVModalProps> = ({
               style={{
                 backgroundImage: `url(${patternBg})`,
                 backgroundRepeat: 'repeat',
-                backgroundSize: '600px',
-                opacity: 0.4,
+                backgroundSize: '480px',
+                opacity: 0.32,
               }}
             />
 
@@ -187,7 +206,7 @@ export const CaregiverCVModal: React.FC<CaregiverCVModalProps> = ({
                 <img
                   src={halogo}
                   alt="Healthy Nara"
-                  className="w-12 h-12 rounded-xl object-contain shadow-sm border border-emerald-500/20"
+                  className="w-12 h-12 rounded-xl object-contain shadow-xs border border-emerald-500/20"
                 />
                 <div>
                   <div className="flex items-center gap-2">
@@ -222,11 +241,11 @@ export const CaregiverCVModal: React.FC<CaregiverCVModalProps> = ({
 
             {/* Hero Profile Section */}
             <div className="relative z-10 mt-6 bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-transparent border border-emerald-500/20 rounded-2xl p-6">
-              <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
+              <div className="flex flex-row items-start gap-6">
 
                 {/* Avatar Badge */}
-                <div className="relative">
-                  <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center font-black text-3xl sm:text-4xl shadow-lg shadow-emerald-600/20 border-2 border-white">
+                <div className="relative shrink-0">
+                  <div className="w-28 h-28 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center font-black text-4xl shadow-lg shadow-emerald-600/20 border-2 border-white">
                     {caregiver.caregiverName ? caregiver.caregiverName.charAt(0).toUpperCase() : 'N'}
                   </div>
                   <div className="absolute -bottom-2 -right-2 bg-emerald-600 text-white p-1.5 rounded-full shadow-md border-2 border-white">
@@ -235,39 +254,39 @@ export const CaregiverCVModal: React.FC<CaregiverCVModalProps> = ({
                 </div>
 
                 {/* Profile Overview */}
-                <div className="flex-1 text-center sm:text-left">
-                  <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
-                    <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">
+                <div className="flex-1 text-left">
+                  <div className="flex flex-wrap items-center justify-start gap-2">
+                    <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
                       {caregiver.caregiverName}
                     </h1>
                     {caregiver.gender && (
-                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-white text-gray-700 border border-gray-200 shadow-sm">
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-white text-gray-700 border border-gray-200 shadow-xs">
                         {caregiver.gender}
                       </span>
                     )}
                     {age && (
-                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-white text-emerald-800 border border-emerald-200 shadow-sm">
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-white text-emerald-800 border border-emerald-200 shadow-xs">
                         {age} Years Old
                       </span>
                     )}
                     {caregiver.religion && (
-                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-white text-teal-800 border border-teal-200 shadow-sm">
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-white text-teal-800 border border-teal-200 shadow-xs">
                         {caregiver.religion}
                       </span>
                     )}
                   </div>
 
-                  <p className="text-sm font-bold text-emerald-700 mt-1 flex items-center justify-center sm:justify-start gap-1.5">
+                  <p className="text-sm font-bold text-emerald-700 mt-1.5 flex items-center justify-start gap-1.5">
                     <HeartPulse size={16} />
                     <span>Certified Nursing Aide (NA) / Professional Caregiver</span>
                   </p>
 
                   {/* Experienced Cases Tags */}
-                  <div className="flex flex-wrap items-center justify-center sm:justify-start gap-1.5 mt-3">
+                  <div className="flex flex-wrap items-center justify-start gap-1.5 mt-3">
                     {experienceCasesList.map((cCase, idx) => (
                       <span
                         key={idx}
-                        className="px-2.5 py-1 rounded-lg text-xs font-bold bg-white text-emerald-800 border border-emerald-200 shadow-sm"
+                        className="px-2.5 py-1 rounded-lg text-xs font-bold bg-white text-emerald-800 border border-emerald-200 shadow-xs"
                       >
                         ✓ {cCase}
                       </span>
@@ -277,14 +296,14 @@ export const CaregiverCVModal: React.FC<CaregiverCVModalProps> = ({
               </div>
             </div>
 
-            {/* Main Content Grid */}
-            <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 gap-6 mt-6">
+            {/* Main Content Grid (Fixed 2 Columns for Crisp A4 Structure) */}
+            <div className="relative z-10 grid grid-cols-2 gap-6 mt-6">
 
               {/* Left Column: Personal & Physical Information */}
               <div className="space-y-6">
 
                 {/* Personal & Physical Details Card */}
-                <div className="bg-white/90 backdrop-blur-sm border border-gray-200 rounded-xl p-5 shadow-sm">
+                <div className="bg-white/90 backdrop-blur-xs border border-gray-200 rounded-xl p-5 shadow-xs">
                   <div className="flex items-center gap-2 pb-3 mb-3 border-b border-gray-100 text-emerald-700 font-extrabold text-xs uppercase tracking-wider">
                     <User size={15} />
                     <span>Personal & Physical Details</span>
@@ -360,20 +379,11 @@ export const CaregiverCVModal: React.FC<CaregiverCVModalProps> = ({
                         <span>{caregiver.township || 'Yangon'}</span>
                       </p>
                     </div>
-
-                    {caregiver.address && (
-                      <div>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase">Full Address</p>
-                        <p className="font-medium text-gray-700 mt-0.5 leading-relaxed">
-                          {caregiver.address}
-                        </p>
-                      </div>
-                    )}
                   </div>
                 </div>
 
                 {/* Experience & Duty Performance Summary */}
-                <div className="bg-white/90 backdrop-blur-sm border border-gray-200 rounded-xl p-5 shadow-sm">
+                <div className="bg-white/90 backdrop-blur-xs border border-gray-200 rounded-xl p-5 shadow-xs">
                   <div className="flex items-center gap-2 pb-3 mb-3 border-b border-gray-100 text-emerald-700 font-extrabold text-xs uppercase tracking-wider">
                     <Award size={15} />
                     <span>Service & Duty Record</span>
@@ -405,7 +415,7 @@ export const CaregiverCVModal: React.FC<CaregiverCVModalProps> = ({
               <div className="space-y-6">
 
                 {/* Education & Professional Qualifications Card */}
-                <div className="bg-white/90 backdrop-blur-sm border border-gray-200 rounded-xl p-5 shadow-sm">
+                <div className="bg-white/90 backdrop-blur-xs border border-gray-200 rounded-xl p-5 shadow-xs">
                   <div className="flex items-center gap-2 pb-3 mb-3 border-b border-gray-100 text-emerald-700 font-extrabold text-xs uppercase tracking-wider">
                     <GraduationCap size={15} />
                     <span>Education & Experience</span>
@@ -452,7 +462,7 @@ export const CaregiverCVModal: React.FC<CaregiverCVModalProps> = ({
                 </div>
 
                 {/* Core Competencies & Nursing Aide Skills */}
-                <div className="bg-white/90 backdrop-blur-sm border border-gray-200 rounded-xl p-5 shadow-sm">
+                <div className="bg-white/90 backdrop-blur-xs border border-gray-200 rounded-xl p-5 shadow-xs">
                   <div className="flex items-center gap-2 pb-3 mb-3 border-b border-gray-100 text-emerald-700 font-extrabold text-xs uppercase tracking-wider">
                     <CheckCircle2 size={15} />
                     <span>Core Nursing & Care Skills</span>
@@ -479,7 +489,7 @@ export const CaregiverCVModal: React.FC<CaregiverCVModalProps> = ({
                 </div>
 
                 {/* Background & Clinical Notes */}
-                <div className="bg-white/90 backdrop-blur-sm border border-gray-200 rounded-xl p-5 shadow-sm">
+                <div className="bg-white/90 backdrop-blur-xs border border-gray-200 rounded-xl p-5 shadow-xs">
                   <div className="flex items-center gap-2 pb-3 mb-3 border-b border-gray-100 text-emerald-700 font-extrabold text-xs uppercase tracking-wider">
                     <FileText size={15} />
                     <span>Background & Notes</span>
@@ -493,6 +503,40 @@ export const CaregiverCVModal: React.FC<CaregiverCVModalProps> = ({
 
               </div>
 
+            </div>
+
+            {/* Customer Feedback & Client Reviews Section (Bottom) */}
+            <div className="relative z-10 mt-6 bg-white/90 backdrop-blur-xs border border-gray-200 rounded-xl p-5 shadow-xs">
+              <div className="flex items-center justify-between pb-3 mb-3 border-b border-gray-100">
+                <div className="flex items-center gap-2 text-emerald-700 font-extrabold text-xs uppercase tracking-wider">
+                  <MessageSquareQuote size={15} />
+                  <span>Customer Feedback & Service Evaluation</span>
+                </div>
+                <div className="flex items-center gap-1 text-amber-500">
+                  <Star size={13} className="fill-amber-400 text-amber-400" />
+                  <Star size={13} className="fill-amber-400 text-amber-400" />
+                  <Star size={13} className="fill-amber-400 text-amber-400" />
+                  <Star size={13} className="fill-amber-400 text-amber-400" />
+                  <Star size={13} className="fill-amber-400 text-amber-400" />
+                  <span className="text-[11px] font-bold text-gray-700 ml-1">5.0 / 5.0</span>
+                </div>
+              </div>
+
+              <div className="bg-slate-50/80 border border-dashed border-gray-300 rounded-xl p-4 min-h-[75px] flex items-center justify-between text-xs text-gray-500">
+                <div className="space-y-1">
+                  <p className="font-semibold text-gray-700 italic">
+                    "အထူးဂရုစိုက်ပြီး စိတ်ချယုံကြည်ရသော သူနာပြုအကူ ဖြစ်ပါသည်။ ကလေးငယ်ကို နွေးထွေးကြင်နာစွာ စောင့်ရှောက်ပေးခဲ့ပါသည်။"
+                  </p>
+                  <p className="text-[10px] text-gray-400">
+                    — Verified Customer Review • Healthy Nara Home Care
+                  </p>
+                </div>
+                <div className="text-right shrink-0 pl-4 border-l border-gray-200">
+                  <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold text-[10px]">
+                    Verified Service ✓
+                  </span>
+                </div>
+              </div>
             </div>
 
           </div>

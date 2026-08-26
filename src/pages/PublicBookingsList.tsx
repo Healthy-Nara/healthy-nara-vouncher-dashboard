@@ -1,28 +1,51 @@
+import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchBookings } from '../api';
-import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
-import { Search, ChevronRight, Calendar, Package, User } from 'lucide-react';
+import {
+  Globe,
+  Loader2,
+  ChevronRight,
+  Phone,
+  Calendar,
+} from 'lucide-react';
+import { Button } from '../components/ui/Button';
+import { Badge } from '../components/ui/Badge';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
+import { PageHeader } from '../components/ui/PageHeader';
+import { SearchInput } from '../components/ui/SearchInput';
+import { Avatar } from '../components/ui/Avatar';
+import { Tabs } from '../components/ui/Tabs';
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+  TableFooterBar,
+} from '../components/ui/Table';
 
-const STATUS_CONFIG: Record<string, { color: string; bg: string; icon: string }> = {
-  'Pending NA Selection': { color: 'text-yellow-700', bg: 'bg-yellow-100', icon: '⏳' },
-  'Assigned':            { color: 'text-blue-700',   bg: 'bg-blue-100',   icon: '🔵' },
-  'Completed':           { color: 'text-green-700',  bg: 'bg-green-100',  icon: '✅' },
-  'Cancelled':           { color: 'text-red-700',    bg: 'bg-red-100',    icon: '❌' },
-};
+const STATUS_TABS = [
+  { id: 'All', label: 'All Inquiries' },
+  { id: 'Pending NA Selection', label: 'Pending Selection' },
+  { id: 'Assigned', label: 'Assigned' },
+  { id: 'Completed', label: 'Completed' },
+  { id: 'Cancelled', label: 'Cancelled' },
+];
 
-const PublicBookingsList = () => {
+export const PublicBookingsList = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('All');
 
-  const { data: allBookings = [], isLoading } = useQuery({
+  const { data: allBookings = [], isLoading } = useQuery<any[]>({
     queryKey: ['bookings'],
     queryFn: () => fetchBookings(),
   });
 
-  // Filter only No-Auth / Public Bookings (bookings created from public client that have a bookingToken)
+  // Filter only No-Auth / Public Bookings
   const publicBookings = useMemo(() => {
     return allBookings.filter((b: any) => b.bookingToken);
   }, [allBookings]);
@@ -34,121 +57,246 @@ const PublicBookingsList = () => {
     }
     if (searchTerm) {
       const s = searchTerm.toLowerCase();
-      result = result.filter((b: any) =>
-        b.bookingNumber?.toLowerCase().includes(s) ||
-        b.customerName?.toLowerCase().includes(s) ||
-        b.phoneNumber?.includes(s)
+      result = result.filter(
+        (b: any) =>
+          b.bookingNumber?.toLowerCase().includes(s) ||
+          b.customerName?.toLowerCase().includes(s) ||
+          b.phoneNumber?.includes(s)
       );
     }
     return result;
   }, [publicBookings, searchTerm, statusFilter]);
 
   const formatDate = (dateStr: string) => {
-    if (!dateStr) return "";
+    if (!dateStr) return '—';
     return format(new Date(dateStr), 'dd-MM-yyyy');
   };
 
-
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'Assigned':
+        return <Badge variant="teal" dot>Assigned</Badge>;
+      case 'Completed':
+        return <Badge variant="emerald" dot>Completed</Badge>;
+      case 'Cancelled':
+        return <Badge variant="rose" dot>Cancelled</Badge>;
+      default:
+        return <Badge variant="amber" dot>Pending Selection</Badge>;
+    }
+  };
 
   return (
-    <div className="space-y-4 max-w-7xl mx-auto pb-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Public Bookings (No-Auth)</h1>
-        <p className="text-sm text-gray-500 mt-1">{publicBookings.length} bookings submitted via public forms</p>
+    <div className="h-full flex flex-col space-y-4 min-h-0 overflow-hidden">
+      {/* Top Page Header */}
+      <div className="shrink-0">
+        <PageHeader
+          category="ONLINE INQUIRIES"
+          title="Public Web Bookings"
+          subtitle="Customer bookings submitted via public landing and token forms."
+        />
       </div>
 
-      {/* Search + Filter */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 space-y-3">
-        <div className="relative">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search by booking #, customer name, or phone..."
+      {/* Tabs and Search Bar */}
+      <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <Tabs
+          items={STATUS_TABS.map((tab) => ({
+            id: tab.id,
+            label: tab.label,
+            count:
+              tab.id === 'All'
+                ? publicBookings.length
+                : publicBookings.filter((b: any) => b.status === tab.id).length,
+          }))}
+          activeId={statusFilter}
+          onChange={(id) => setStatusFilter(id)}
+        />
+
+        <div className="w-full md:w-72">
+          <SearchInput
+            placeholder="Search booking #, client..."
             value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-primary focus:border-primary"
+            onChange={(e) => setSearchTerm(e.target.value)}
+            onClear={() => setSearchTerm('')}
           />
         </div>
-        <div className="flex gap-2 overflow-x-auto pb-1">
-          {['All', 'Pending NA Selection', 'Assigned', 'Completed', 'Cancelled'].map(status => (
-            <button
-              key={status}
-              onClick={() => setStatusFilter(status)}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all shrink-0 ${
-                statusFilter === status
-                  ? 'bg-primary text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              {status}
-            </button>
-          ))}
-        </div>
       </div>
 
-      {/* List */}
-      {isLoading ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-        </div>
-      ) : filteredBookings.length === 0 ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-500 text-sm">
-          No public bookings found matching filters.
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-3">
-          {filteredBookings.map((booking: any) => {
-            const statusConfig = STATUS_CONFIG[booking.status] || { color: 'text-gray-700', bg: 'bg-gray-100', icon: '❓' };
-            return (
-              <div
-                key={booking._id}
-                className="bg-white rounded-xl border border-gray-200 p-4 hover:border-primary/50 transition-all shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4"
-              >
-                <div
-                  onClick={() => navigate(`/bookings/${booking._id}`)}
-                  className="flex-grow cursor-pointer space-y-2"
-                >
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-mono text-sm font-extrabold text-gray-900">
-                      {booking.bookingNumber}
-                    </span>
-                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold ${statusConfig.bg} ${statusConfig.color}`}>
-                      <span>{statusConfig.icon}</span>
-                      <span>{booking.status}</span>
-                    </span>
-                  </div>
+      {/* Table Card */}
+      <Card className="flex-1 min-h-0 flex flex-col overflow-hidden">
+        <CardHeader className="shrink-0">
+          <div>
+            <CardTitle>Public Form Submissions</CardTitle>
+            <CardDescription>
+              {filteredBookings.length} of {publicBookings.length} bookings
+            </CardDescription>
+          </div>
+        </CardHeader>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-y-1 gap-x-4 text-xs text-gray-500">
-                    <div className="flex items-center gap-1.5">
-                      <User size={13} className="text-gray-400" />
-                      <span className="font-semibold text-gray-700">{booking.customerName}</span>
-                      <span className="text-[10px] text-gray-400">({booking.phoneNumber})</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <Package size={13} className="text-gray-400" />
-                      <span>{booking.servicePackage} ({booking.dutyShift})</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <Calendar size={13} className="text-gray-400" />
-                      <span>Starts: {booking.requestedDates?.[0] ? formatDate(booking.requestedDates[0]) : 'N/A'}</span>
-                    </div>
-                  </div>
-                </div>
+        <CardContent className="p-0 flex-1 min-h-0 flex flex-col overflow-hidden">
+          {isLoading ? (
+            <div className="text-center py-16 text-slate-400 text-sm">
+              <Loader2 className="w-6 h-6 animate-spin mx-auto text-teal-500 mb-2" />
+              Loading public bookings...
+            </div>
+          ) : filteredBookings.length === 0 ? (
+            <div className="text-center py-16 text-slate-400 text-sm space-y-2">
+              <Globe className="w-10 h-10 mx-auto text-slate-300" />
+              <p className="font-bold text-slate-600">No public bookings found</p>
+              <p className="text-xs text-slate-400">Share your public link to receive client bookings.</p>
+            </div>
+          ) : (
+            <>
+              {/* Desktop Table View (>= md) */}
+              <div className="hidden md:block flex-1 min-h-0 overflow-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>BOOKING ID</TableHead>
+                      <TableHead>CLIENT NAME</TableHead>
+                      <TableHead>PACKAGE & SHIFT</TableHead>
+                      <TableHead>REQUESTED DATES</TableHead>
+                      <TableHead>STATUS</TableHead>
+                      <TableHead className="text-right">ACTIONS</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredBookings.map((b: any) => (
+                      <TableRow
+                        key={b._id}
+                        onClick={() => navigate(`/bookings/${b._id}`)}
+                        className="cursor-pointer group"
+                      >
+                        {/* Booking ID */}
+                        <TableCell>
+                          <span className="font-extrabold text-slate-900 font-mono text-xs group-hover:text-teal-600 transition-colors">
+                            {b.bookingNumber || `BK-${b._id.slice(-6).toUpperCase()}`}
+                          </span>
+                        </TableCell>
 
-                <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
-                  <button
-                    onClick={() => navigate(`/bookings/${booking._id}`)}
-                    className="p-1.5 hover:bg-gray-100 rounded-lg transition-all text-gray-400 hover:text-gray-700"
-                  >
-                    <ChevronRight size={18} />
-                  </button>
-                </div>
+                        {/* Client Name with Avatar */}
+                        <TableCell>
+                          <div className="flex items-center gap-2.5">
+                            <Avatar name={b.customerName || 'Customer'} size="xs" />
+                            <div>
+                              <p className="font-bold text-slate-900 text-xs">{b.customerName}</p>
+                              <p className="text-[11px] text-slate-400 flex items-center gap-1 mt-0.5">
+                                <Phone size={10} />
+                                <span>{b.phoneNumber || '—'}</span>
+                              </p>
+                            </div>
+                          </div>
+                        </TableCell>
+
+                        {/* Package */}
+                        <TableCell>
+                          <div>
+                            <p className="text-xs font-semibold text-slate-800">
+                              {b.servicePackage || 'Newborn Care'}
+                            </p>
+                            <p className="text-[11px] text-slate-400">{b.dutyShift || '24 Hours'}</p>
+                          </div>
+                        </TableCell>
+
+                        {/* Dates */}
+                        <TableCell>
+                          <div className="flex items-center gap-1.5 text-xs text-slate-600">
+                            <Calendar size={12} className="text-slate-400" />
+                            <span>
+                              {b.requestedDates && b.requestedDates[0]
+                                ? formatDate(b.requestedDates[0])
+                                : '—'}
+                              {b.requestedDates?.length > 1
+                                ? ` (+${b.requestedDates.length - 1} days)`
+                                : ''}
+                            </span>
+                          </div>
+                        </TableCell>
+
+                        {/* Status */}
+                        <TableCell>{getStatusBadge(b.status)}</TableCell>
+
+                        {/* Actions */}
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/bookings/${b._id}`);
+                            }}
+                            className="w-7 h-7 text-slate-400 hover:text-teal-600"
+                            title="View details"
+                          >
+                            <ChevronRight size={14} />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
-            );
-          })}
-        </div>
-      )}
+
+              {/* Mobile Card List View (< md) */}
+              <div className="block md:hidden flex-1 min-h-0 overflow-y-auto p-1.5 sm:p-2.5 space-y-2 bg-slate-50/40">
+                {filteredBookings.map((b: any) => (
+                  <div
+                    key={b._id}
+                    onClick={() => navigate(`/bookings/${b._id}`)}
+                    className="w-full p-3 bg-white rounded-xl border border-slate-200/80 shadow-2xs space-y-2.5 active:bg-slate-50 transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-extrabold text-slate-900 font-mono text-xs">
+                        {b.bookingNumber || `BK-${b._id.slice(-6).toUpperCase()}`}
+                      </span>
+                      {getStatusBadge(b.status)}
+                    </div>
+
+                    <div className="flex items-center gap-2.5">
+                      <Avatar name={b.customerName || 'Customer'} size="sm" />
+                      <div>
+                        <p className="font-bold text-slate-900 text-sm leading-tight">
+                          {b.customerName}
+                        </p>
+                        <p className="text-[11px] text-slate-400 flex items-center gap-1 mt-0.5">
+                          <Phone size={10} />
+                          <span>{b.phoneNumber || '—'}</span>
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                      <div>
+                        <p className="font-bold text-slate-800 text-xs">
+                          {b.servicePackage || 'Newborn Care'}
+                        </p>
+                        <p className="text-[10px] text-slate-400">{b.dutyShift || '24 Hours'}</p>
+                      </div>
+                      <div className="text-right text-[11px] text-slate-500 font-medium">
+                        {b.requestedDates && b.requestedDates[0]
+                          ? formatDate(b.requestedDates[0])
+                          : '—'}
+                        {b.requestedDates?.length > 1
+                          ? ` (+${b.requestedDates.length - 1}d)`
+                          : ''}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-end text-xs text-teal-600 font-bold gap-1 pt-0.5">
+                      <span>View Submission</span>
+                      <ChevronRight size={14} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          <TableFooterBar
+            showingText={`Showing ${filteredBookings.length} entries`}
+            updatedText="Syncing with web inquiries"
+          />
+        </CardContent>
+      </Card>
     </div>
   );
 };

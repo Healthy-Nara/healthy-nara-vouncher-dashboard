@@ -43,6 +43,11 @@ import Tickets from './pages/Tickets';
 import TicketDetail from './pages/TicketDetail';
 import Team from './pages/Team';
 
+// Blog Pages
+import Blogs from './pages/Blogs';
+import BlogEditor from './pages/BlogEditor';
+import BlogDetail from './pages/BlogDetail';
+
 const queryClient = new QueryClient();
 
 const PrivateRoute = ({ children, roles }: { children: React.ReactNode, roles?: string[] }) => {
@@ -79,11 +84,11 @@ function App() {
 
             {/* Admin routes - with auth + layout */}
             <Route path="*" element={
-              <div className="min-h-screen bg-gray-50 text-gray-900">
+              <div className="h-screen bg-[#F8FAFC] text-slate-900 flex flex-col overflow-hidden">
                 <Navbar onToggleSidebar={() => setSidebarOpen((prev) => !prev)} />
                 <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-                <div className="pt-14 min-h-screen">
-                  <main className="container mx-auto px-4 py-8">
+                <div className="lg:pl-64 pt-16 h-screen flex flex-col overflow-hidden">
+                  <main className="max-w-7xl w-full mx-auto px-2.5 sm:px-6 lg:px-8 py-3 sm:py-5 flex-1 flex flex-col min-h-0 overflow-y-auto animate-fadeIn">
                     <Routes>
                       <Route path="/" element={
                         <PrivateRoute roles={['admin', 'staff']}>
@@ -93,6 +98,26 @@ function App() {
                       <Route path="/invoices" element={
                         <PrivateRoute roles={['admin', 'staff']}>
                           <Invoices />
+                        </PrivateRoute>
+                      } />
+                      <Route path="/blogs" element={
+                        <PrivateRoute roles={['admin', 'staff']}>
+                          <Blogs />
+                        </PrivateRoute>
+                      } />
+                      <Route path="/blogs/new" element={
+                        <PrivateRoute roles={['admin', 'staff']}>
+                          <BlogEditor />
+                        </PrivateRoute>
+                      } />
+                      <Route path="/blogs/edit/:id" element={
+                        <PrivateRoute roles={['admin', 'staff']}>
+                          <BlogEditor />
+                        </PrivateRoute>
+                      } />
+                      <Route path="/blogs/:id" element={
+                        <PrivateRoute roles={['admin', 'staff']}>
+                          <BlogDetail />
                         </PrivateRoute>
                       } />
                       <Route path="/report" element={

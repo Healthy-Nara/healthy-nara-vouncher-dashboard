@@ -2,9 +2,30 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchUsers, createUser, updateUser, resetUserPassword } from '../api';
 import { useAuth } from '../context/AuthContext';
-import { Users, Save, Loader2, MessageCircle, Plus, X, KeyRound, Power, ShieldCheck } from 'lucide-react';
+import {
+  Save,
+  Loader2,
+  Plus,
+  X,
+  KeyRound,
+  Power,
+} from 'lucide-react';
+import { Button } from '../components/ui/Button';
+import { Badge } from '../components/ui/Badge';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
+import { PageHeader } from '../components/ui/PageHeader';
+import { Avatar } from '../components/ui/Avatar';
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+  TableFooterBar,
+} from '../components/ui/Table';
 
-const Team = () => {
+export const Team = () => {
   const queryClient = useQueryClient();
   const { user: currentUser } = useAuth();
   const [chatIds, setChatIds] = useState<Record<string, string>>({});
@@ -19,7 +40,7 @@ const Team = () => {
   const [resetId, setResetId] = useState<string | null>(null);
   const [resetPassword, setResetPassword] = useState('');
 
-  const { data: users, isLoading } = useQuery({
+  const { data: users = [], isLoading } = useQuery<any[]>({
     queryKey: ['users'],
     queryFn: () => fetchUsers(),
   });
@@ -43,7 +64,8 @@ const Team = () => {
   });
 
   const resetMutation = useMutation({
-    mutationFn: ({ id, password }: { id: string; password: string }) => resetUserPassword(id, password),
+    mutationFn: ({ id, password }: { id: string; password: string }) =>
+      resetUserPassword(id, password),
     onSuccess: () => {
       invalidate();
       setResetId(null);
@@ -52,209 +74,422 @@ const Team = () => {
   });
 
   const submitCreate = () => {
-    if (!newUsername.trim() || !newPassword.trim()) return;
+    if (!newUsername.trim() || !newPassword.trim()) {
+      alert('Username and password are required');
+      return;
+    }
     createMutation.mutate({ username: newUsername.trim(), password: newPassword, role: newRole });
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-24">
-        <Loader2 className="animate-spin h-8 w-8 text-primary" />
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-extrabold text-gray-900">Accounts</h1>
-          <p className="text-sm text-gray-500 mt-1">Team member အကောင့်များ စီမံခန့်ခွဲရန်</p>
-        </div>
-        <button
-          onClick={() => setShowCreate(true)}
-          className="inline-flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-bold px-4 py-2.5 rounded-xl text-sm transition-all"
-        >
-          <Plus className="h-4 w-4" /> Create User
-        </button>
+    <div className="h-full flex flex-col space-y-4 min-h-0 overflow-hidden">
+      {/* Top Page Header */}
+      <div className="shrink-0">
+        <PageHeader
+          category="ADMINISTRATION"
+          title="Team & Accounts"
+          subtitle="Manage administrative credentials, roles, and Telegram integration IDs."
+          actions={
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => setShowCreate(true)}
+              leftIcon={<Plus size={16} />}
+            >
+              Create User
+            </Button>
+          }
+        />
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-primary/10 overflow-hidden">
-        <table className="w-full">
-          <thead>
-            <tr className="bg-gray-50 border-b border-gray-200">
-              <th className="text-left px-6 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-500">User</th>
-              <th className="text-left px-6 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-500">Role</th>
-              <th className="text-left px-6 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-500">Status</th>
-              <th className="text-left px-6 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-500">Telegram Chat ID</th>
-              <th className="text-left px-6 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-500">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {users?.map((u: any) => {
-              const isMe = u._id === currentUser?.id;
-              return (
-                <tr key={u._id} className={u.isActive === false ? 'bg-gray-50' : ''}>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="bg-primary/10 w-8 h-8 rounded-full flex items-center justify-center">
-                        <Users className="text-primary h-4 w-4" />
-                      </div>
-                      <div>
-                        <span className="text-sm font-medium text-gray-900">{u.username}</span>
-                        {isMe && <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-bold">you</span>}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <select
-                      value={u.role}
-                      onChange={(e) => updateMutation.mutate({ id: u._id, data: { role: e.target.value } })}
-                      className="border border-gray-300 rounded-lg p-2 text-sm focus:ring-primary focus:border-primary"
-                    >
-                      <option value="admin">admin</option>
-                      <option value="staff">staff</option>
-                    </select>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      u.isActive === false ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
-                    }`}>
-                      {u.isActive === false ? 'Disabled' : 'Active'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <MessageCircle className="text-gray-400 h-4 w-4" />
-                      <input
-                        value={chatIds[u._id] ?? u.telegramChatId ?? ''}
-                        onChange={(e) => setChatIds((prev) => ({ ...prev, [u._id]: e.target.value }))}
-                        placeholder="e.g. 123456789"
-                        className="border border-gray-300 rounded-lg p-2 text-sm focus:ring-primary focus:border-primary w-40"
-                      />
-                      <button
-                        onClick={() => updateMutation.mutate({ id: u._id, data: { telegramChatId: (chatIds[u._id] ?? u.telegramChatId ?? '').trim() } })}
-                        className="p-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-all"
-                        title="Save Telegram ID"
-                      >
-                        <Save className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setResetId(u._id)}
-                        className="inline-flex items-center gap-1.5 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-xs font-bold hover:bg-gray-200 transition-all"
-                        title="Reset password"
-                      >
-                        <KeyRound className="h-3.5 w-3.5" /> Password
-                      </button>
-                      <button
-                        onClick={() => updateMutation.mutate({ id: u._id, data: { isActive: u.isActive === false } })}
-                        disabled={isMe}
-                        className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all disabled:opacity-50 ${
-                          u.isActive === false
-                            ? 'bg-green-50 text-green-700 hover:bg-green-100'
-                            : 'bg-red-50 text-red-600 hover:bg-red-100'
-                        }`}
-                        title={u.isActive === false ? 'Enable account' : 'Disable account'}
-                      >
-                        <Power className="h-3.5 w-3.5" /> {u.isActive === false ? 'Enable' : 'Disable'}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+      {/* Users Table Card */}
+      <Card className="flex-1 min-h-0 flex flex-col overflow-hidden">
+        <CardHeader className="shrink-0">
+          <div>
+            <CardTitle>Team Members</CardTitle>
+            <CardDescription>
+              {users.length} active administrative accounts
+            </CardDescription>
+          </div>
+        </CardHeader>
 
-      <div className="bg-primary/5 border border-primary/10 rounded-2xl p-4">
-        <p className="text-sm text-gray-600">
-          <ShieldCheck className="inline h-4 w-4 mr-1 text-primary" />
-          💡 <span className="font-semibold">Telegram Chat ID:</span> Telegram ထဲမှာ{' '}
-          <code className="bg-white px-1.5 py-0.5 rounded text-primary font-mono text-xs">@userinfobot</code>{' '}
-          ကို ရှာပြီး "Start" နှိပ်ပါ — သင့် ID ကို ပြပေးပါလိမ့်မယ်။ Ticket assign ရတဲ့အခါ ဒီဆီကို သတိပေးချက် ပို့ပါမယ်။
-        </p>
-      </div>
-
-      {/* Create User Modal */}
-      {showCreate && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 animate-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-bold text-gray-900">Create User</h2>
-              <button onClick={() => setShowCreate(false)} className="p-1 hover:bg-gray-100 rounded-lg">
-                <X className="h-5 w-5 text-gray-400" />
-              </button>
+        <CardContent className="p-0 flex-1 min-h-0 flex flex-col overflow-hidden">
+          {isLoading ? (
+            <div className="text-center py-16 text-slate-400 text-sm">
+              <Loader2 className="w-6 h-6 animate-spin mx-auto text-teal-500 mb-2" />
+              Loading team accounts...
             </div>
-            <div className="space-y-3">
-              <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase">Username</label>
-                <input
-                  value={newUsername}
-                  onChange={(e) => setNewUsername(e.target.value)}
-                  className="mt-1 w-full border border-gray-300 rounded-xl p-3 focus:ring-primary focus:border-primary text-sm bg-gray-50"
-                />
+          ) : (
+            <>
+              {/* Desktop Table View (>= md) */}
+              <div className="hidden md:block flex-1 min-h-0 overflow-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>USER</TableHead>
+                      <TableHead>ROLE</TableHead>
+                      <TableHead>STATUS</TableHead>
+                      <TableHead>TELEGRAM CHAT ID</TableHead>
+                      <TableHead className="text-right">ACTIONS</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {users.map((u: any) => {
+                      const isMe = u._id === currentUser?.id;
+                      return (
+                        <TableRow key={u._id} className={u.isActive === false ? 'opacity-60 bg-slate-50' : ''}>
+                          {/* User Avatar & Name */}
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <Avatar name={u.username} size="sm" />
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <p className="font-bold text-slate-900 text-xs">
+                                    {u.username}
+                                  </p>
+                                  {isMe && (
+                                    <span className="px-1.5 py-0.2 rounded-md bg-teal-100 text-teal-800 text-[10px] font-bold">
+                                      You
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-[10px] text-slate-400 font-mono mt-0.5">
+                                  ID: {u._id.slice(-6)}
+                                </p>
+                              </div>
+                            </div>
+                          </TableCell>
+
+                          {/* Role Badge */}
+                          <TableCell>
+                            {u.role === 'admin' ? (
+                              <Badge variant="teal" dot>
+                                Admin
+                              </Badge>
+                            ) : u.role === 'caregiver' ? (
+                              <Badge variant="purple" dot>
+                                Caregiver
+                              </Badge>
+                            ) : (
+                              <Badge variant="slate" dot>
+                                Staff
+                              </Badge>
+                            )}
+                          </TableCell>
+
+                          {/* Status */}
+                          <TableCell>
+                            <Badge variant={u.isActive === false ? 'rose' : 'emerald'} dot>
+                              {u.isActive === false ? 'Deactivated' : 'Active'}
+                            </Badge>
+                          </TableCell>
+
+                          {/* Telegram Chat ID */}
+                          <TableCell>
+                            <div className="flex items-center gap-1.5 max-w-xs">
+                              <input
+                                type="text"
+                                placeholder="e.g. 123456789"
+                                defaultValue={u.telegramChatId || ''}
+                                onChange={(e) =>
+                                  setChatIds((prev) => ({ ...prev, [u._id]: e.target.value }))
+                                }
+                                className="p-1.5 text-xs rounded-lg border border-slate-200 bg-white font-mono w-32"
+                              />
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => {
+                                  const val = chatIds[u._id] !== undefined ? chatIds[u._id] : u.telegramChatId;
+                                  updateMutation.mutate({ id: u._id, data: { telegramChatId: val } });
+                                }}
+                                className="w-7 h-7 text-slate-400 hover:text-teal-600"
+                                title="Save Chat ID"
+                              >
+                                <Save size={13} />
+                              </Button>
+                            </div>
+                          </TableCell>
+
+                          {/* Actions */}
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <Button
+                                variant="subtle"
+                                size="xs"
+                                onClick={() => setResetId(u._id)}
+                                leftIcon={<KeyRound size={12} />}
+                              >
+                                Password
+                              </Button>
+
+                              {!isMe && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() =>
+                                    updateMutation.mutate({
+                                      id: u._id,
+                                      data: { isActive: u.isActive === false ? true : false },
+                                    })
+                                  }
+                                  className={`w-7 h-7 ${
+                                    u.isActive === false
+                                      ? 'text-emerald-600 hover:bg-emerald-50'
+                                      : 'text-rose-600 hover:bg-rose-50'
+                                  }`}
+                                  title={u.isActive === false ? 'Activate' : 'Deactivate'}
+                                >
+                                  <Power size={13} />
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
               </div>
+
+              {/* Mobile Card List View (< md) */}
+              <div className="block md:hidden flex-1 min-h-0 overflow-y-auto p-1.5 sm:p-2.5 space-y-2 bg-slate-50/40">
+                {users.map((u: any) => {
+                  const isMe = u._id === currentUser?.id;
+                  return (
+                    <div
+                      key={u._id}
+                      className={`w-full p-3 bg-white rounded-xl border border-slate-200/80 shadow-2xs space-y-2.5 ${
+                        u.isActive === false ? 'opacity-60 bg-slate-50' : ''
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2.5">
+                          <Avatar name={u.username} size="sm" />
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <p className="font-bold text-slate-900 text-sm leading-tight">
+                                {u.username}
+                              </p>
+                              {isMe && (
+                                <span className="px-1.5 py-0.2 rounded-md bg-teal-100 text-teal-800 text-[10px] font-bold">
+                                  You
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[10px] text-slate-400 font-mono">
+                              ID: {u._id.slice(-6)}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
+                          {u.role === 'admin' ? (
+                            <Badge variant="teal" dot>
+                              Admin
+                            </Badge>
+                          ) : u.role === 'caregiver' ? (
+                            <Badge variant="purple" dot>
+                              Caregiver
+                            </Badge>
+                          ) : (
+                            <Badge variant="slate" dot>
+                              Staff
+                            </Badge>
+                          )}
+                          <Badge variant={u.isActive === false ? 'rose' : 'emerald'} dot>
+                            {u.isActive === false ? 'Deactivated' : 'Active'}
+                          </Badge>
+                        </div>
+                      </div>
+
+                      {/* Telegram ID Input & Actions */}
+                      <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100/80 text-xs">
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="text"
+                            placeholder="Telegram ID"
+                            defaultValue={u.telegramChatId || ''}
+                            onChange={(e) =>
+                              setChatIds((prev) => ({ ...prev, [u._id]: e.target.value }))
+                            }
+                            className="p-1 text-xs rounded-lg border border-slate-200 bg-white font-mono w-28"
+                          />
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              const val = chatIds[u._id] !== undefined ? chatIds[u._id] : u.telegramChatId;
+                              updateMutation.mutate({ id: u._id, data: { telegramChatId: val } });
+                            }}
+                            className="w-7 h-7 text-slate-400 hover:text-teal-600"
+                          >
+                            <Save size={13} />
+                          </Button>
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="subtle"
+                            size="xs"
+                            onClick={() => setResetId(u._id)}
+                            leftIcon={<KeyRound size={11} />}
+                          >
+                            Password
+                          </Button>
+                          {!isMe && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() =>
+                                updateMutation.mutate({
+                                  id: u._id,
+                                  data: { isActive: u.isActive === false ? true : false },
+                                })
+                              }
+                              className={`w-7 h-7 ${
+                                u.isActive === false
+                                  ? 'text-emerald-600 hover:bg-emerald-50'
+                                  : 'text-rose-600 hover:bg-rose-50'
+                              }`}
+                            >
+                              <Power size={13} />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
+          <TableFooterBar
+            showingText={`Showing ${users.length} accounts`}
+            updatedText="Encrypted auth stored in MongoDB"
+          />
+        </CardContent>
+      </Card>
+
+      {/* CREATE USER MODAL */}
+      {showCreate && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-fadeIn">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase">Password</label>
+                <h3 className="text-base font-extrabold text-slate-900">Create New Account</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Add a new admin or staff login</p>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowCreate(false)}
+                className="w-8 h-8 rounded-full"
+              >
+                <X size={16} />
+              </Button>
+            </div>
+
+            <div className="space-y-3.5 text-xs">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Username *</label>
                 <input
                   type="text"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className="mt-1 w-full border border-gray-300 rounded-xl p-3 focus:ring-primary focus:border-primary text-sm bg-gray-50"
+                  value={newUsername}
+                  onChange={(e) => setNewUsername(e.target.value)}
+                  placeholder="e.g. johndoe"
+                  className="w-full p-2.5 rounded-xl border border-slate-200 bg-white"
                 />
               </div>
+
               <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase">Role</label>
+                <label className="font-bold text-slate-700 block mb-1">Password *</label>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full p-2.5 rounded-xl border border-slate-200 bg-white"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Role</label>
                 <select
                   value={newRole}
                   onChange={(e) => setNewRole(e.target.value)}
-                  className="mt-1 w-full border border-gray-300 rounded-xl p-3 focus:ring-primary focus:border-primary text-sm bg-gray-50"
+                  className="w-full p-2.5 rounded-xl border border-slate-200 bg-white"
                 >
-                  <option value="staff">staff</option>
-                  <option value="admin">admin</option>
+                  <option value="staff">Staff (Operational View)</option>
+                  <option value="admin">Admin (Full Access)</option>
+                  <option value="caregiver">Caregiver</option>
                 </select>
               </div>
-              <button
-                onClick={submitCreate}
-                disabled={!newUsername.trim() || !newPassword.trim() || createMutation.isPending}
-                className="w-full py-2.5 bg-primary text-white rounded-xl text-sm font-bold hover:bg-primary-dark transition-all disabled:opacity-50"
-              >
-                {createMutation.isPending ? 'Creating...' : 'Create User'}
-              </button>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                <Button variant="outline" size="sm" onClick={() => setShowCreate(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  isLoading={createMutation.isPending}
+                  onClick={submitCreate}
+                >
+                  Create User
+                </Button>
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Reset Password Modal */}
+      {/* RESET PASSWORD MODAL */}
       {resetId && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 animate-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-bold text-gray-900">Reset Password</h2>
-              <button onClick={() => setResetId(null)} className="p-1 hover:bg-gray-100 rounded-lg">
-                <X className="h-5 w-5 text-gray-400" />
-              </button>
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4 animate-fadeIn">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <h3 className="text-base font-extrabold text-slate-900">Reset Password</h3>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setResetId(null)}
+                className="w-8 h-8 rounded-full"
+              >
+                <X size={16} />
+              </Button>
             </div>
-            <label className="text-xs font-semibold text-gray-500 uppercase">New Password</label>
-            <input
-              type="text"
-              value={resetPassword}
-              onChange={(e) => setResetPassword(e.target.value)}
-              className="mt-1 w-full border border-gray-300 rounded-xl p-3 focus:ring-primary focus:border-primary text-sm bg-gray-50"
-            />
-            <button
-              onClick={() => resetMutation.mutate({ id: resetId, password: resetPassword })}
-              disabled={!resetPassword.trim() || resetMutation.isPending}
-              className="w-full mt-4 py-2.5 bg-primary text-white rounded-xl text-sm font-bold hover:bg-primary-dark transition-all disabled:opacity-50"
-            >
-              {resetMutation.isPending ? 'Saving...' : 'Save New Password'}
-            </button>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">New Password</label>
+                <input
+                  type="password"
+                  value={resetPassword}
+                  onChange={(e) => setResetPassword(e.target.value)}
+                  placeholder="Enter new password"
+                  className="w-full p-2.5 rounded-xl border border-slate-200 bg-white"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <Button variant="outline" size="sm" onClick={() => setResetId(null)}>
+                  Cancel
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  isLoading={resetMutation.isPending}
+                  onClick={() => {
+                    if (!resetPassword.trim()) return;
+                    resetMutation.mutate({ id: resetId, password: resetPassword });
+                  }}
+                >
+                  Save Password
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
       )}

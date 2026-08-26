@@ -83,58 +83,77 @@ const ParentDetail = () => {
   if (!parent) return <div className="text-center py-12 text-gray-500">Parent not found</div>;
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <button onClick={() => navigate('/parents')} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all">
-          <ArrowLeft size={20} />
-        </button>
-        <div>
-          <h1 className="text-xl font-extrabold text-gray-900 tracking-tight">{parent.parentName}</h1>
-          <p className="text-xs text-gray-500">Parent Profile Detail</p>
+    <div className="space-y-4 max-w-7xl w-full mx-auto pb-10">
+      {/* Top Header Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate('/parents')}
+            className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-all"
+            title="Back to Parents"
+          >
+            <ArrowLeft size={18} />
+          </button>
+          <div>
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h1 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">{parent.parentName}</h1>
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border uppercase tracking-wider ${STATUS_STYLE[parent.status || 'Inactive'] || STATUS_STYLE.Inactive}`}>
+                {parent.status || 'Inactive'}
+              </span>
+            </div>
+            <p className="text-xs text-slate-400 mt-0.5 font-mono">{parent.contactNumber} • {parent.township || 'Yangon'}</p>
+          </div>
         </div>
+
+        <button
+          onClick={() => navigate('/bookings')}
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-[#0d6d5c] hover:bg-teal-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer"
+        >
+          <Calendar size={14} />
+          <span>New Booking</span>
+        </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Left Panel */}
         <div className="lg:col-span-1 space-y-4">
           {/* Parent Info */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="px-5 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
-              <h2 className="text-xs font-extrabold text-gray-900 uppercase tracking-wide">Parent Info</h2>
+          <div className="bg-white rounded-2xl shadow-2xs border border-slate-200/80 overflow-hidden">
+            <div className="px-4 sm:px-5 py-3.5 border-b border-slate-100 bg-slate-50/60 flex items-center justify-between">
+              <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide">Parent Info</h2>
               {!isEditing && (
-                <button onClick={startEdit} className="p-1 text-gray-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-all">
-                  <Edit2 size={12} />
+                <button onClick={startEdit} className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-all">
+                  <Edit2 size={13} />
                 </button>
               )}
             </div>
-            <div className="p-5">
+            <div className="p-4 sm:p-5">
               {isEditing ? (
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">Parent Name</label>
+                    <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">Parent Name</label>
                     <input type="text" value={editForm.parentName} onChange={e => setEditForm({ ...editForm, parentName: e.target.value })}
-                      className="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-primary focus:border-primary" />
+                      className="w-full text-xs font-semibold rounded-xl border border-slate-200 p-2.5 outline-none focus:border-[#0d6d5c] focus:ring-2 focus:ring-teal-500/20" />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">Contact Number</label>
+                    <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">Contact Number</label>
                     <input type="text" value={editForm.contactNumber} onChange={e => setEditForm({ ...editForm, contactNumber: e.target.value })}
-                      className="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-primary focus:border-primary" />
+                      className="w-full text-xs font-semibold rounded-xl border border-slate-200 p-2.5 outline-none focus:border-[#0d6d5c] focus:ring-2 focus:ring-teal-500/20" />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">Township</label>
+                    <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">Township</label>
                     <input type="text" value={editForm.township} onChange={e => setEditForm({ ...editForm, township: e.target.value })}
-                      className="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-primary focus:border-primary" />
+                      className="w-full text-xs font-semibold rounded-xl border border-slate-200 p-2.5 outline-none focus:border-[#0d6d5c] focus:ring-2 focus:ring-teal-500/20" />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">Address</label>
+                    <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">Address</label>
                     <textarea rows={2} value={editForm.address} onChange={e => setEditForm({ ...editForm, address: e.target.value })}
-                      className="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-primary focus:border-primary" />
+                      className="w-full text-xs font-semibold rounded-xl border border-slate-200 p-2.5 outline-none focus:border-[#0d6d5c] focus:ring-2 focus:ring-teal-500/20" />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">Religion</label>
+                    <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">Religion</label>
                     <select value={editForm.religion} onChange={e => setEditForm({ ...editForm, religion: e.target.value })}
-                      className="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-primary focus:border-primary">
+                      className="w-full text-xs font-semibold rounded-xl border border-slate-200 p-2.5 outline-none focus:border-[#0d6d5c] focus:ring-2 focus:ring-teal-500/20 bg-white">
                       <option value="">Select Religion</option>
                       <option value="Buddhist">Buddhist</option>
                       <option value="Christian">Christian</option>
@@ -144,89 +163,89 @@ const ParentDetail = () => {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">Nearest Bus Stop</label>
+                    <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">Nearest Bus Stop</label>
                     <input type="text" value={editForm.nearestBusStop} onChange={e => setEditForm({ ...editForm, nearestBusStop: e.target.value })}
-                      className="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-primary focus:border-primary" />
+                      className="w-full text-xs font-semibold rounded-xl border border-slate-200 p-2.5 outline-none focus:border-[#0d6d5c] focus:ring-2 focus:ring-teal-500/20" />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">Duration (Bus Stop to Home)</label>
+                    <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">Duration (Bus Stop to Home)</label>
                     <input type="text" value={editForm.durationOfBusStopToHome} onChange={e => setEditForm({ ...editForm, durationOfBusStopToHome: e.target.value })}
-                      className="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-primary focus:border-primary" />
+                      className="w-full text-xs font-semibold rounded-xl border border-slate-200 p-2.5 outline-none focus:border-[#0d6d5c] focus:ring-2 focus:ring-teal-500/20" />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">Status (ဝန်ဆောင်မှုအခြေအနေ)</label>
+                    <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">Status (ဝန်ဆောင်မှုအခြေအနေ)</label>
                     <select value={editForm.status} onChange={e => setEditForm({ ...editForm, status: e.target.value })}
-                      className="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-primary focus:border-primary">
+                      className="w-full text-xs font-semibold rounded-xl border border-slate-200 p-2.5 outline-none focus:border-[#0d6d5c] focus:ring-2 focus:ring-teal-500/20 bg-white">
                       {PARENT_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">Job / Profession (အလုပ်အကိုင်)</label>
+                    <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">Job / Profession (အလုပ်အကိုင်)</label>
                     <input type="text" value={editForm.profession} onChange={e => setEditForm({ ...editForm, profession: e.target.value })}
-                      className="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-primary focus:border-primary" placeholder="e.g. Engineer" />
+                      className="w-full text-xs font-semibold rounded-xl border border-slate-200 p-2.5 outline-none focus:border-[#0d6d5c] focus:ring-2 focus:ring-teal-500/20" placeholder="e.g. Engineer" />
                   </div>
                   <div className="flex gap-2 pt-1">
                     <button onClick={() => setIsEditing(false)}
-                      className="flex-1 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-50 transition-all py-2">
+                      className="flex-1 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all py-2">
                       Cancel
                     </button>
                     <button onClick={() => updateMutation.mutate(editForm)} disabled={!editForm.parentName || updateMutation.isPending}
-                      className="flex-1 bg-primary text-white rounded-xl text-sm font-bold shadow-md hover:bg-primary-dark transition-all py-2 disabled:opacity-50">
+                      className="flex-1 bg-[#0d6d5c] text-white rounded-xl text-xs font-bold shadow-xs hover:bg-teal-700 transition-all py-2 disabled:opacity-50">
                       {updateMutation.isPending ? 'Saving...' : 'Save'}
                     </button>
                   </div>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  <div>
-                    <p className="text-[10px] text-gray-500 uppercase">Name</p>
-                    <p className="text-sm font-semibold text-gray-900">{parent.parentName}</p>
+                <div className="space-y-3 text-xs">
+                  <div className="flex items-center justify-between py-1 border-b border-slate-100">
+                    <span className="text-slate-400 font-bold">Name</span>
+                    <span className="font-bold text-slate-900">{parent.parentName}</span>
                   </div>
-                  <div>
-                    <p className="text-[10px] text-gray-500 uppercase">Phone</p>
-                    <a href={`tel:${parent.contactNumber}`} className="text-sm font-semibold text-primary hover:underline inline-flex items-center gap-1">
-                      <Phone size={12} /> {parent.contactNumber}
+                  <div className="flex items-center justify-between py-1 border-b border-slate-100">
+                    <span className="text-slate-400 font-bold">Phone</span>
+                    <a href={`tel:${parent.contactNumber}`} className="font-bold text-[#0d6d5c] hover:underline inline-flex items-center gap-1 font-mono">
+                      <Phone size={11} /> {parent.contactNumber}
                     </a>
                   </div>
                   {parent.township && (
-                    <div>
-                      <p className="text-[10px] text-gray-500 uppercase">Township</p>
-                      <p className="text-sm text-gray-900 flex items-center gap-1"><MapPin size={12} className="text-gray-400" /> {parent.township}</p>
+                    <div className="flex items-center justify-between py-1 border-b border-slate-100">
+                      <span className="text-slate-400 font-bold">Township</span>
+                      <span className="font-bold text-slate-900 flex items-center gap-1"><MapPin size={11} className="text-slate-400" /> {parent.township}</span>
                     </div>
                   )}
                   {parent.address && (
-                    <div>
-                      <p className="text-[10px] text-gray-500 uppercase">Address</p>
-                      <p className="text-sm text-gray-700">{parent.address}</p>
+                    <div className="py-1 border-b border-slate-100 space-y-1">
+                      <span className="text-slate-400 font-bold block">Address</span>
+                      <p className="font-medium text-slate-700 whitespace-pre-wrap">{parent.address}</p>
                     </div>
                   )}
                   {parent.religion && (
-                    <div>
-                      <p className="text-[10px] text-gray-500 uppercase">Religion</p>
-                      <p className="text-sm text-gray-900">{parent.religion}</p>
+                    <div className="flex items-center justify-between py-1 border-b border-slate-100">
+                      <span className="text-slate-400 font-bold">Religion</span>
+                      <span className="font-bold text-slate-900">{parent.religion}</span>
                     </div>
                   )}
                   {parent.nearestBusStop && (
-                    <div>
-                      <p className="text-[10px] text-gray-500 uppercase">Nearest Bus Stop</p>
-                      <p className="text-sm text-gray-900">{parent.nearestBusStop}</p>
+                    <div className="flex items-center justify-between py-1 border-b border-slate-100">
+                      <span className="text-slate-400 font-bold">Nearest Bus Stop</span>
+                      <span className="font-bold text-slate-900">{parent.nearestBusStop}</span>
                     </div>
                   )}
                   {parent.durationOfBusStopToHome && (
-                    <div>
-                      <p className="text-[10px] text-gray-500 uppercase">Duration (Bus Stop to Home)</p>
-                      <p className="text-sm text-gray-900">{parent.durationOfBusStopToHome}</p>
+                    <div className="flex items-center justify-between py-1 border-b border-slate-100">
+                      <span className="text-slate-400 font-bold">Duration to Home</span>
+                      <span className="font-bold text-slate-900">{parent.durationOfBusStopToHome}</span>
                     </div>
                   )}
                   {parent.profession && (
-                    <div>
-                      <p className="text-[10px] text-gray-500 uppercase">Job / Profession</p>
-                      <p className="text-sm text-gray-900">{parent.profession}</p>
+                    <div className="flex items-center justify-between py-1 border-b border-slate-100">
+                      <span className="text-slate-400 font-bold">Job / Profession</span>
+                      <span className="font-bold text-slate-900">{parent.profession}</span>
                     </div>
                   )}
-                  <div>
-                    <p className="text-[10px] text-gray-500 uppercase">Status</p>
-                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-black border uppercase tracking-wider mt-1 ${STATUS_STYLE[parent.status || 'Inactive'] || STATUS_STYLE.Inactive}`}>
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="text-slate-400 font-bold">Status</span>
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold border uppercase tracking-wider ${STATUS_STYLE[parent.status || 'Inactive'] || STATUS_STYLE.Inactive}`}>
                       {parent.status || 'Inactive'}
                     </span>
                   </div>
@@ -235,45 +254,45 @@ const ParentDetail = () => {
             </div>
           </div>
 
-          {/* Children */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="px-5 py-3 border-b border-gray-200 bg-gray-50">
-              <h2 className="text-xs font-extrabold text-gray-900 uppercase tracking-wide flex items-center gap-1.5">
-                <Baby size={12} /> Children ({parent.children?.length || 0})
+          {/* Children Card */}
+          <div className="bg-white rounded-2xl shadow-2xs border border-slate-200/80 overflow-hidden">
+            <div className="px-4 sm:px-5 py-3.5 border-b border-slate-100 bg-slate-50/60">
+              <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
+                <Baby size={13} /> Children ({parent.children?.length || 0})
               </h2>
             </div>
-            <div className="p-5">
+            <div className="p-4 sm:p-5">
               {parent.children && parent.children.length > 0 ? (
-                <div className="space-y-2">
+                <div className="space-y-2.5">
                   {parent.children.map((child: any, idx: number) => (
-                    <div key={idx} className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100">
-                      <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">
+                    <div key={idx} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50/70 border border-slate-100">
+                      <div className="w-8 h-8 rounded-full bg-teal-50 text-[#0d6d5c] flex items-center justify-center text-xs font-bold shrink-0">
                         <Baby size={14} />
                       </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-bold text-gray-900">{child.childName}</p>
-                        <div className="text-[11px] text-gray-500 flex items-center gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs sm:text-sm font-bold text-slate-900">{child.childName}</p>
+                        <div className="text-[11px] text-slate-400 flex items-center gap-2 mt-0.5">
                           {child.birthDate && <span>{format(new Date(child.birthDate), 'dd-MM-yyyy')}</span>}
-                          {child.gender && <span>{child.gender}</span>}
+                          {child.gender && <span>• {child.gender}</span>}
                         </div>
                         {child.notes && (
-                          <p className="text-[11px] text-gray-500 italic mt-0.5">Note: {child.notes}</p>
+                          <p className="text-[11px] text-slate-500 italic mt-0.5 truncate">Note: {child.notes}</p>
                         )}
                       </div>
                       {child.hasInfectiousDisease ? (
-                        <span className="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700 border border-red-200">
-                          Infectious (ကူးစက်ရောဂါရှိ)
+                        <span className="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                          Infectious
                         </span>
                       ) : (
-                        <span className="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-700 border border-green-200">
-                          No Sign (လက္ခဏာမရှိ)
+                        <span className="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          Healthy
                         </span>
                       )}
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-gray-400 text-center py-4">No children added yet</p>
+                <p className="text-xs text-slate-400 text-center py-4 font-medium">No children registered yet</p>
               )}
             </div>
           </div>
@@ -281,53 +300,53 @@ const ParentDetail = () => {
 
         {/* Right Panel - Bookings */}
         <div className="lg:col-span-2">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="px-5 py-3 border-b border-gray-200 bg-gray-50">
-              <h2 className="text-xs font-extrabold text-gray-900 uppercase tracking-wide">
-                <Calendar size={12} className="inline mr-1" />
+          <div className="bg-white rounded-2xl shadow-2xs border border-slate-200/80 overflow-hidden">
+            <div className="px-4 sm:px-5 py-3.5 border-b border-slate-100 bg-slate-50/60 flex items-center justify-between">
+              <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
+                <Calendar size={13} />
                 Booking History ({bookings.length})
               </h2>
             </div>
             <div>
               {bookings.length === 0 ? (
-                <div className="text-center py-12 text-gray-400 text-sm">
+                <div className="text-center py-12 text-slate-400 text-xs font-medium">
                   <p>No bookings found for this parent</p>
-                  <button onClick={() => navigate('/bookings')} className="mt-2 text-primary text-xs font-bold hover:underline">Create Booking</button>
+                  <button onClick={() => navigate('/bookings')} className="mt-2 text-[#0d6d5c] text-xs font-bold hover:underline cursor-pointer">Create New Booking</button>
                 </div>
               ) : (
-                <div className="divide-y divide-gray-100">
+                <div className="divide-y divide-slate-100">
                   {bookings.map((booking: any) => {
                     const config = STATUS_CONFIG[booking.status] || STATUS_CONFIG['Pending NA Selection'];
                     return (
                       <div
                         key={booking._id}
                         onClick={() => navigate(`/bookings/${booking._id}`)}
-                        className="px-5 py-4 hover:bg-gray-50/50 cursor-pointer transition-all"
+                        className="px-4 sm:px-5 py-3.5 hover:bg-slate-50/70 cursor-pointer transition-all"
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">
-                              {booking.bookingNumber?.slice(-4)}
+                            <div className="w-9 h-9 rounded-xl bg-teal-50 text-[#0d6d5c] flex items-center justify-center text-xs font-bold font-mono">
+                              {booking.bookingNumber?.slice(-4) || 'BK'}
                             </div>
                             <div>
                               <div className="flex items-center gap-2">
-                                <span className="text-sm font-bold text-gray-900">{booking.bookingNumber}</span>
+                                <span className="text-xs sm:text-sm font-bold text-slate-900">{booking.bookingNumber}</span>
                                 <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${config.bg} ${config.color}`}>
                                   {config.icon} {booking.status === 'Pending NA Selection' ? 'Pending' : booking.status}
                                 </span>
                               </div>
-                              <div className="flex items-center gap-3 mt-1 text-[11px] text-gray-500">
+                              <div className="flex items-center gap-3 mt-0.5 text-[11px] text-slate-400">
                                 {booking.dutyType && <span>{booking.dutyType}</span>}
                                 {booking.requestedDates?.length > 0 && (
-                                  <span>{booking.requestedDates.length} date(s)</span>
+                                  <span>• {booking.requestedDates.length} date(s)</span>
                                 )}
-                                {booking.caregiverName && <span className="text-primary">NA: {booking.caregiverName}</span>}
+                                {booking.caregiverName && <span className="text-[#0d6d5c] font-semibold">• NA: {booking.caregiverName}</span>}
                               </div>
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className="text-[10px] text-gray-400">{formatDate(booking.createdAt)}</span>
-                            <ChevronRight size={16} className="text-gray-300" />
+                            <span className="text-[10px] text-slate-400 font-mono">{formatDate(booking.createdAt)}</span>
+                            <ChevronRight size={15} className="text-slate-300" />
                           </div>
                         </div>
                       </div>

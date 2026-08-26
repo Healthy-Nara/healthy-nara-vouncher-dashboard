@@ -1,52 +1,54 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useRef, useEffect, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   fetchInvoices,
-  updateInvoiceStatus,
   deleteInvoice,
   updateCustomerPayment,
   updateCaregiverPayout,
-} from "../api";
-import { Link } from "react-router-dom";
-import { useState, useRef, useEffect } from "react";
+} from '../api';
+import { useNavigate } from 'react-router-dom';
 import {
+  Plus,
+  Calendar as CalendarIcon,
+  Trash2,
+  Receipt,
   CheckCircle,
   Clock,
-  Plus,
-  Search as SearchIcon,
-  FileText,
-  Trash2,
-  Calendar as CalendarIcon,
-  X,
-} from "lucide-react";
-import { DateRange, type Range, type RangeKeyDict } from "react-date-range";
-import { format } from "date-fns";
+  ChevronRight,
+  Loader2,
+} from 'lucide-react';
+import { DateRange, type Range, type RangeKeyDict } from 'react-date-range';
+import { format } from 'date-fns';
+import 'react-date-range/dist/styles.css';
+import 'react-date-range/dist/theme/default.css';
+import { Button } from '../components/ui/Button';
+import { Badge } from '../components/ui/Badge';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
+import { PageHeader } from '../components/ui/PageHeader';
+import { SearchInput } from '../components/ui/SearchInput';
+import { Avatar } from '../components/ui/Avatar';
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+  TableFooterBar,
+} from '../components/ui/Table';
 
-import "react-date-range/dist/styles.css";
-import "react-date-range/dist/theme/default.css";
-
-interface Invoice {
-  _id: string;
-  invoiceNumber: string;
-  date: string;
-  customerName: string;
-  caregiverName: string;
-  amount: number;
-  platformFee?: number;
-  customerPaymentStatus: string;
-  caregiverPayoutStatus: string;
-  status: string;
-}
-
-const Invoices = () => {
+export const Invoices = () => {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [filter, setFilter] = useState({
-    status: "",
-    customerPaymentStatus: "",
-    caregiverPayoutStatus: "",
-    startDate: "",
-    endDate: "",
+    status: '',
+    customerPaymentStatus: '',
+    caregiverPayoutStatus: '',
+    startDate: '',
+    endDate: '',
   });
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState('');
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   // Date Picker State
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -54,7 +56,7 @@ const Invoices = () => {
     {
       startDate: new Date(),
       endDate: new Date(),
-      key: "selection",
+      key: 'selection',
     },
   ]);
   const datePickerRef = useRef<HTMLDivElement>(null);
@@ -68,8 +70,8 @@ const Invoices = () => {
         setShowDatePicker(false);
       }
     };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const handleDateRangeChange = (ranges: RangeKeyDict) => {
@@ -79,585 +81,555 @@ const Invoices = () => {
     if (selection.startDate && selection.endDate) {
       setFilter({
         ...filter,
-        startDate: format(selection.startDate, "yyyy-MM-dd"),
-        endDate: format(selection.endDate, "yyyy-MM-dd"),
+        startDate: format(selection.startDate, 'yyyy-MM-dd'),
+        endDate: format(selection.endDate, 'yyyy-MM-dd'),
       });
     }
   };
 
   const resetFilters = () => {
     setFilter({
-      status: "",
-      customerPaymentStatus: "",
-      caregiverPayoutStatus: "",
-      startDate: "",
-      endDate: "",
+      status: '',
+      customerPaymentStatus: '',
+      caregiverPayoutStatus: '',
+      startDate: '',
+      endDate: '',
     });
     setDateRange([
-      { startDate: new Date(), endDate: new Date(), key: "selection" },
+      { startDate: new Date(), endDate: new Date(), key: 'selection' },
     ]);
   };
 
-  // Modal State
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalType, setModalType] = useState<"customer" | "caregiver">(
-    "customer",
-  );
-  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState("KBZPay");
-  const [additionalNote, setAdditionalNote] = useState("");
-
-  // Delete Modal State
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [invoiceToDelete, setInvoiceToDelete] = useState<string | null>(null);
-
-  const { data: invoices, isLoading } = useQuery({
-    queryKey: ["invoices", filter],
+  const { data: invoices = [], isLoading } = useQuery<any[]>({
+    queryKey: ['invoices', filter],
     queryFn: () => fetchInvoices(filter),
   });
 
-  const statusMutation = useMutation({
-    mutationFn: ({
-      invoiceNumber,
-      statusData,
-    }: {
-      invoiceNumber: string;
-      statusData: {
-        customerPaymentStatus?: string;
-        caregiverPayoutStatus?: string;
-      };
-    }) => updateInvoiceStatus(invoiceNumber, statusData),
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteInvoice(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["invoices"] });
-      queryClient.invalidateQueries({ queryKey: ["stats"] });
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      setDeleteConfirmId(null);
     },
   });
 
   const paymentMutation = useMutation({
-    mutationFn: ({
-      invoiceNumber,
-      type,
-      data,
-    }: {
-      invoiceNumber: string;
-      type: "customer" | "caregiver";
-      data: {
-        receivedAmount?: number;
-        paymentChannel: string;
-        payerAccountName?: string;
-        payeeAccountName?: string;
-        dateTime: string;
-        note: string;
-      };
-    }) =>
-      type === "customer"
-        ? updateCustomerPayment(invoiceNumber, data)
-        : updateCaregiverPayout(invoiceNumber, data),
+    mutationFn: ({ invoiceNumber, data }: { invoiceNumber: string; data: any }) =>
+      updateCustomerPayment(invoiceNumber, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["invoices"] });
-      queryClient.invalidateQueries({ queryKey: ["stats"] });
-      setIsModalOpen(false);
-      setSelectedInvoice(null);
-      setAdditionalNote("");
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
     },
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: (invoiceNumber: string) => deleteInvoice(invoiceNumber),
+  const payoutMutation = useMutation({
+    mutationFn: ({ invoiceNumber, data }: { invoiceNumber: string; data: any }) =>
+      updateCaregiverPayout(invoiceNumber, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["invoices"] });
-      queryClient.invalidateQueries({ queryKey: ["stats"] });
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
     },
   });
 
-  const toggleStatus = (invoice: Invoice, type: "customer" | "caregiver") => {
-    const invoiceNumber = invoice.invoiceNumber;
-    if (type === "customer") {
-      const newStatus =
-        invoice.customerPaymentStatus === "Received" ? "Pending" : "Received";
-      if (newStatus === "Received") {
-        setModalType("customer");
-        setSelectedInvoice(invoice);
-        setIsModalOpen(true);
-      } else {
-        statusMutation.mutate({
-          invoiceNumber,
-          statusData: { customerPaymentStatus: newStatus },
-        });
-      }
-    } else {
-      const newStatus =
-        invoice.caregiverPayoutStatus === "Paid" ? "Pending" : "Paid";
-      if (newStatus === "Paid") {
-        setModalType("caregiver");
-        setSelectedInvoice(invoice);
-        setIsModalOpen(true);
-      } else {
-        statusMutation.mutate({
-          invoiceNumber,
-          statusData: { caregiverPayoutStatus: newStatus },
-        });
-      }
-    }
-  };
-
-  const handleConfirmPayment = () => {
-    if (!selectedInvoice) return;
-    const invoiceNumber = selectedInvoice.invoiceNumber;
-
-    if (modalType === "customer") {
-      paymentMutation.mutate({
-        invoiceNumber,
-        type: "customer",
-        data: {
-          receivedAmount:
-            selectedInvoice.amount + (selectedInvoice.platformFee || 0),
-          paymentChannel: paymentMethod,
-          payerAccountName: selectedInvoice.customerName,
-          dateTime: new Date().toISOString(),
-          note: additionalNote,
-        },
-      });
-    } else {
-      paymentMutation.mutate({
-        invoiceNumber,
-        type: "caregiver",
-        data: {
-          paymentChannel: paymentMethod,
-          payeeAccountName: selectedInvoice.caregiverName,
-          dateTime: new Date().toISOString(),
-          note: additionalNote,
-        },
-      });
-    }
-  };
-
-  const handleDelete = (invoiceNumber: string) => {
-    setInvoiceToDelete(invoiceNumber);
-    setIsDeleteModalOpen(true);
-  };
-
-  const confirmDelete = () => {
-    if (invoiceToDelete) {
-      deleteMutation.mutate(invoiceToDelete);
-      setIsDeleteModalOpen(false);
-      setInvoiceToDelete(null);
-    }
-  };
-
-  const filteredInvoices = (invoices as Invoice[])?.filter(
-    (inv: Invoice) =>
-      inv.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      inv.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      inv.caregiverName.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
-
-  const getStatusBadge = (status: string, onClick?: () => void) => {
-    const isClickable = status !== "Completed";
-    const commonClasses = `inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium transition-all ${isClickable ? "cursor-pointer hover:scale-105 active:scale-95" : "cursor-default"} `;
-
-    if (["Completed", "Received", "Paid"].includes(status)) {
+  const filteredInvoices = useMemo(() => {
+    return invoices.filter((inv: any) => {
+      const q = searchTerm.toLowerCase();
       return (
-        <span
-          onClick={(e) => {
-            if (isClickable) {
-              e.preventDefault();
-              onClick?.();
-            }
-          }}
-          className={`${commonClasses} bg-primary/10 text-primary font-bold`}
-        >
-          <CheckCircle className="mr-1 h-3 w-3" /> {status}
-        </span>
+        inv.invoiceNumber?.toLowerCase().includes(q) ||
+        inv.customerName?.toLowerCase().includes(q) ||
+        inv.caregiverName?.toLowerCase().includes(q)
       );
-    }
-    return (
-      <span
-        onClick={(e) => {
-          e.preventDefault();
-          onClick?.();
-        }}
-        className={`${commonClasses} bg-amber-100 text-amber-800`}
-      >
-        <Clock className="mr-1 h-3 w-3" /> {status}
-      </span>
-    );
-  };
+    });
+  }, [invoices, searchTerm]);
+
+  // Totals calculations
+  const totalAmount = useMemo(
+    () => invoices.reduce((sum, inv) => sum + (inv.amount || 0), 0),
+    [invoices]
+  );
+  const totalReceived = useMemo(
+    () =>
+      invoices
+        .filter((inv) => inv.customerPaymentStatus === 'Received')
+        .reduce((sum, inv) => sum + (inv.amount || 0), 0),
+    [invoices]
+  );
+  const totalPending = totalAmount - totalReceived;
+
+  const formatMMK = (n: number) => `${n.toLocaleString()} MMK`;
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
-            Invoices
-          </h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Manage and track all generated invoices.
-          </p>
-        </div>
-        <Link
-          to="/create-invoice"
-          className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary hover:bg-primary-dark transition-colors"
-        >
-          <Plus className="-ml-1 mr-2 h-5 w-5" /> Create Invoice
-        </Link>
+    <div className="h-full flex flex-col space-y-3 min-h-0 overflow-hidden">
+      {/* Top Page Header */}
+      <div className="shrink-0">
+        <PageHeader
+          category="FINANCIALS & BILLING"
+          title="Invoices"
+          subtitle="Manage customer invoices, receipts, and payment collection."
+          actions={
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => navigate('/create-invoice')}
+              leftIcon={<Plus size={16} />}
+            >
+              Create Invoice
+            </Button>
+          }
+        />
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-visible">
-        <div className="p-4 border-b border-gray-200 bg-gray-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-t-xl">
-          <div className="relative w-full md:w-100">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <SearchIcon className="h-4 w-4 text-gray-400" />
-            </div>
-            <input
-              type="text"
-              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm"
-              placeholder="Search invoices..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+      {/* 3 Metric Summary Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 shrink-0">
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-xs flex items-center gap-3">
+          <div className="w-9 h-9 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center font-bold shrink-0">
+            <Receipt size={18} />
           </div>
-          <div className="flex flex-wrap items-center gap-2 md:gap-4">
-            {/* <div className="flex items-center gap-2">
+          <div>
+            <div className="text-xl font-black text-slate-900 tracking-tight">
+              {invoices.length}
+            </div>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+              Total Invoices
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-xs flex items-center gap-3">
+          <div className="w-9 h-9 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold shrink-0">
+            <CheckCircle size={18} />
+          </div>
+          <div>
+            <div className="text-xl font-black text-emerald-700 tracking-tight">
+              {formatMMK(totalReceived)}
+            </div>
+            <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">
+              Payments Received
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-xs flex items-center gap-3">
+          <div className="w-9 h-9 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold shrink-0">
+            <Clock size={18} />
+          </div>
+          <div>
+            <div className="text-xl font-black text-amber-700 tracking-tight">
+              {formatMMK(totalPending)}
+            </div>
+            <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">
+              Pending Payments
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Filter Toolbar */}
+      <Card className="shrink-0">
+        <CardContent className="p-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            {/* Search Input */}
+            <div className="w-full sm:w-72">
+              <SearchInput
+                placeholder="Search invoice #, customer..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onClear={() => setSearchTerm('')}
+              />
+            </div>
+
+            {/* Filter Dropdowns */}
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                value={filter.customerPaymentStatus}
+                onChange={(e) =>
+                  setFilter({ ...filter, customerPaymentStatus: e.target.value })
+                }
+                className="text-xs p-2 rounded-xl border border-slate-200 bg-white font-semibold text-slate-700 outline-none"
+              >
+                <option value="">Customer Payment: All</option>
+                <option value="Received">Received</option>
+                <option value="Pending">Pending</option>
+                <option value="Partial">Partial</option>
+              </select>
 
               <select
-                className="block w-full px-2 py-1.5 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md border bg-white shadow-sm"
-                value={filter.status}
-                onChange={(e) => setFilter({ ...filter, status: e.target.value })}
+                value={filter.caregiverPayoutStatus}
+                onChange={(e) =>
+                  setFilter({ ...filter, caregiverPayoutStatus: e.target.value })
+                }
+                className="text-xs p-2 rounded-xl border border-slate-200 bg-white font-semibold text-slate-700 outline-none"
               >
-                <option value="">All Status</option>
+                <option value="">Caregiver Payout: All</option>
+                <option value="Paid">Paid</option>
                 <option value="Pending">Pending</option>
-                <option value="Completed">Completed</option>
               </select>
-            </div> */}
 
-            <div className="relative" ref={datePickerRef}>
-              <button
-                onClick={() => setShowDatePicker(!showDatePicker)}
-                className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 transition-all"
-              >
-                <CalendarIcon className="-ml-1 mr-2 h-4 w-4 text-gray-400" />
-                {filter.startDate && filter.endDate
-                  ? `${format(new Date(filter.startDate), "dd-MM-yyyy")} - ${format(new Date(filter.endDate), "dd-MM-yyyy")}`
-                  : "Select Date Range"}
-              </button>
+              {/* Date Range Picker */}
+              <div className="relative" ref={datePickerRef}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowDatePicker(!showDatePicker)}
+                  leftIcon={<CalendarIcon size={14} />}
+                >
+                  {filter.startDate
+                    ? `${filter.startDate} — ${filter.endDate}`
+                    : 'Date Range'}
+                </Button>
 
-              {showDatePicker && (
-                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/40 md:bg-transparent md:absolute md:inset-auto md:right-0 md:top-full md:mt-2 md:block animate-in fade-in duration-200">
-                  <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden animate-in zoom-in-95 duration-200 origin-center md:origin-top-right scale-90 sm:scale-100">
-                    <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
-                      <span className="text-xs font-black text-gray-400 uppercase tracking-widest">
-                        Filter by Date
-                      </span>
-                      <button
+                {showDatePicker && (
+                  <div className="absolute right-0 top-full mt-2 z-50 bg-white rounded-2xl shadow-2xl border border-slate-200 p-3 animate-fadeIn">
+                    <DateRange
+                      ranges={dateRange}
+                      onChange={handleDateRangeChange}
+                      rangeColors={['#14B8A6']}
+                    />
+                    <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                      <Button
+                        variant="ghost"
+                        size="xs"
                         onClick={() => setShowDatePicker(false)}
-                        className="p-1.5 hover:bg-gray-200 rounded-full transition-colors"
                       >
-                        <X size={18} className="text-gray-400" />
-                      </button>
-                    </div>
-                    <div className="p-1">
-                      <DateRange
-                        ranges={dateRange}
-                        onChange={handleDateRangeChange}
-                        moveRangeOnFirstSelection={false}
-                        months={1}
-                        direction="horizontal"
-                        rangeColors={["#1CB89B"]}
-                      />
+                        Close
+                      </Button>
                     </div>
                   </div>
-                </div>
+                )}
+              </div>
+
+              {(filter.status ||
+                filter.customerPaymentStatus ||
+                filter.caregiverPayoutStatus ||
+                filter.startDate) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={resetFilters}
+                  className="text-rose-600 hover:bg-rose-50"
+                >
+                  Reset
+                </Button>
               )}
             </div>
-
-            {(filter.status || filter.startDate || filter.endDate) && (
-              <button
-                onClick={resetFilters}
-                className="text-xs font-bold text-red-600 hover:text-red-800 transition-colors flex items-center gap-1"
-              >
-                <X size={14} /> <span className="hidden md:block">Reset</span>
-              </button>
-            )}
           </div>
-        </div>
+        </CardContent>
+      </Card>
 
-        <div className="hidden md:block">
-          <div className="overflow-x-auto">
-            {isLoading ? (
-              <div className="p-12 text-center text-gray-500">Loading...</div>
-            ) : filteredInvoices?.length === 0 ? (
-              <div className="p-12 text-center text-gray-500">
-                No invoices found.
-              </div>
-            ) : (
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase w-12">
-                      No.
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">
-                      Invoice Info
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">
-                      Parties
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">
-                      Amount
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">
-                      Customer Payment
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">
-                      Caregiver Payment
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredInvoices?.map((invoice: Invoice, index: number) => (
-                    <tr
-                      key={invoice._id}
-                      className="hover:bg-gray-50 transition-colors"
-                    >
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-medium">
-                        {index + 1}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-bold text-primary">
-                          {invoice.invoiceNumber}
-                        </div>
-                        <div className="text-xs text-gray-400">
-                          {format(new Date(invoice.date), "dd-MM-yyyy")}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex flex-col text-sm">
-                          <span className="font-semibold text-gray-900">
-                            {invoice.customerName}
-                          </span>
-                          <span className="text-xs text-gray-500">
-                            CG: {invoice.caregiverName}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-bold text-gray-900">
-                          {(
-                            invoice.amount + (invoice.platformFee || 0)
-                          ).toLocaleString()}{" "}
-                          MMK
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {getStatusBadge(invoice.customerPaymentStatus, () =>
-                          toggleStatus(invoice, "customer"),
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {getStatusBadge(invoice.caregiverPayoutStatus, () =>
-                          toggleStatus(invoice, "caregiver"),
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right">
-                        <div className="flex justify-end gap-2">
-                          <Link
-                            to={`/invoice/${invoice.invoiceNumber}`}
-                            className="p-2 text-primary hover:bg-primary/10 rounded-lg"
-                          >
-                            <FileText size={18} />
-                          </Link>
-                          <button
-                            onClick={() => handleDelete(invoice.invoiceNumber)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
-                          >
-                            <Trash2 size={18} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
+      {/* Main Invoices Table Card */}
+      <Card className="flex-1 min-h-0 flex flex-col overflow-hidden">
+        <CardHeader className="shrink-0">
+          <div>
+            <CardTitle>Invoices List</CardTitle>
+            <CardDescription>
+              {filteredInvoices.length} of {invoices.length} invoices
+            </CardDescription>
           </div>
-        </div>
+        </CardHeader>
 
-        {/* Mobile View: Card Layout */}
-        <div className="md:hidden">
+        <CardContent className="p-0 flex-1 min-h-0 flex flex-col overflow-hidden">
           {isLoading ? (
-            <div className="p-8 text-center text-gray-500">Loading...</div>
-          ) : filteredInvoices?.length === 0 ? (
-            <div className="p-8 text-center text-gray-500">
-              No invoices found.
+            <div className="text-center py-16 text-slate-400 text-sm">
+              <Loader2 className="w-6 h-6 animate-spin mx-auto text-teal-500 mb-2" />
+              Loading invoices...
             </div>
-          ) : (
-            <div className="divide-y divide-gray-100">
-              {filteredInvoices?.map((invoice: Invoice) => (
-                <div
-                  key={invoice._id}
-                  className="p-4 space-y-4 hover:bg-gray-50 transition-all"
-                >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <div className="text-sm font-black text-primary">
-                        {invoice.invoiceNumber}
-                      </div>
-                      <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">
-                        {new Date(invoice.date).toLocaleDateString("en-GB")}
-                      </div>
-                    </div>
-                    <div className="flex gap-1">
-                      <Link
-                        to={`/invoice/${invoice.invoiceNumber}`}
-                        className="p-2.5 text-primary bg-primary/10 rounded-xl"
-                      >
-                        <FileText size={18} />
-                      </Link>
-                      <button
-                        onClick={() => handleDelete(invoice.invoiceNumber)}
-                        className="p-2.5 text-red-600 bg-red-50 rounded-xl"
-                      >
-                        <Trash2 size={18} />
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4 bg-gray-50/50 py-3 rounded-xl border border-gray-100">
-                    <div>
-                      <p className="text-[10px] font-black text-gray-400 uppercase mb-1">
-                        Parent
-                      </p>
-                      <p className="text-xs font-bold text-gray-900 leading-tight">
-                        {invoice.customerName}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-black text-gray-400 uppercase mb-1">
-                        Caregiver
-                      </p>
-                      <p className="text-xs font-bold text-gray-500 leading-tight">
-                        {invoice.caregiverName}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between pt-1">
-                    <div>
-                      <p className="text-[10px] font-black text-gray-400 uppercase mb-0.5">
-                        Total Amount
-                      </p>
-                      <p className="text-sm font-black text-gray-900">
-                        {(
-                          invoice.amount + (invoice.platformFee || 0)
-                        ).toLocaleString()}{" "}
-                        <span className="text-[10px] text-gray-400">MMK</span>
-                      </p>
-                    </div>
-                    <div className="flex flex-col gap-2 scale-90 origin-right">
-                      {getStatusBadge(invoice.customerPaymentStatus, () =>
-                        toggleStatus(invoice, "customer"),
-                      )}
-                      {getStatusBadge(invoice.caregiverPayoutStatus, () =>
-                        toggleStatus(invoice, "caregiver"),
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Payment / Payout Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="bg-primary/10 px-6 py-4 border-b border-primary/20">
-              <h3 className="text-lg font-bold text-primary">
-                {modalType === "customer"
-                  ? "Confirm Customer Payment"
-                  : "Confirm Caregiver Payout"}
-              </h3>
-              <p className="text-xs text-gray-500 mt-0.5">
-                Record the {modalType === "customer" ? "receipt" : "payout"} for{" "}
-                {selectedInvoice?.invoiceNumber}
+          ) : filteredInvoices.length === 0 ? (
+            <div className="text-center py-16 text-slate-400 text-sm space-y-2">
+              <Receipt className="w-10 h-10 mx-auto text-slate-300" />
+              <p className="font-bold text-slate-600">No invoices found</p>
+              <p className="text-xs text-slate-400">
+                Create an invoice or change filter parameters.
               </p>
             </div>
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Payment Channel
-                </label>
-                <select
-                  className="block w-full border border-gray-300 rounded-xl p-3 focus:ring-primary focus:border-primary text-sm bg-gray-50 font-medium"
-                  value={paymentMethod}
-                  onChange={(e) => setPaymentMethod(e.target.value)}
-                >
-                  <option value="KBZPay">KBZPay</option>
-                  <option value="AYAPay">AYAPay</option>
-                  <option value="WavePay">WavePay</option>
-                </select>
+          ) : (
+            <>
+              {/* Desktop Table View (>= md) */}
+              <div className="hidden md:block flex-1 min-h-0 overflow-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>INVOICE #</TableHead>
+                      <TableHead>DATE</TableHead>
+                      <TableHead>CUSTOMER</TableHead>
+                      <TableHead>CAREGIVER</TableHead>
+                      <TableHead>AMOUNT</TableHead>
+                      <TableHead>PAYMENT</TableHead>
+                      <TableHead>PAYOUT</TableHead>
+                      <TableHead>STATUS</TableHead>
+                      <TableHead className="text-right">ACTIONS</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredInvoices.map((inv: any) => {
+                      const isReceived = inv.customerPaymentStatus === 'Received';
+                      const isPaid = inv.caregiverPayoutStatus === 'Paid';
+                      const isCompleted = inv.status === 'Completed';
+
+                      return (
+                        <TableRow
+                          key={inv._id}
+                          onClick={() => navigate(`/invoice/${inv.invoiceNumber}`)}
+                          className="cursor-pointer group"
+                        >
+                          {/* Invoice # */}
+                          <TableCell>
+                            <span className="font-extrabold text-slate-900 font-mono text-xs group-hover:text-teal-600 transition-colors">
+                              {inv.invoiceNumber}
+                            </span>
+                          </TableCell>
+
+                          {/* Date */}
+                          <TableCell>
+                            <span className="text-xs text-slate-600">
+                              {inv.date ? format(new Date(inv.date), 'dd MMM yyyy') : '—'}
+                            </span>
+                          </TableCell>
+
+                          {/* Customer */}
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Avatar name={inv.customerName || 'Customer'} size="xs" />
+                              <span className="font-bold text-slate-800 text-xs">
+                                {inv.customerName}
+                              </span>
+                            </div>
+                          </TableCell>
+
+                          {/* Caregiver */}
+                          <TableCell>
+                            <span className="text-xs text-slate-700">
+                              {inv.caregiverName || '—'}
+                            </span>
+                          </TableCell>
+
+                          {/* Amount */}
+                          <TableCell>
+                            <span className="font-extrabold text-slate-900 font-mono text-xs">
+                              {formatMMK(inv.amount || 0)}
+                            </span>
+                          </TableCell>
+
+                          {/* Payment Status */}
+                          <TableCell>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                paymentMutation.mutate({
+                                  invoiceNumber: inv.invoiceNumber,
+                                  data: {
+                                    customerPaymentStatus: isReceived ? 'Pending' : 'Received',
+                                  },
+                                });
+                              }}
+                              className="cursor-pointer"
+                            >
+                              <Badge variant={isReceived ? 'emerald' : 'amber'} dot>
+                                {inv.customerPaymentStatus || 'Pending'}
+                              </Badge>
+                            </button>
+                          </TableCell>
+
+                          {/* Payout Status */}
+                          <TableCell>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                payoutMutation.mutate({
+                                  invoiceNumber: inv.invoiceNumber,
+                                  data: {
+                                    caregiverPayoutStatus: isPaid ? 'Pending' : 'Paid',
+                                  },
+                                });
+                              }}
+                              className="cursor-pointer"
+                            >
+                              <Badge variant={isPaid ? 'teal' : 'slate'} dot>
+                                {inv.caregiverPayoutStatus || 'Pending'}
+                              </Badge>
+                            </button>
+                          </TableCell>
+
+                          {/* Total Status */}
+                          <TableCell>
+                            <Badge variant={isCompleted ? 'completed' : 'pending'} dot>
+                              {inv.status || 'Pending'}
+                            </Badge>
+                          </TableCell>
+
+                          {/* Actions */}
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/invoice/${inv.invoiceNumber}`);
+                                }}
+                                className="w-7 h-7 text-slate-400 hover:text-slate-700"
+                                title="View Voucher"
+                              >
+                                <ChevronRight size={14} />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDeleteConfirmId(inv._id);
+                                }}
+                                className="w-7 h-7 text-slate-400 hover:text-rose-600"
+                                title="Delete Invoice"
+                              >
+                                <Trash2 size={13} />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
               </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Additional Note
-                </label>
-                <textarea
-                  className="block w-full border border-gray-300 rounded-xl p-3 focus:ring-primary focus:border-primary text-sm bg-gray-50"
-                  rows={3}
-                  placeholder="Enter any additional details..."
-                  value={additionalNote}
-                  onChange={(e) => setAdditionalNote(e.target.value)}
-                />
-              </div>
+              {/* Mobile Card List View (< md) */}
+              <div className="block md:hidden flex-1 min-h-0 overflow-y-auto p-1.5 sm:p-2.5 space-y-2 bg-slate-50/40">
+                {filteredInvoices.map((inv: any) => {
+                  const isReceived = inv.customerPaymentStatus === 'Received';
+                  const isPaid = inv.caregiverPayoutStatus === 'Paid';
+                  const isCompleted = inv.status === 'Completed';
 
-              <div className="flex gap-3 pt-2">
-                <button
-                  onClick={() => {
-                    setIsModalOpen(false);
-                    setAdditionalNote("");
-                  }}
-                  className="flex-1 py-3 px-4 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-50 transition-all"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleConfirmPayment}
-                  disabled={paymentMutation.isPending}
-                  className="flex-1 py-3 px-4 bg-primary text-white rounded-xl text-sm font-bold hover:bg-primary-dark shadow-lg shadow-primary/20 transition-all disabled:opacity-50"
-                >
-                  {paymentMutation.isPending ? "Processing..." : "Confirm"}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+                  return (
+                    <div
+                      key={inv._id}
+                      onClick={() => navigate(`/invoice/${inv.invoiceNumber}`)}
+                      className="w-full p-3 bg-white rounded-xl border border-slate-200/80 shadow-2xs space-y-2.5 active:bg-slate-50 transition-colors cursor-pointer"
+                    >
+                      {/* Top Header: Inv # & Overall Status */}
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-extrabold text-slate-900 font-mono text-xs">
+                          {inv.invoiceNumber}
+                        </span>
+                        <Badge variant={isCompleted ? 'completed' : 'pending'} dot>
+                          {inv.status || 'Pending'}
+                        </Badge>
+                      </div>
 
-      {isDeleteModalOpen && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl p-8 text-center w-[250px] md:w-[400px]">
-            <Trash2 className="mx-auto h-12 w-12 text-red-600 mb-4" />
-            <h3 className="text-xl font-bold mb-2">Delete Invoice?</h3>
-            <div className="flex gap-3 mt-6 ">
-              <button
-                onClick={() => setIsDeleteModalOpen(false)}
-                className="flex-1 py-2 border rounded-xl"
+                      {/* Customer & Caregiver */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Avatar name={inv.customerName || 'Customer'} size="xs" />
+                          <div>
+                            <p className="font-bold text-slate-900 text-xs">{inv.customerName}</p>
+                            <p className="text-[10px] text-slate-400">
+                              {inv.date ? format(new Date(inv.date), 'dd MMM yyyy') : '—'}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="text-right">
+                          <p className="text-xs font-black text-slate-900 font-mono">
+                            {formatMMK(inv.amount || 0)}
+                          </p>
+                          <p className="text-[10px] text-slate-400">
+                            CG: {inv.caregiverName || '—'}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Quick Status Buttons & Actions */}
+                      <div className="flex items-center justify-between pt-2 border-t border-slate-100/80 text-xs">
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              paymentMutation.mutate({
+                                invoiceNumber: inv.invoiceNumber,
+                                data: {
+                                  customerPaymentStatus: isReceived ? 'Pending' : 'Received',
+                                },
+                              });
+                            }}
+                            className="cursor-pointer"
+                          >
+                            <Badge variant={isReceived ? 'emerald' : 'amber'} dot>
+                              Pay: {inv.customerPaymentStatus || 'Pending'}
+                            </Badge>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              payoutMutation.mutate({
+                                invoiceNumber: inv.invoiceNumber,
+                                data: {
+                                  caregiverPayoutStatus: isPaid ? 'Pending' : 'Paid',
+                                },
+                              });
+                            }}
+                            className="cursor-pointer"
+                          >
+                            <Badge variant={isPaid ? 'teal' : 'slate'} dot>
+                              Payout: {inv.caregiverPayoutStatus || 'Pending'}
+                            </Badge>
+                          </button>
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteConfirmId(inv._id);
+                            }}
+                            className="w-7 h-7 text-slate-400 hover:text-rose-600"
+                          >
+                            <Trash2 size={13} />
+                          </Button>
+                          <ChevronRight size={15} className="text-slate-400" />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
+          <TableFooterBar
+            showingText={`Showing ${filteredInvoices.length} of ${invoices.length} invoices`}
+            updatedText="Last updated just now"
+          />
+        </CardContent>
+      </Card>
+
+      {/* DELETE CONFIRM MODAL */}
+      {deleteConfirmId && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4 animate-fadeIn">
+            <h3 className="text-base font-extrabold text-slate-900">Delete Invoice?</h3>
+            <p className="text-xs text-slate-500">
+              Are you sure you want to delete this invoice?
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setDeleteConfirmId(null)}
               >
                 Cancel
-              </button>
-              <button
-                onClick={confirmDelete}
-                className="flex-1 py-2 bg-red-600 text-white rounded-xl"
+              </Button>
+              <Button
+                variant="danger"
+                size="sm"
+                isLoading={deleteMutation.isPending}
+                onClick={() => deleteMutation.mutate(deleteConfirmId)}
               >
                 Delete
-              </button>
+              </Button>
             </div>
           </div>
         </div>

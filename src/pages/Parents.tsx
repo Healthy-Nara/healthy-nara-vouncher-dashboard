@@ -1,11 +1,38 @@
+import { useState, useRef, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchParents, createParent, updateParent, deleteParent, importParents } from '../api';
-import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, Pencil, Trash2, X, Upload, Loader2, AlertCircle, CheckCircle, Eye } from 'lucide-react';
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  X,
+  Upload,
+  Loader2,
+  AlertCircle,
+  CheckCircle,
+  Users,
+  Baby,
+  Phone,
+  MapPin,
+  ChevronRight,
+} from 'lucide-react';
 import * as XLSX from 'xlsx';
-
-const RELIGIONS = ['Buddhist', 'Christian', 'Muslim', 'Hindu', 'Other'] as const;
+import { Button } from '../components/ui/Button';
+import { Badge } from '../components/ui/Badge';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
+import { PageHeader } from '../components/ui/PageHeader';
+import { SearchInput } from '../components/ui/SearchInput';
+import { Avatar } from '../components/ui/Avatar';
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+  TableFooterBar,
+} from '../components/ui/Table';
 
 interface ChildEntry {
   childName: string;
@@ -29,11 +56,23 @@ interface ParentForm {
   children: ChildEntry[];
 }
 
-const emptyChild = (): ChildEntry => ({ childName: '', age: '', ageType: 'year', gender: '', notes: '', hasInfectiousDisease: false });
+const emptyChild = (): ChildEntry => ({
+  childName: '',
+  age: '',
+  ageType: 'year',
+  gender: '',
+  notes: '',
+  hasInfectiousDisease: false,
+});
 
 const emptyForm = (): ParentForm => ({
-  parentName: '', contactNumber: '', township: '', address: '',
-  religion: 'Buddhist', nearestBusStop: '', durationOfBusStopToHome: '',
+  parentName: '',
+  contactNumber: '',
+  township: '',
+  address: '',
+  religion: 'Buddhist',
+  nearestBusStop: '',
+  durationOfBusStopToHome: '',
   status: 'Inactive',
   profession: '',
   children: [emptyChild()],
@@ -41,15 +80,7 @@ const emptyForm = (): ParentForm => ({
 
 const PARENT_STATUSES = ['Daily', 'Weekly', 'Monthly', 'Custom', 'Inactive'] as const;
 
-const STATUS_STYLE: Record<string, string> = {
-  Daily: 'bg-green-100 text-green-800 border-green-200',
-  Weekly: 'bg-blue-100 text-blue-800 border-blue-200',
-  Monthly: 'bg-purple-100 text-purple-800 border-purple-200',
-  Custom: 'bg-amber-100 text-amber-800 border-amber-200',
-  Inactive: 'bg-gray-100 text-gray-800 border-gray-200',
-};
-
-const Parents = () => {
+export const Parents = () => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
@@ -61,12 +92,14 @@ const Parents = () => {
   // Import State
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importing, setImporting] = useState(false);
-  const [importResult, setImportResult] = useState<{ successCount: number; errors: any[] } | null>(null);
+  const [importResult, setImportResult] = useState<{ successCount: number; errors: any[] } | null>(
+    null
+  );
   const [importError, setImportError] = useState<string | null>(null);
 
-  const { data: parents, isLoading } = useQuery({
+  const { data: parents = [], isLoading } = useQuery<any[]>({
     queryKey: ['parents'],
-    queryFn: fetchParents,
+    queryFn: () => fetchParents(),
   });
 
   const importMutation = useMutation({
@@ -84,7 +117,7 @@ const Parents = () => {
       setImportError(err.message || 'Import failed. Please verify format.');
       setImporting(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
-    }
+    },
   });
 
   const handleImportClick = () => {
@@ -114,93 +147,44 @@ const Parents = () => {
           return;
         }
 
-        // Check if data is formatted as "one child per row" (needs grouping by parent name / contact)
-        // Group by parentName + contactNumber to aggregate children
-        const parentGroups: { [key: string]: any } = {};
+        const formattedParents = rows.map((row) => {
+          const rawStatus = row['Status'] || row['status'] || 'Inactive';
+          const validStatus = PARENT_STATUSES.includes(rawStatus) ? rawStatus : 'Inactive';
 
-        rows.forEach((row) => {
-          const parentName = (row['Parent Name'] || row['parentName'] || row['Name'] || '').trim();
-          if (!parentName) return;
-
-          const contactNumber = String(row['Parent Contact'] || row['Parent Contact Number'] || row['Contact Number'] || row['contactNumber'] || row['Phone'] || '').trim();
-          const key = `${parentName}_${contactNumber}`;
-
-          const township = row['Township'] || row['township'] || '';
-          const address = row['Address'] || row['address'] || '';
-          const religion = row['Religion'] || row['religion'] || 'Buddhist';
-          const nearestBusStop = row['Nearest Bus Stop'] || row['nearestBusStop'] || '';
-          const durationOfBusStopToHome = row['Bus Stop to Home Duration'] || row['Duration To Bus Stop'] || row['durationOfBusStopToHome'] || '';
-          const profession = row['Profession'] || row['Job'] || row['Profession/Job'] || row['profession'] || row['job'] || '';
-
-          if (!parentGroups[key]) {
-            parentGroups[key] = {
-              parentName,
-              contactNumber,
-              township,
-              address,
-              religion,
-              nearestBusStop,
-              durationOfBusStopToHome,
-              profession,
-              children: []
-            };
-          }
-
-          // Check if there is a child in this row (flat layout: "Child Name", "Birth Date", "Gender", etc.)
-          const flatChildName = row['Child Name'] || row['childName'] || '';
-          if (flatChildName) {
-            const birthDate = row['Birth Date'] || row['birthDate'] || undefined;
-            const genderVal = row['Gender'] || row['gender'] || '';
-            const gender = String(genderVal).toLowerCase().startsWith('f') ? 'Female' : String(genderVal).toLowerCase().startsWith('m') ? 'Male' : undefined;
-            const hasInfectiousDisease = String(row['Infectious Disease'] || row['hasInfectiousDisease'] || '').toLowerCase().startsWith('y') || String(row['Infectious Disease'] || '').toLowerCase() === 'yes';
-
-            parentGroups[key].children.push({
-              childName: flatChildName,
-              birthDate: birthDate ? new Date(birthDate) : undefined,
-              gender,
-              hasInfectiousDisease
+          const children: ChildEntry[] = [];
+          const childName = row['Child Name'] || row['childName'];
+          if (childName) {
+            const rawAge = row['Child Age'] || row['childAge'];
+            const ageType = String(row['Age Type'] || row['ageType'] || 'year').toLowerCase() === 'month' ? 'month' : 'year';
+            const gender = row['Child Gender'] || row['childGender'];
+            children.push({
+              childName,
+              age: rawAge ? Number(rawAge) : '',
+              ageType,
+              gender: gender === 'Male' || gender === 'Female' ? gender : '',
+              notes: row['Child Notes'] || '',
+              hasInfectiousDisease: false,
             });
           }
 
-          // Check for multi-column child layout (Child 1 Name, Child 2 Name, etc.)
-          for (let i = 1; i <= 5; i++) {
-            const childName = row[`Child ${i} Name`] || row[`child${i}Name`] || '';
-            if (childName) {
-              const ageVal = row[`Child ${i} Age`] || row[`child${i}Age`];
-              const ageType = String(row[`Child ${i} Age Type`] || row[`child${i}AgeType`] || 'year').toLowerCase().includes('month') ? 'month' : 'year';
-              const genderVal = row[`Child ${i} Gender`] || row[`child${i}Gender`] || '';
-              const gender = String(genderVal).toLowerCase().startsWith('f') ? 'Female' : String(genderVal).toLowerCase().startsWith('m') ? 'Male' : undefined;
-
-              parentGroups[key].children.push({
-                childName,
-                age: ageVal ? parseInt(ageVal, 10) : undefined,
-                ageType,
-                gender,
-              });
-            }
-          }
+          return {
+            parentName: row['Parent Name'] || row['parentName'] || '',
+            contactNumber: String(row['Phone Number'] || row['contactNumber'] || ''),
+            township: row['Township'] || row['township'] || '',
+            address: row['Address'] || row['address'] || '',
+            religion: row['Religion'] || 'Buddhist',
+            status: validStatus,
+            profession: row['Profession'] || '',
+            children: children.length ? children : [emptyChild()],
+          };
         });
-
-        const formattedParents = Object.values(parentGroups);
-
-        if (!formattedParents.length) {
-          setImportError('No valid parent records found. Please ensure you have a "Parent Name" column.');
-          setImporting(false);
-          return;
-        }
 
         importMutation.mutate(formattedParents);
       } catch (err: any) {
-        setImportError(`Failed to parse file: ${err.message}`);
+        setImportError(`File parse error: ${err.message}`);
         setImporting(false);
       }
     };
-
-    reader.onerror = () => {
-      setImportError('Failed to read file.');
-      setImporting(false);
-    };
-
     reader.readAsBinaryString(file);
   };
 
@@ -241,6 +225,7 @@ const Parents = () => {
   };
 
   const openEdit = (p: any) => {
+    setEditingId(p._id);
     setForm({
       parentName: p.parentName || '',
       contactNumber: p.contactNumber || '',
@@ -251,366 +236,589 @@ const Parents = () => {
       durationOfBusStopToHome: p.durationOfBusStopToHome || '',
       status: p.status || 'Inactive',
       profession: p.profession || '',
-      children: p.children?.length ? p.children.map((c: any) => ({
-        childName: c.childName || '',
-        age: c.age ?? '',
-        ageType: c.ageType || 'year',
-        gender: c.gender || '',
-        notes: c.notes || '',
-        hasInfectiousDisease: !!c.hasInfectiousDisease,
-      })) : [emptyChild()],
+      children: p.children?.length ? p.children : [emptyChild()],
     });
-    setEditingId(p._id);
     setIsModalOpen(true);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const cleanChildren = form.children.filter(c => c.childName.trim());
-    const payload = { ...form, children: cleanChildren };
+    if (!form.parentName.trim() || !form.contactNumber.trim()) {
+      alert('Parent Name and Contact Number are required');
+      return;
+    }
     if (editingId) {
-      updateMutation.mutate({ id: editingId, data: payload });
+      updateMutation.mutate({ id: editingId, data: form });
     } else {
-      createMutation.mutate(payload);
+      createMutation.mutate(form);
     }
   };
 
-  const updateChild = (index: number, field: keyof ChildEntry, value: any) => {
-    const updated = [...form.children];
-    updated[index] = { ...updated[index], [field]: value };
-    setForm({ ...form, children: updated });
+  const addChild = () => {
+    setForm((prev) => ({
+      ...prev,
+      children: [...prev.children, emptyChild()],
+    }));
   };
 
-  const addChild = () => setForm({ ...form, children: [...form.children, emptyChild()] });
   const removeChild = (index: number) => {
     if (form.children.length <= 1) return;
-    setForm({ ...form, children: form.children.filter((_, i) => i !== index) });
+    setForm((prev) => ({
+      ...prev,
+      children: prev.children.filter((_, i) => i !== index),
+    }));
   };
 
-  const filtered = parents?.filter((p: any) =>
-    p.parentName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.contactNumber?.includes(searchTerm)
-  );
+  const updateChild = (index: number, field: keyof ChildEntry, val: any) => {
+    setForm((prev) => {
+      const updated = [...prev.children];
+      updated[index] = { ...updated[index], [field]: val };
+      return { ...prev, children: updated };
+    });
+  };
 
-  const input = 'mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2.5 focus:ring-primary focus:border-primary text-sm';
-  const label = 'block text-xs font-semibold text-gray-600 mb-0.5';
+  const filteredParents = useMemo(() => {
+    return parents.filter((p: any) => {
+      const q = searchTerm.toLowerCase();
+      return (
+        p.parentName?.toLowerCase().includes(q) ||
+        p.contactNumber?.toLowerCase().includes(q) ||
+        p.township?.toLowerCase().includes(q) ||
+        p.children?.some((c: any) => c.childName?.toLowerCase().includes(q))
+      );
+    });
+  }, [parents, searchTerm]);
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'Daily':
+        return <Badge variant="emerald" dot>Daily</Badge>;
+      case 'Weekly':
+        return <Badge variant="sky" dot>Weekly</Badge>;
+      case 'Monthly':
+        return <Badge variant="purple" dot>Monthly</Badge>;
+      case 'Custom':
+        return <Badge variant="amber" dot>Custom</Badge>;
+      default:
+        return <Badge variant="slate" dot>Inactive</Badge>;
+    }
+  };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Parent Profiles</h1>
-          <p className="mt-1 text-sm text-gray-500">Manage parents and their children for caregiver booking.</p>
-        </div>
-        <div className="flex gap-2">
-          <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".xlsx, .xls, .csv" className="hidden" />
-          <button onClick={handleImportClick} disabled={importing}
-            className="inline-flex items-center px-4 py-2.5 border border-gray-300 bg-white text-gray-700 rounded-xl text-sm font-bold shadow-sm hover:bg-gray-50 transition-all gap-2 disabled:opacity-50">
-            {importing ? <Loader2 className="animate-spin" size={18} /> : <Upload size={18} />} Import Excel
-          </button>
-          <button onClick={openCreate}
-            className="inline-flex items-center px-4 py-2.5 bg-primary text-white rounded-xl text-sm font-bold shadow-md hover:bg-primary-dark transition-all gap-2">
-            <Plus size={18} /> Add Parent
-          </button>
-        </div>
+    <div className="h-full flex flex-col space-y-4 min-h-0 overflow-hidden">
+      {/* Top Page Header */}
+      <div className="shrink-0">
+        <PageHeader
+          category="CUSTOMER DIRECTORY"
+          title="Parents & Families"
+          subtitle="Manage customer profiles, child records, and home service details."
+          actions={
+            <>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                accept=".xlsx, .xls"
+                className="hidden"
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleImportClick}
+                disabled={importing}
+                leftIcon={
+                  importing ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : (
+                    <Upload size={14} />
+                  )
+                }
+              >
+                {importing ? 'Importing...' : 'Import Excel'}
+              </Button>
+              <Button
+                variant="primary"
+                size="md"
+                onClick={openCreate}
+                leftIcon={<Plus size={16} />}
+              >
+                Add Parent
+              </Button>
+            </>
+          }
+        />
       </div>
 
+      {/* Import Status Alert */}
       {importError && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
-          <AlertCircle className="text-red-500 shrink-0 mt-0.5" size={18} />
-          <div>
-            <h4 className="text-sm font-bold text-red-800">Import Failed</h4>
-            <p className="text-xs text-red-700 mt-1">{importError}</p>
-          </div>
+        <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl flex items-center gap-3 text-rose-800 text-xs shrink-0">
+          <AlertCircle size={18} className="text-rose-500 shrink-0" />
+          <span>{importError}</span>
         </div>
       )}
 
       {importResult && (
-        <div className={`p-4 border rounded-xl flex items-start gap-3 ${importResult.errors.length > 0 ? 'bg-amber-50 border-amber-200' : 'bg-green-50 border-green-200'}`}>
-          {importResult.errors.length > 0 ? (
-            <AlertCircle className="text-amber-500 shrink-0 mt-0.5" size={18} />
-          ) : (
-            <CheckCircle className="text-green-500 shrink-0 mt-0.5" size={18} />
-          )}
+        <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center gap-3 text-emerald-800 text-xs shrink-0">
+          <CheckCircle size={18} className="text-emerald-500 shrink-0" />
+          <span>
+            Successfully imported <strong>{importResult.successCount}</strong> parent records.
+          </span>
+        </div>
+      )}
+
+      {/* Main Table Card */}
+      <Card className="flex-1 min-h-0 flex flex-col overflow-hidden">
+        <CardHeader className="shrink-0">
           <div>
-            <h4 className={`text-sm font-bold ${importResult.errors.length > 0 ? 'text-amber-800' : 'text-green-800'}`}>
-              Import Completed
-            </h4>
-            <p className="text-xs text-gray-700 mt-1">
-              Successfully imported <strong>{importResult.successCount}</strong> records.
-              {importResult.errors.length > 0 && ` Failed to import ${importResult.errors.length} records.`}
-            </p>
-            {importResult.errors.length > 0 && (
-              <div className="mt-2 max-h-32 overflow-y-auto space-y-1 bg-white/55 p-2 rounded border border-amber-200/50">
-                {importResult.errors.slice(0, 10).map((err, i) => (
-                  <p key={i} className="text-[11px] text-amber-900">
-                    Row {err.index + 2}: {err.error}
-                  </p>
-                ))}
-                {importResult.errors.length > 10 && (
-                  <p className="text-[10px] text-gray-500 italic">and {importResult.errors.length - 10} more errors...</p>
-                )}
-              </div>
-            )}
+            <CardTitle>Parents Directory</CardTitle>
+            <CardDescription>
+              {filteredParents.length} of {parents.length} total families registered
+            </CardDescription>
           </div>
-        </div>
-      )}
-
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="p-4 border-b border-gray-200 bg-gray-50 flex items-center gap-4">
-          <div className="relative flex-1 max-w-xs">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-            <input type="text" placeholder="Search parents..."
-              className="pl-10 block w-full border border-gray-300 rounded-md py-2 focus:ring-primary focus:border-primary sm:text-sm"
-              value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+          <div className="w-full sm:w-72">
+            <SearchInput
+              placeholder="Search by parent or child..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onClear={() => setSearchTerm('')}
+            />
           </div>
-        </div>
+        </CardHeader>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-200">
-                <th className="px-4 py-3 text-left text-[10px] font-bold text-gray-500 uppercase w-12">No.</th>
-                <th className="px-4 py-3 text-left text-[10px] font-bold text-gray-500 uppercase">Name</th>
-                <th className="px-4 py-3 text-left text-[10px] font-bold text-gray-500 uppercase">Contact</th>
-                <th className="px-4 py-3 text-left text-[10px] font-bold text-gray-500 uppercase">Township</th>
-                <th className="px-4 py-3 text-left text-[10px] font-bold text-gray-500 uppercase">Religion</th>
-                <th className="px-4 py-3 text-left text-[10px] font-bold text-gray-500 uppercase">Status</th>
-                <th className="px-4 py-3 text-left text-[10px] font-bold text-gray-500 uppercase">Children</th>
-                <th className="px-4 py-3 text-right text-[10px] font-bold text-gray-500 uppercase">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {isLoading ? (
-                <tr><td colSpan={8} className="py-12 text-center text-gray-500">Loading...</td></tr>
-              ) : filtered?.length === 0 ? (
-                <tr><td colSpan={8} className="py-12 text-center text-gray-500">No parents found.</td></tr>
-              ) : (
-                filtered?.map((p: any, index: number) => (
-                  <tr key={p._id} onClick={() => navigate(`/parents/${p._id}`)} className="hover:bg-gray-50/50 transition-colors cursor-pointer">
-                    <td className="px-4 py-3 text-gray-400 font-medium">{index + 1}</td>
-                    <td className="px-4 py-3">
-                      <p className="font-semibold text-gray-900">{p.parentName}</p>
-                    </td>
-                    <td className="px-4 py-3 text-gray-600">{p.contactNumber || '—'}</td>
-                    <td className="px-4 py-3 text-gray-600">{p.township || '—'}</td>
-                    <td className="px-4 py-3">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-primary/10 text-primary">
-                        {p.religion || '—'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black border uppercase tracking-wider ${STATUS_STYLE[p.status || 'Inactive'] || STATUS_STYLE.Inactive}`}>
-                        {p.status || 'Inactive'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      {p.children?.length ? (
-                        <div className="space-y-0.5">
-                          <span className="text-gray-600 font-medium">{p.children.length} child{p.children.length > 1 ? 'ren' : ''}</span>
-                          {p.children.map((c: any, i: number) => (
-                            <p key={i} className="text-[11px] text-gray-400">
-                              {c.childName}{c.age != null ? ` (${c.age} ${c.ageType === 'month' ? 'mths' : 'yrs'})` : ''}
+        <CardContent className="p-0 flex-1 min-h-0 flex flex-col overflow-hidden">
+          {isLoading ? (
+            <div className="text-center py-16 text-slate-400 text-sm">
+              <Loader2 className="w-6 h-6 animate-spin mx-auto text-teal-500 mb-2" />
+              Loading parents directory...
+            </div>
+          ) : filteredParents.length === 0 ? (
+            <div className="text-center py-16 text-slate-400 text-sm space-y-2">
+              <Users className="w-10 h-10 mx-auto text-slate-300" />
+              <p className="font-bold text-slate-600">No parents found</p>
+              <p className="text-xs text-slate-400">Add a new family or clear search term.</p>
+            </div>
+          ) : (
+            <>
+              {/* Desktop Table View (>= md) */}
+              <div className="hidden md:block flex-1 min-h-0 overflow-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>PARENT NAME</TableHead>
+                      <TableHead>CONTACT & LOCATION</TableHead>
+                      <TableHead>CHILDREN</TableHead>
+                      <TableHead>PLAN STATUS</TableHead>
+                      <TableHead className="text-right">ACTIONS</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredParents.map((p: any) => {
+                      const children = p.children || [];
+                      return (
+                        <TableRow
+                          key={p._id}
+                          onClick={() => navigate(`/parents/${p._id}`)}
+                          className="cursor-pointer group"
+                        >
+                          {/* Parent Name */}
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <Avatar name={p.parentName} size="sm" />
+                              <div>
+                                <p className="font-bold text-slate-900 leading-tight group-hover:text-teal-600 transition-colors">
+                                  {p.parentName}
+                                </p>
+                                <p className="text-[11px] text-slate-400 mt-0.5">
+                                  {p.profession || 'Customer'}
+                                </p>
+                              </div>
+                            </div>
+                          </TableCell>
+
+                          {/* Contact & Location */}
+                          <TableCell>
+                            <p className="text-xs font-semibold text-slate-800 flex items-center gap-1.5">
+                              <Phone size={12} className="text-teal-600" />
+                              <span>{p.contactNumber || '—'}</span>
                             </p>
-                          ))}
-                        </div>
-                      ) : '—'}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <button onClick={(e) => { e.stopPropagation(); navigate(`/parents/${p._id}`); }}
-                          title="View Details"
-                          className="p-1.5 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-all">
-                          <Eye size={15} />
-                        </button>
-                        <button onClick={(e) => { e.stopPropagation(); openEdit(p); }}
-                          title="Edit Parent"
-                          className="p-1.5 text-gray-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-all">
-                          <Pencil size={15} />
-                        </button>
-                        <button onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(p._id); }}
-                          title="Delete Parent"
-                          className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all">
-                          <Trash2 size={15} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                            <p className="text-[11px] text-slate-400 flex items-center gap-1.5 mt-0.5">
+                              <MapPin size={11} className="text-slate-400" />
+                              <span>{p.township || 'Yangon'}</span>
+                            </p>
+                          </TableCell>
 
-      {/* Delete Confirmation */}
-      {deleteConfirmId && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
-            <h3 className="text-lg font-bold text-gray-900 mb-2">Delete Parent?</h3>
-            <p className="text-sm text-gray-500 mb-6">This will also remove references from related invoices. This action cannot be undone.</p>
-            <div className="flex gap-3">
-              <button onClick={() => setDeleteConfirmId(null)}
-                className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-50 transition-all">
-                Cancel
-              </button>
-              <button onClick={() => deleteMutation.mutate(deleteConfirmId)} disabled={deleteMutation.isPending}
-                className="flex-1 py-2.5 bg-red-500 text-white rounded-xl text-sm font-bold hover:bg-red-600 transition-all disabled:opacity-50">
-                {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+                          {/* Children */}
+                          <TableCell>
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              {children.length === 0 ? (
+                                <span className="text-xs text-slate-400">—</span>
+                              ) : (
+                                children.map((c: any, cIdx: number) => (
+                                  <span
+                                    key={cIdx}
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-teal-50 text-teal-800 border border-teal-200/60 text-xs font-bold"
+                                  >
+                                    <Baby size={11} className="text-teal-600" />
+                                    <span>{c.childName || 'Child'}</span>
+                                    {c.age && (
+                                      <span className="text-[10px] opacity-70">
+                                        ({c.age} {c.ageType === 'month' ? 'm' : 'y'})
+                                      </span>
+                                    )}
+                                  </span>
+                                ))
+                              )}
+                            </div>
+                          </TableCell>
 
-      {/* Create/Edit Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-start justify-center p-4 pt-8 bg-black/50 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200 my-8">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50">
-              <h3 className="text-lg font-bold text-gray-900">
-                {editingId ? 'Edit Parent' : 'Add New Parent'}
-              </h3>
-              <button onClick={closeModal} className="p-1 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-200 transition-all">
-                <X size={20} />
-              </button>
-            </div>
+                          {/* Status */}
+                          <TableCell>{getStatusBadge(p.status || 'Inactive')}</TableCell>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
-              {/* Parent Info */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="md:col-span-2">
-                  <label className={label}>Parent Name *</label>
-                  <input required className={input} value={form.parentName}
-                    onChange={(e) => setForm({ ...form, parentName: e.target.value })} placeholder="e.g. Aung Thuyein Hein" />
-                </div>
-                <div>
-                  <label className={label}>Contact Number</label>
-                  <input className={input} value={form.contactNumber}
-                    onChange={(e) => setForm({ ...form, contactNumber: e.target.value })} placeholder="e.g. 0924345" />
-                </div>
-                <div>
-                  <label className={label}>Township</label>
-                  <input className={input} value={form.township}
-                    onChange={(e) => setForm({ ...form, township: e.target.value })} placeholder="e.g. YGN" />
-                </div>
-                <div className="md:col-span-2">
-                  <label className={label}>Address</label>
-                  <input className={input} value={form.address}
-                    onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="e.g. aftrtrh" />
-                </div>
-                <div>
-                  <label className={label}>Religion</label>
-                  <select className={input} value={form.religion}
-                    onChange={(e) => setForm({ ...form, religion: e.target.value })}>
-                    {RELIGIONS.map(r => <option key={r} value={r}>{r}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className={label}>Nearest Bus Stop</label>
-                  <input className={input} value={form.nearestBusStop}
-                    onChange={(e) => setForm({ ...form, nearestBusStop: e.target.value })} placeholder="e.g. Myint" />
-                </div>
-                <div>
-                  <label className={label}>Duration (Bus Stop → Home)</label>
-                  <input className={input} value={form.durationOfBusStopToHome}
-                    onChange={(e) => setForm({ ...form, durationOfBusStopToHome: e.target.value })} placeholder="e.g. 5min" />
-                </div>
-                <div>
-                  <label className={label}>Status (ဝန်ဆောင်မှုအခြေအနေ)</label>
-                  <select className={input} value={form.status}
-                    onChange={(e) => setForm({ ...form, status: e.target.value })}>
-                    {PARENT_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className={label}>Job / Profession (အလုပ်အကိုင်) - Optional</label>
-                  <input className={input} value={form.profession}
-                    onChange={(e) => setForm({ ...form, profession: e.target.value })} placeholder="e.g. Engineer" />
-                </div>
+                          {/* Actions */}
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/parents/${p._id}`);
+                                }}
+                                className="w-7 h-7 text-slate-400 hover:text-slate-700"
+                                title="View Profile"
+                              >
+                                <ChevronRight size={14} />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openEdit(p);
+                                }}
+                                className="w-7 h-7 text-slate-400 hover:text-slate-700"
+                                title="Edit"
+                              >
+                                <Pencil size={13} />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDeleteConfirmId(p._id);
+                                }}
+                                className="w-7 h-7 text-slate-400 hover:text-rose-600"
+                                title="Delete"
+                              >
+                                <Trash2 size={13} />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
               </div>
 
-              {/* Children */}
-              <div className="border-t border-gray-200 pt-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-sm font-bold text-gray-900">Children</h4>
-                  <button type="button" onClick={addChild}
-                    className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:text-primary-dark">
-                    <Plus size={14} /> Add Child
-                  </button>
-                </div>
-                <div className="space-y-3">
-                  {form.children.map((child, i) => (
-                    <div key={i} className="p-3 bg-gray-50 rounded-xl border border-gray-200 relative">
-                      {form.children.length > 1 && (
-                        <button type="button" onClick={() => removeChild(i)}
-                          className="absolute top-2 right-2 p-0.5 text-gray-400 hover:text-red-500 rounded">
-                          <X size={14} />
-                        </button>
-                      )}
-                      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                        <div className="md:col-span-2">
-                          <label className={label}>Child Name *</label>
-                          <input className={input} value={child.childName}
-                            onChange={(e) => updateChild(i, 'childName', e.target.value)}
-                            placeholder="Child name" />
-                        </div>
-                        <div>
-                          <label className={label}>Age</label>
-                          <div className="relative">
-                            <input type="number" min="0" className={`${input} pr-16`} value={child.age}
-                              onChange={(e) => updateChild(i, 'age', e.target.value ? parseInt(e.target.value) : '')}
-                              placeholder="Age" />
-                            <button type="button"
-                              onClick={() => updateChild(i, 'ageType', child.ageType === 'year' ? 'month' : 'year')}
-                              className="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-500 hover:text-primary transition-colors px-1.5 py-0.5 rounded hover:bg-primary/10">
-                              {child.ageType === 'year' ? 'Year(s)' : 'Month(s)'}
-                            </button>
+              {/* Mobile Card List View (< md) */}
+              <div className="block md:hidden flex-1 min-h-0 overflow-y-auto p-1.5 sm:p-2.5 space-y-2 bg-slate-50/40">
+                {filteredParents.map((p: any) => {
+                  const children = p.children || [];
+                  return (
+                    <div
+                      key={p._id}
+                      onClick={() => navigate(`/parents/${p._id}`)}
+                      className="w-full p-3 bg-white rounded-xl border border-slate-200/80 shadow-2xs space-y-2.5 active:bg-slate-50 transition-colors cursor-pointer"
+                    >
+                      {/* Top Row: Avatar & Status */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2.5">
+                          <Avatar name={p.parentName} size="sm" />
+                          <div>
+                            <p className="font-bold text-slate-900 text-sm leading-tight">
+                              {p.parentName}
+                            </p>
+                            <p className="text-[11px] text-slate-400">
+                              {p.profession || 'Customer'}
+                            </p>
                           </div>
                         </div>
-                        <div>
-                          <label className={label}>Gender</label>
-                          <select className={input} value={child.gender}
-                            onChange={(e) => updateChild(i, 'gender', e.target.value)}>
-                            <option value="">—</option>
-                            <option value="Male">Male</option>
-                            <option value="Female">Female</option>
-                          </select>
+                        {getStatusBadge(p.status || 'Inactive')}
+                      </div>
+
+                      {/* Contact & Location */}
+                      <div className="flex items-center justify-between text-xs text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                        <span className="flex items-center gap-1.5 font-semibold">
+                          <Phone size={12} className="text-teal-600" />
+                          <span>{p.contactNumber || '—'}</span>
+                        </span>
+                        <span className="flex items-center gap-1.5 text-slate-400 font-medium">
+                          <MapPin size={12} />
+                          <span>{p.township || 'Yangon'}</span>
+                        </span>
+                      </div>
+
+                      {/* Children Tags */}
+                      {children.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {children.map((c: any, cIdx: number) => (
+                            <span
+                              key={cIdx}
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-teal-50 text-teal-800 border border-teal-200/60 text-xs font-bold"
+                            >
+                              <Baby size={11} className="text-teal-600" />
+                              <span>{c.childName || 'Child'}</span>
+                              {c.age && (
+                                <span className="text-[10px] opacity-70">
+                                  ({c.age} {c.ageType === 'month' ? 'm' : 'y'})
+                                </span>
+                              )}
+                            </span>
+                          ))}
                         </div>
-                        <div className="md:col-span-4 flex items-center gap-2 py-1">
-                          <input type="checkbox" id={`hasInfectiousDisease-${i}`}
-                            checked={child.hasInfectiousDisease}
-                            onChange={(e) => updateChild(i, 'hasInfectiousDisease', e.target.checked)}
-                            className="h-4 w-4 text-primary border-gray-300 rounded focus:ring-primary" />
-                          <label htmlFor={`hasInfectiousDisease-${i}`} className="text-xs font-semibold text-gray-700 cursor-pointer select-none">
-                            Has Infectious Disease (ကူးစက်တတ်သောရောဂါ ရှိပါသည်)
-                          </label>
-                        </div>
-                        <div className="md:col-span-4">
-                          <label className={label}>Notes</label>
-                          <input className={input} value={child.notes}
-                            onChange={(e) => updateChild(i, 'notes', e.target.value)}
-                            placeholder="Any special notes about this child" />
-                        </div>
+                      )}
+
+                      {/* Actions */}
+                      <div className="flex items-center justify-end gap-1 pt-1 border-t border-slate-100/80">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openEdit(p);
+                          }}
+                          className="w-7 h-7 text-slate-400 hover:text-slate-800"
+                        >
+                          <Pencil size={13} />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteConfirmId(p._id);
+                          }}
+                          className="w-7 h-7 text-slate-400 hover:text-rose-600"
+                        >
+                          <Trash2 size={13} />
+                        </Button>
+                        <ChevronRight size={15} className="text-slate-400 ml-1" />
                       </div>
                     </div>
-                  ))}
+                  );
+                })}
+              </div>
+            </>
+          )}
+
+          <TableFooterBar
+            showingText={`Showing ${filteredParents.length} of ${parents.length} families`}
+            updatedText="Last updated just now"
+          />
+        </CardContent>
+      </Card>
+
+      {/* CREATE / EDIT PARENT MODAL */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto animate-fadeIn">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900">
+                  {editingId ? 'Edit Parent Profile' : 'Register New Family'}
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Enter parent contacts and child information
+                </p>
+              </div>
+              <Button variant="ghost" size="icon" onClick={closeModal} className="w-8 h-8 rounded-full">
+                <X size={16} />
+              </Button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Parent Full Name *</label>
+                  <input
+                    type="text"
+                    value={form.parentName}
+                    onChange={(e) => setForm({ ...form, parentName: e.target.value })}
+                    required
+                    placeholder="e.g. Daw Khin Khin"
+                    className="w-full p-2.5 rounded-xl border border-slate-200 bg-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Contact Number *</label>
+                  <input
+                    type="tel"
+                    value={form.contactNumber}
+                    onChange={(e) => setForm({ ...form, contactNumber: e.target.value })}
+                    required
+                    placeholder="09..."
+                    className="w-full p-2.5 rounded-xl border border-slate-200 bg-white"
+                  />
                 </div>
               </div>
 
-              <div className="flex gap-3 pt-2 border-t border-gray-200">
-                <button type="button" onClick={closeModal}
-                  className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-50 transition-all">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Township</label>
+                  <input
+                    type="text"
+                    value={form.township}
+                    onChange={(e) => setForm({ ...form, township: e.target.value })}
+                    placeholder="e.g. Kamayut"
+                    className="w-full p-2.5 rounded-xl border border-slate-200 bg-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Plan Status</label>
+                  <select
+                    value={form.status}
+                    onChange={(e) => setForm({ ...form, status: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 bg-white"
+                  >
+                    {PARENT_STATUSES.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Profession</label>
+                  <input
+                    type="text"
+                    value={form.profession}
+                    onChange={(e) => setForm({ ...form, profession: e.target.value })}
+                    placeholder="e.g. Business Owner"
+                    className="w-full p-2.5 rounded-xl border border-slate-200 bg-white"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Full Home Address</label>
+                <input
+                  type="text"
+                  value={form.address}
+                  onChange={(e) => setForm({ ...form, address: e.target.value })}
+                  placeholder="Street, Building, Ward..."
+                  className="w-full p-2.5 rounded-xl border border-slate-200 bg-white"
+                />
+              </div>
+
+              {/* Children Section */}
+              <div className="pt-2 border-t border-slate-100 space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="font-bold text-slate-800 text-xs">Children Information</label>
+                  <Button variant="subtle" size="xs" onClick={addChild} leftIcon={<Plus size={13} />}>
+                    Add Child
+                  </Button>
+                </div>
+
+                {form.children.map((child, idx) => (
+                  <div key={idx} className="p-3.5 bg-slate-50/70 border border-slate-200 rounded-2xl space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-slate-700 text-[11px]">Child #{idx + 1}</span>
+                      {form.children.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeChild(idx)}
+                          className="text-rose-500 hover:text-rose-700 text-xs font-bold"
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                      <input
+                        type="text"
+                        value={child.childName}
+                        onChange={(e) => updateChild(idx, 'childName', e.target.value)}
+                        placeholder="Child name"
+                        className="p-2 rounded-xl border border-slate-200 bg-white"
+                      />
+                      <div className="flex gap-1.5">
+                        <input
+                          type="number"
+                          value={child.age}
+                          onChange={(e) =>
+                            updateChild(idx, 'age', e.target.value ? Number(e.target.value) : '')
+                          }
+                          placeholder="Age"
+                          className="w-20 p-2 rounded-xl border border-slate-200 bg-white"
+                        />
+                        <select
+                          value={child.ageType}
+                          onChange={(e) => updateChild(idx, 'ageType', e.target.value)}
+                          className="p-2 rounded-xl border border-slate-200 bg-white"
+                        >
+                          <option value="year">Years</option>
+                          <option value="month">Months</option>
+                        </select>
+                      </div>
+                      <select
+                        value={child.gender}
+                        onChange={(e) => updateChild(idx, 'gender', e.target.value)}
+                        className="p-2 rounded-xl border border-slate-200 bg-white"
+                      >
+                        <option value="">Gender</option>
+                        <option value="Female">Female</option>
+                        <option value="Male">Male</option>
+                      </select>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100">
+                <Button variant="outline" size="sm" onClick={closeModal}>
                   Cancel
-                </button>
-                <button type="submit" disabled={createMutation.isPending || updateMutation.isPending}
-                  className="flex-1 py-2.5 bg-primary text-white rounded-xl text-sm font-bold hover:bg-primary-dark transition-all disabled:opacity-50 shadow-md">
-                  {createMutation.isPending || updateMutation.isPending
-                    ? 'Saving...'
-                    : editingId ? 'Update Parent' : 'Create Parent'}
-                </button>
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  type="submit"
+                  isLoading={createMutation.isPending || updateMutation.isPending}
+                >
+                  {editingId ? 'Update Family' : 'Save Family'}
+                </Button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* DELETE CONFIRM MODAL */}
+      {deleteConfirmId && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4 animate-fadeIn">
+            <h3 className="text-base font-extrabold text-slate-900">Delete Family Record?</h3>
+            <p className="text-xs text-slate-500">
+              Are you sure you want to delete this parent and their child records?
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <Button variant="outline" size="sm" onClick={() => setDeleteConfirmId(null)}>
+                Cancel
+              </Button>
+              <Button
+                variant="danger"
+                size="sm"
+                isLoading={deleteMutation.isPending}
+                onClick={() => deleteMutation.mutate(deleteConfirmId)}
+              >
+                Delete
+              </Button>
+            </div>
           </div>
         </div>
       )}

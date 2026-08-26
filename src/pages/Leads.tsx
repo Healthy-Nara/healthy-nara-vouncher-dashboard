@@ -1,18 +1,44 @@
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchLeads, createLead, deleteLead } from '../api';
-import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, X, Phone, MessageCircle, Users, ChevronRight, UserPlus, Trash2, CalendarDays } from 'lucide-react';
+import {
+  Plus,
+  X,
+  Phone,
+  MessageCircle,
+  Users,
+  ChevronRight,
+  UserPlus,
+  Trash2,
+  CalendarDays,
+  Loader2,
+} from 'lucide-react';
+import { Button } from '../components/ui/Button';
+import { Badge } from '../components/ui/Badge';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
+import { PageHeader } from '../components/ui/PageHeader';
+import { SearchInput } from '../components/ui/SearchInput';
+import { Avatar } from '../components/ui/Avatar';
+import { Tabs } from '../components/ui/Tabs';
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+  TableFooterBar,
+} from '../components/ui/Table';
 
-const ALL_STAGES = ['All', 'New', 'Contacted', 'Sale Closed', 'Active Customer', 'Lost'] as const;
-
-const STAGE_CONFIG: Record<string, { color: string; bg: string; icon: string }> = {
-  'New':            { color: 'text-green-700',  bg: 'bg-green-100',  icon: '🟢' },
-  'Contacted':      { color: 'text-yellow-700', bg: 'bg-yellow-100', icon: '🟡' },
-  'Sale Closed':    { color: 'text-blue-700',   bg: 'bg-blue-100',   icon: '🔵' },
-  'Active Customer':{ color: 'text-purple-700', bg: 'bg-purple-100', icon: '🟣' },
-  'Lost':           { color: 'text-red-700',    bg: 'bg-red-100',    icon: '❌' },
-};
+const ALL_STAGES = [
+  { id: 'All', label: 'All Leads' },
+  { id: 'New', label: 'New' },
+  { id: 'Contacted', label: 'Contacted' },
+  { id: 'Sale Closed', label: 'Sale Closed' },
+  { id: 'Active Customer', label: 'Active Customer' },
+  { id: 'Lost', label: 'Lost' },
+];
 
 const CHANNEL_ICONS: Record<string, typeof Phone> = {
   Messenger: MessageCircle,
@@ -34,16 +60,23 @@ interface LeadForm {
 
 const todayStr = () => {
   const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+    d.getDate()
+  ).padStart(2, '0')}`;
 };
 
-const fmtDate = (d: any) => (d ? new Date(d).toLocaleDateString() : '');
+const fmtDate = (d: any) => (d ? new Date(d).toLocaleDateString('en-GB') : '—');
 
 const emptyForm = (): LeadForm => ({
-  customerName: '', phoneNumber: '', channel: 'Phone', requirements: '', notes: '', date: todayStr(),
+  customerName: '',
+  phoneNumber: '',
+  channel: 'Phone',
+  requirements: '',
+  notes: '',
+  date: todayStr(),
 });
 
-const Leads = () => {
+export const Leads = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
@@ -53,7 +86,7 @@ const Leads = () => {
   const [form, setForm] = useState<LeadForm>(emptyForm());
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
-  const { data: allLeads = [], isLoading } = useQuery({
+  const { data: allLeads = [], isLoading } = useQuery<any[]>({
     queryKey: ['leads'],
     queryFn: () => fetchLeads(),
   });
@@ -65,16 +98,16 @@ const Leads = () => {
     }
     if (dateFilter) {
       result = result.filter(
-        (l: any) =>
-          l.date && new Date(l.date).toISOString().slice(0, 10) === dateFilter
+        (l: any) => l.date && new Date(l.date).toISOString().slice(0, 10) === dateFilter
       );
     }
     if (searchTerm) {
       const s = searchTerm.toLowerCase();
-      result = result.filter((l: any) =>
-        l.customerName?.toLowerCase().includes(s) ||
-        l.phoneNumber?.includes(s) ||
-        l.requirements?.toLowerCase().includes(s)
+      result = result.filter(
+        (l: any) =>
+          l.customerName?.toLowerCase().includes(s) ||
+          l.phoneNumber?.includes(s) ||
+          l.requirements?.toLowerCase().includes(s)
       );
     }
     return result;
@@ -98,390 +131,428 @@ const Leads = () => {
   });
 
   const stageCounts = useMemo(() => {
-    const counts: Record<string, number> = { All: allLeads.length };
-    ALL_STAGES.forEach(s => { if (s !== 'All') counts[s] = 0; });
-    allLeads.forEach((l: any) => { counts[l.stage || 'New']++; });
+    const counts: Record<string, number> = {
+      All: allLeads.length,
+      New: 0,
+      Contacted: 0,
+      'Sale Closed': 0,
+      'Active Customer': 0,
+      Lost: 0,
+    };
+    allLeads.forEach((l: any) => {
+      if (counts[l.stage] !== undefined) counts[l.stage]++;
+    });
     return counts;
   }, [allLeads]);
 
+  const tabItems = useMemo(() => {
+    return ALL_STAGES.map((tab) => ({
+      id: tab.id,
+      label: tab.label,
+      count: stageCounts[tab.id] || 0,
+    }));
+  }, [stageCounts]);
+
+  const getStageBadge = (stage: string) => {
+    switch (stage) {
+      case 'New':
+        return <Badge variant="emerald" dot>New</Badge>;
+      case 'Contacted':
+        return <Badge variant="amber" dot>Contacted</Badge>;
+      case 'Sale Closed':
+        return <Badge variant="teal" dot>Sale Closed</Badge>;
+      case 'Active Customer':
+        return <Badge variant="purple" dot>Active Customer</Badge>;
+      case 'Lost':
+        return <Badge variant="rose" dot>Lost</Badge>;
+      default:
+        return <Badge variant="slate" dot>{stage}</Badge>;
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.customerName.trim() || !form.phoneNumber.trim()) {
+      alert('Please fill customer name and phone number');
+      return;
+    }
+    createMutation.mutate(form);
+  };
+
   return (
-    <div className="space-y-4 max-w-7xl mx-auto pb-20 md:pb-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Leads</h1>
-          <p className="text-sm text-gray-500 mt-1">{allLeads.length} total leads</p>
-        </div>
-        <button
-          onClick={() => { setForm(emptyForm()); setIsModalOpen(true); }}
-          className="hidden md:inline-flex items-center gap-2 bg-primary text-white px-4 py-2.5 rounded-xl text-sm font-bold shadow-md hover:bg-primary-dark transition-all"
-        >
-          <Plus size={16} /> New Lead
-        </button>
+    <div className="h-full flex flex-col space-y-4 min-h-0 overflow-hidden">
+      {/* Top Page Header */}
+      <div className="shrink-0">
+        <PageHeader
+          category="CUSTOMER RELATIONS"
+          title="Leads Pipeline"
+          subtitle="Manage customer inquiries, channels, and conversion stages."
+          actions={
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => setIsModalOpen(true)}
+              leftIcon={<Plus size={16} />}
+            >
+              Add New Lead
+            </Button>
+          }
+        />
       </div>
 
-      {/* Search + Filter */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 space-y-3">
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search by name, phone, or requirements..."
+      {/* Tabs and Search */}
+      <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <Tabs
+          items={tabItems}
+          activeId={stageFilter}
+          onChange={(id) => setStageFilter(id)}
+        />
+
+        <div className="flex items-center gap-2">
+          <div className="w-full md:w-64">
+            <SearchInput
+              placeholder="Search leads..."
               value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-primary focus:border-primary"
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onClear={() => setSearchTerm('')}
             />
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-gray-600 flex items-center gap-1 flex-shrink-0">
-              <CalendarDays size={14} /> Date
-            </span>
-            <input
-              type="date"
-              value={dateFilter}
-              onChange={e => setDateFilter(e.target.value)}
-              className="border border-gray-300 rounded-lg shadow-sm px-3 py-2 text-sm focus:ring-primary focus:border-primary"
-            />
-            {dateFilter && (
-              <button
-                onClick={() => setDateFilter('')}
-                className="text-xs text-gray-500 hover:text-gray-700 font-semibold"
-              >
-                Clear
-              </button>
-            )}
-          </div>
-        </div>
-        {/* Stage Filter Pills - Mobile */}
-        <div className="flex gap-2 overflow-x-auto pb-1 md:hidden scrollbar-hide">
-          {ALL_STAGES.map(stage => {
-            const config = STAGE_CONFIG[stage];
-            const isActive = stageFilter === stage;
-            return (
-              <button
-                key={stage}
-                onClick={() => setStageFilter(stage)}
-                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${
-                  isActive
-                    ? stage === 'All'
-                      ? 'bg-gray-900 text-white border-gray-900'
-                      : `${config?.bg || 'bg-gray-100'} ${config?.color || 'text-gray-700'} border-current`
-                    : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                {config?.icon && <span className="mr-1">{config.icon}</span>}
-                {stage}
-                <span className="ml-1 opacity-60">{stageCounts[stage] || 0}</span>
-              </button>
-            );
-          })}
-        </div>
-        {/* Stage Filter Dropdown - Desktop */}
-        <div className="hidden md:block">
-          <select
-            value={stageFilter}
-            onChange={e => setStageFilter(e.target.value)}
-            className="border border-gray-300 rounded-lg shadow-sm px-3 py-2 text-sm focus:ring-primary focus:border-primary"
-          >
-            {ALL_STAGES.map(s => (
-              <option key={s} value={s}>{s} ({stageCounts[s] || 0})</option>
-            ))}
-          </select>
+          <input
+            type="date"
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+            className="p-2 text-xs rounded-xl border border-slate-200 bg-white text-slate-700 outline-none"
+            title="Filter by date"
+          />
         </div>
       </div>
 
-      {/* Lead List */}
-      {isLoading ? (
-        <div className="text-center py-12 text-gray-500">Loading leads...</div>
-      ) : filteredLeads.length === 0 ? (
-        <div className="text-center py-12 text-gray-400">
-          <p className="text-sm">No leads found</p>
-          <button
-            onClick={() => { setForm(emptyForm()); setIsModalOpen(true); }}
-            className="mt-3 text-primary text-sm font-bold hover:underline"
-          >
-            + Create your first lead
-          </button>
-        </div>
-      ) : (
-        <>
-          {/* Mobile Card List */}
-          <div className="md:hidden space-y-2">
-            {filteredLeads.map((lead: any) => {
-              const config = STAGE_CONFIG[lead.stage || 'New'] || STAGE_CONFIG['New'];
-              const ChannelIcon = CHANNEL_ICONS[lead.channel] || Phone;
-              return (
-                <div
-                  key={lead._id}
-                  onClick={() => navigate(`/leads/${lead._id}`)}
-                  className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm active:scale-[0.98] transition-all cursor-pointer"
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${config.bg} ${config.color}`}>
-                          {config.icon} {lead.stage || 'New'}
-                        </span>
-                      </div>
-                      <h3 className="font-semibold text-gray-900 text-sm">{lead.customerName}</h3>
-                      <a
-                        href={`tel:${lead.phoneNumber}`}
-                        onClick={e => e.stopPropagation()}
-                        className="text-xs text-primary font-medium mt-0.5 inline-flex items-center gap-1"
-                      >
-                        <Phone size={10} />
-                        {lead.phoneNumber}
-                      </a>
-                    </div>
-                    <ChevronRight size={16} className="text-gray-300 mt-1 flex-shrink-0" />
-                  </div>
-
-                  <div className="flex items-center gap-2 mt-2">
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 text-gray-600">
-                      <ChannelIcon size={10} />
-                      {lead.channel}
-                    </span>
-                    {lead.date && (
-                      <span className="text-[10px] text-gray-400 flex items-center gap-1">
-                        <CalendarDays size={10} />
-                        {fmtDate(lead.date)}
-                      </span>
-                    )}
-                  </div>
-
-                  {lead.requirements && (
-                    <p className="text-xs text-gray-500 mt-2 line-clamp-2">{lead.requirements}</p>
-                  )}
-
-                  {lead.assignedStaffName && (
-                    <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-gray-100">
-                      <div className="w-4 h-4 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[8px] font-bold">
-                        {lead.assignedStaffName.charAt(0).toUpperCase()}
-                      </div>
-                      <span className="text-[10px] text-gray-400">{lead.assignedStaffName}</span>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+      {/* Leads Table Card */}
+      <Card className="flex-1 min-h-0 flex flex-col overflow-hidden">
+        <CardHeader className="shrink-0">
+          <div>
+            <CardTitle>Inquiries & Leads</CardTitle>
+            <CardDescription>
+              {filteredLeads.length} of {allLeads.length} total leads
+            </CardDescription>
           </div>
+        </CardHeader>
 
-          {/* Desktop Table */}
-          <div className="hidden md:block bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-gray-50 border-b border-gray-200">
-                    <th className="px-4 py-3 text-left text-[10px] font-bold text-gray-500 uppercase">Name</th>
-                    <th className="px-4 py-3 text-left text-[10px] font-bold text-gray-500 uppercase">Phone</th>
-                    <th className="px-4 py-3 text-left text-[10px] font-bold text-gray-500 uppercase">Channel</th>
-                    <th className="px-4 py-3 text-left text-[10px] font-bold text-gray-500 uppercase">Stage</th>
-                    <th className="px-4 py-3 text-left text-[10px] font-bold text-gray-500 uppercase">Staff</th>
-                    <th className="px-4 py-3 text-left text-[10px] font-bold text-gray-500 uppercase">Date</th>
-                    <th className="px-4 py-3 text-right text-[10px] font-bold text-gray-500 uppercase">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {filteredLeads.map((lead: any) => {
-                    const config = STAGE_CONFIG[lead.stage || 'New'] || STAGE_CONFIG['New'];
-                    const ChannelIcon = CHANNEL_ICONS[lead.channel] || Phone;
-                    return (
-                      <tr
-                        key={lead._id}
-                        onClick={() => navigate(`/leads/${lead._id}`)}
-                        className="hover:bg-gray-50/50 transition-colors cursor-pointer"
-                      >
-                        <td className="px-4 py-3">
-                          <span className="font-semibold text-gray-900">{lead.customerName}</span>
-                          {lead.requirements && (
-                            <p className="text-xs text-gray-500 truncate max-w-[200px] mt-0.5">{lead.requirements}</p>
-                          )}
-                        </td>
-                        <td className="px-4 py-3">
-                          <a
-                            href={`tel:${lead.phoneNumber}`}
-                            onClick={e => e.stopPropagation()}
-                            className="text-primary font-medium hover:underline"
-                          >
-                            {lead.phoneNumber}
-                          </a>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 text-gray-600">
-                            <ChannelIcon size={10} />
-                            {lead.channel}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${config.bg} ${config.color}`}>
-                            {config.icon} {lead.stage || 'New'}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          {lead.assignedStaffName && (
-                            <div className="flex items-center gap-1.5">
-                              <div className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[9px] font-bold">
-                                {lead.assignedStaffName.charAt(0).toUpperCase()}
+        <CardContent className="p-0 flex-1 min-h-0 flex flex-col overflow-hidden">
+          {isLoading ? (
+            <div className="text-center py-16 text-slate-400 text-sm">
+              <Loader2 className="w-6 h-6 animate-spin mx-auto text-teal-500 mb-2" />
+              Loading leads pipeline...
+            </div>
+          ) : filteredLeads.length === 0 ? (
+            <div className="text-center py-16 text-slate-400 text-sm space-y-2">
+              <Users className="w-10 h-10 mx-auto text-slate-300" />
+              <p className="font-bold text-slate-600">No leads match your criteria</p>
+              <p className="text-xs text-slate-400">Add an inquiry or clear your search filters.</p>
+            </div>
+          ) : (
+            <>
+              {/* Desktop Table View (>= md) */}
+              <div className="hidden md:block flex-1 min-h-0 overflow-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>CUSTOMER NAME</TableHead>
+                      <TableHead>CHANNEL</TableHead>
+                      <TableHead>REQUIREMENTS</TableHead>
+                      <TableHead>DATE</TableHead>
+                      <TableHead>STAGE</TableHead>
+                      <TableHead className="text-right">ACTIONS</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredLeads.map((lead: any) => {
+                      const ChannelIcon = CHANNEL_ICONS[lead.channel] || Phone;
+                      return (
+                        <TableRow
+                          key={lead._id}
+                          onClick={() => navigate(`/leads/${lead._id}`)}
+                          className="cursor-pointer group"
+                        >
+                          {/* Customer Name with Avatar */}
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <Avatar name={lead.customerName} size="sm" />
+                              <div>
+                                <p className="font-bold text-slate-900 leading-tight group-hover:text-teal-600 transition-colors">
+                                  {lead.customerName}
+                                </p>
+                                <p className="text-[11px] text-slate-400 flex items-center gap-1 mt-0.5">
+                                  <Phone size={10} />
+                                  <span>{lead.phoneNumber || '—'}</span>
+                                </p>
                               </div>
-                              <span className="text-gray-600 text-xs">{lead.assignedStaffName}</span>
                             </div>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-gray-500 text-xs">{fmtDate(lead.date)}</td>
-                        <td className="px-4 py-3 text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            <button
-                              onClick={(e) => { e.stopPropagation(); navigate(`/leads/${lead._id}`); }}
-                              className="p-1.5 text-gray-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-all"
-                            >
-                              <ChevronRight size={14} />
-                            </button>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(lead._id); }}
-                              className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                            >
-                              <Trash2 size={14} />
-                            </button>
+                          </TableCell>
+
+                          {/* Channel */}
+                          <TableCell>
+                            <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
+                              <ChannelIcon size={14} className="text-teal-600" />
+                              <span>{lead.channel || 'Phone'}</span>
+                            </div>
+                          </TableCell>
+
+                          {/* Requirements */}
+                          <TableCell>
+                            <p className="text-xs text-slate-600 max-w-xs truncate">
+                              {lead.requirements || 'No specific requirements'}
+                            </p>
+                          </TableCell>
+
+                          {/* Date */}
+                          <TableCell>
+                            <div className="flex items-center gap-1.5 text-xs text-slate-600">
+                              <CalendarDays size={13} className="text-slate-400" />
+                              <span>{fmtDate(lead.date || lead.createdAt)}</span>
+                            </div>
+                          </TableCell>
+
+                          {/* Stage Badge */}
+                          <TableCell>{getStageBadge(lead.stage || 'New')}</TableCell>
+
+                          {/* Actions */}
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/leads/${lead._id}`);
+                                }}
+                                className="w-7 h-7 text-slate-400 hover:text-slate-700"
+                                title="View lead"
+                              >
+                                <ChevronRight size={14} />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDeleteConfirmId(lead._id);
+                                }}
+                                className="w-7 h-7 text-slate-400 hover:text-rose-600"
+                                title="Delete lead"
+                              >
+                                <Trash2 size={13} />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Mobile Card List View (< md) */}
+              <div className="block md:hidden flex-1 min-h-0 overflow-y-auto p-1.5 sm:p-2.5 space-y-2 bg-slate-50/40">
+                {filteredLeads.map((lead: any) => {
+                  const ChannelIcon = CHANNEL_ICONS[lead.channel] || Phone;
+                  return (
+                    <div
+                      key={lead._id}
+                      onClick={() => navigate(`/leads/${lead._id}`)}
+                      className="w-full p-3 bg-white rounded-xl border border-slate-200/80 shadow-2xs space-y-2 active:bg-slate-50 transition-colors cursor-pointer"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2.5">
+                          <Avatar name={lead.customerName} size="sm" />
+                          <div>
+                            <p className="font-bold text-slate-900 text-sm">{lead.customerName}</p>
+                            <p className="text-[11px] text-slate-400 flex items-center gap-1 mt-0.5">
+                              <Phone size={10} />
+                              <span>{lead.phoneNumber || '—'}</span>
+                            </p>
                           </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </>
-      )}
+                        </div>
+                        {getStageBadge(lead.stage || 'New')}
+                      </div>
 
-      {/* Mobile FAB */}
-      <button
-        onClick={() => { setForm(emptyForm()); setIsModalOpen(true); }}
-        className="md:hidden fixed bottom-6 right-6 z-50 bg-primary text-white w-14 h-14 rounded-full shadow-lg hover:bg-primary-dark hover:shadow-xl flex items-center justify-center transition-all active:scale-95"
-      >
-        <Plus size={24} />
-      </button>
+                      {lead.requirements && (
+                        <p className="text-xs text-slate-600 bg-slate-50 p-2 rounded-xl border border-slate-100">
+                          {lead.requirements}
+                        </p>
+                      )}
 
-      {/* Create Lead Modal */}
+                      <div className="flex items-center justify-between text-xs text-slate-400 pt-1 border-t border-slate-100/80">
+                        <div className="flex items-center gap-1.5 text-slate-600 font-semibold text-[11px]">
+                          <ChannelIcon size={12} className="text-teal-600" />
+                          <span>{lead.channel || 'Phone'}</span>
+                          <span className="text-slate-300">•</span>
+                          <span>{fmtDate(lead.date || lead.createdAt)}</span>
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteConfirmId(lead._id);
+                            }}
+                            className="w-7 h-7 text-slate-400 hover:text-rose-600"
+                          >
+                            <Trash2 size={13} />
+                          </Button>
+                          <ChevronRight size={15} className="text-slate-400" />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
+          <TableFooterBar
+            showingText={`Showing ${filteredLeads.length} of ${allLeads.length} leads`}
+            updatedText="Last updated just now"
+          />
+        </CardContent>
+      </Card>
+
+      {/* CREATE LEAD MODAL */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-end md:items-center justify-center">
-          <div className="bg-white rounded-t-2xl md:rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in slide-in-from-bottom duration-300 md:animate-in md:zoom-in-95 md:duration-200">
-            <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
-              <h2 className="text-lg font-extrabold text-gray-900">New Lead</h2>
-              <button onClick={() => setIsModalOpen(false)} className="p-1 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-200">
-                <X size={20} />
-              </button>
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto animate-fadeIn">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900">Add New Lead</h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Record new customer inquiry and contact details
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsModalOpen(false)}
+                className="w-8 h-8 rounded-full"
+              >
+                <X size={16} />
+              </Button>
             </div>
-            <div className="p-6 space-y-5 max-h-[80vh] overflow-y-auto">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+            <form onSubmit={handleSubmit} className="space-y-3.5 text-xs">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Customer Name *</label>
+                <input
+                  type="text"
+                  value={form.customerName}
+                  onChange={(e) => setForm({ ...form, customerName: e.target.value })}
+                  required
+                  placeholder="e.g. Daw Su Myat"
+                  className="w-full p-2.5 rounded-xl border border-slate-200 bg-white"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-0.5">Customer Name *</label>
-                  <input
-                    type="text"
-                    value={form.customerName}
-                    onChange={e => setForm({ ...form, customerName: e.target.value })}
-                    className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2.5 focus:ring-primary focus:border-primary text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-0.5">Phone Number *</label>
+                  <label className="font-bold text-slate-700 block mb-1">Phone Number *</label>
                   <input
                     type="tel"
                     value={form.phoneNumber}
-                    onChange={e => setForm({ ...form, phoneNumber: e.target.value })}
-                    className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2.5 focus:ring-primary focus:border-primary text-sm"
+                    onChange={(e) => setForm({ ...form, phoneNumber: e.target.value })}
+                    required
+                    placeholder="09..."
+                    className="w-full p-2.5 rounded-xl border border-slate-200 bg-white"
                   />
                 </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Inquiry Channel</label>
+                  <select
+                    value={form.channel}
+                    onChange={(e) => setForm({ ...form, channel: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 bg-white"
+                  >
+                    <option value="Phone">Phone Call</option>
+                    <option value="Messenger">Facebook Messenger</option>
+                    <option value="Viber">Viber</option>
+                    <option value="Walk-in">Walk-in</option>
+                    <option value="Referral">Referral</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
               </div>
+
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-0.5">Channel *</label>
-                <select
-                  value={form.channel}
-                  onChange={e => setForm({ ...form, channel: e.target.value })}
-                  className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2.5 focus:ring-primary focus:border-primary text-sm"
-                >
-                  <option value="Phone">Phone</option>
-                  <option value="Messenger">Messenger</option>
-                  <option value="Viber">Viber</option>
-                  <option value="Walk-in">Walk-in</option>
-                  <option value="Referral">Referral</option>
-                  <option value="Other">Other</option>
-                </select>
+                <label className="font-bold text-slate-700 block mb-1">Care Requirements</label>
+                <input
+                  type="text"
+                  value={form.requirements}
+                  onChange={(e) => setForm({ ...form, requirements: e.target.value })}
+                  placeholder="e.g. Newborn Care 24 hrs for 1 month"
+                  className="w-full p-2.5 rounded-xl border border-slate-200 bg-white"
+                />
               </div>
+
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-0.5">Date</label>
+                <label className="font-bold text-slate-700 block mb-1">Inquiry Date</label>
                 <input
                   type="date"
                   value={form.date}
-                  onChange={e => setForm({ ...form, date: e.target.value })}
-                  className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2.5 focus:ring-primary focus:border-primary text-sm"
+                  onChange={(e) => setForm({ ...form, date: e.target.value })}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 bg-white"
                 />
               </div>
+
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-0.5">Requirements</label>
-                <textarea
-                  value={form.requirements}
-                  onChange={e => setForm({ ...form, requirements: e.target.value })}
-                  rows={3}
-                  className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2.5 focus:ring-primary focus:border-primary text-sm"
-                  placeholder="Customer ရဲ့ လိုအပ်ချက်များ..."
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-0.5">Notes</label>
+                <label className="font-bold text-slate-700 block mb-1">Notes</label>
                 <textarea
                   value={form.notes}
-                  onChange={e => setForm({ ...form, notes: e.target.value })}
-                  rows={2}
-                  className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2.5 focus:ring-primary focus:border-primary text-sm"
-                  placeholder="အတွင်းမှတ်စုများ..."
+                  onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                  rows={3}
+                  placeholder="Additional notes about customer preferences..."
+                  className="w-full p-2.5 rounded-xl border border-slate-200 bg-white"
                 />
               </div>
-            </div>
-            <div className="px-6 py-4 border-t border-gray-200 flex gap-3">
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="flex-1 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-50 transition-all py-2.5"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  if (form.customerName && form.phoneNumber) {
-                    createMutation.mutate(form);
-                  }
-                }}
-                disabled={!form.customerName || !form.phoneNumber || createMutation.isPending}
-                className="flex-1 bg-primary text-white rounded-xl text-sm font-bold shadow-md hover:bg-primary-dark transition-all py-2.5 disabled:opacity-50"
-              >
-                {createMutation.isPending ? 'Creating...' : 'Save Lead'}
-              </button>
-            </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                <Button variant="outline" size="sm" onClick={() => setIsModalOpen(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  type="submit"
+                  isLoading={createMutation.isPending}
+                >
+                  Save Lead
+                </Button>
+              </div>
+            </form>
           </div>
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
+      {/* DELETE CONFIRM MODAL */}
       {deleteConfirmId && (
-        <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
-            <h3 className="text-lg font-extrabold text-gray-900 mb-2">Delete Lead</h3>
-            <p className="text-sm text-gray-500 mb-6">Are you sure you want to delete this lead? This action cannot be undone.</p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setDeleteConfirmId(null)}
-                className="flex-1 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-50 transition-all py-2.5"
-              >
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4 animate-fadeIn">
+            <h3 className="text-base font-extrabold text-slate-900">Delete Lead?</h3>
+            <p className="text-xs text-slate-500">
+              Are you sure you want to remove this lead record?
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <Button variant="outline" size="sm" onClick={() => setDeleteConfirmId(null)}>
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="danger"
+                size="sm"
+                isLoading={deleteMutation.isPending}
                 onClick={() => deleteMutation.mutate(deleteConfirmId)}
-                disabled={deleteMutation.isPending}
-                className="flex-1 bg-red-500 text-white rounded-xl text-sm font-bold hover:bg-red-600 transition-all py-2.5 disabled:opacity-50"
               >
                 Delete
-              </button>
+              </Button>
             </div>
           </div>
         </div>

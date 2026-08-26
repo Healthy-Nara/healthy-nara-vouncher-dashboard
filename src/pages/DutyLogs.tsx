@@ -1,21 +1,36 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getAdminDutyLogs } from '../api';
-import { Clock, Calendar, User, Loader2, Timer } from 'lucide-react';
+import { Clock, Calendar, Loader2 } from 'lucide-react';
+import { Badge } from '../components/ui/Badge';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
+import { PageHeader } from '../components/ui/PageHeader';
+import { Avatar } from '../components/ui/Avatar';
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+  TableFooterBar,
+} from '../components/ui/Table';
 
-const DutyLogs = () => {
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+export const DutyLogs = () => {
+  const [selectedDate, setSelectedDate] = useState(
+    new Date().toISOString().split('T')[0]
+  );
 
-  const { data: logs, isLoading } = useQuery({
+  const { data: logs = [], isLoading } = useQuery<any[]>({
     queryKey: ['adminDutyLogs', selectedDate],
     queryFn: () => getAdminDutyLogs({ date: selectedDate }),
   });
 
   const formatTime = (dateString: string) => {
-    if (!dateString) return '-';
-    return new Date(dateString).toLocaleTimeString('my-MM', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
+    if (!dateString) return '—';
+    return new Date(dateString).toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
     });
   };
 
@@ -25,171 +40,192 @@ const DutyLogs = () => {
     const diffMs = endTime.getTime() - startTime.getTime();
     const hours = Math.floor(diffMs / (1000 * 60 * 60));
     const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-    return `${hours} နာရီ ${minutes} မိနစ်`;
+    return `${hours} hr ${minutes} min`;
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-extrabold text-gray-900">Duty Log များ</h1>
-          <p className="text-sm text-gray-500 mt-1">Nurse Aid များ၏ အလုပ်ချိန် မှတ်တမ်း</p>
-        </div>
+    <div className="h-full flex flex-col space-y-4 min-h-0 overflow-hidden">
+      {/* Top Page Header */}
+      <div className="shrink-0">
+        <PageHeader
+          category="ATTENDANCE & TIME"
+          title="Caregiver Duty Logs"
+          subtitle="Real-time shift check-in, check-out timestamps, and working hours."
+        />
       </div>
 
-      {/* Filters */}
-      <div className="bg-white rounded-2xl shadow-sm p-4 border border-primary/10">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Calendar className="text-primary h-5 w-5" />
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="border border-gray-300 rounded-lg p-2 text-sm"
-            />
+      {/* Filter Toolbar */}
+      <Card className="shrink-0">
+        <CardContent className="p-3">
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-bold text-slate-500">Date:</span>
+            <div className="flex items-center gap-2">
+              <Calendar size={14} className="text-slate-400" />
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="p-2 text-xs rounded-xl border border-slate-200 bg-white text-slate-700 outline-none"
+              />
+            </div>
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
-      {/* Duty Logs */}
-      <div className="bg-white rounded-2xl shadow-sm border border-primary/10 overflow-hidden">
-        {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="animate-spin h-8 w-8 text-primary" />
+      {/* Duty Logs Table Card */}
+      <Card className="flex-1 min-h-0 flex flex-col overflow-hidden">
+        <CardHeader className="shrink-0">
+          <div>
+            <CardTitle>Shift Time Logs</CardTitle>
+            <CardDescription>
+              {logs.length} check-in sessions recorded
+            </CardDescription>
           </div>
-        ) : !logs || logs.length === 0 ? (
-          <div className="text-center py-12 text-gray-500">
-            <Clock className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-            <p>Duty Log မရှိပါ</p>
-          </div>
-        ) : (
-          <>
-            {/* Desktop Table */}
-            <div className="hidden md:block overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="bg-gray-50 border-b border-gray-200">
-                    <th className="text-left px-6 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-500">NA</th>
-                    <th className="text-left px-6 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-500">Booking</th>
-                    <th className="text-left px-6 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-500">စတင်ချိန်</th>
-                    <th className="text-left px-6 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-500">ပြီးဆုံးချိန်</th>
-                    <th className="text-left px-6 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-500">ကြာချိန်</th>
-                    <th className="text-left px-6 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-500">အခြေအနေ</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {logs.map((log: any) => (
-                    <tr key={log._id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="bg-primary/10 w-8 h-8 rounded-full flex items-center justify-center">
-                            <User className="text-primary h-4 w-4" />
+        </CardHeader>
+
+        <CardContent className="p-0 flex-1 min-h-0 flex flex-col overflow-hidden">
+          {isLoading ? (
+            <div className="text-center py-16 text-slate-400 text-sm">
+              <Loader2 className="w-6 h-6 animate-spin mx-auto text-teal-500 mb-2" />
+              Loading duty logs...
+            </div>
+          ) : logs.length === 0 ? (
+            <div className="text-center py-16 text-slate-400 text-sm space-y-2">
+              <Clock className="w-10 h-10 mx-auto text-slate-300" />
+              <p className="font-bold text-slate-600">No duty logs found for this date</p>
+              <p className="text-xs text-slate-400">Caregiver check-ins will appear here.</p>
+            </div>
+          ) : (
+            <>
+              {/* Desktop Table View (>= md) */}
+              <div className="hidden md:block flex-1 min-h-0 overflow-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>CAREGIVER / NA</TableHead>
+                      <TableHead>BOOKING #</TableHead>
+                      <TableHead>START TIME</TableHead>
+                      <TableHead>END TIME</TableHead>
+                      <TableHead>DURATION</TableHead>
+                      <TableHead>STATUS</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {logs.map((log: any) => {
+                      const caregiverName =
+                        log.caregiver?.caregiverName || log.caregiverName || 'Caregiver';
+                      const isOnDuty = !log.dutyEnd;
+
+                      return (
+                        <TableRow key={log._id}>
+                          {/* Caregiver Name with Avatar */}
+                          <TableCell>
+                            <div className="flex items-center gap-2.5">
+                              <Avatar name={caregiverName} size="xs" />
+                              <span className="font-bold text-slate-900 text-xs">
+                                {caregiverName}
+                              </span>
+                            </div>
+                          </TableCell>
+
+                          {/* Booking # */}
+                          <TableCell>
+                            <span className="text-xs font-mono font-bold text-slate-700">
+                              {log.booking?.bookingNumber || '—'}
+                            </span>
+                          </TableCell>
+
+                          {/* Start Time */}
+                          <TableCell>
+                            <span className="text-xs font-semibold text-slate-800">
+                              {formatTime(log.dutyStart)}
+                            </span>
+                          </TableCell>
+
+                          {/* End Time */}
+                          <TableCell>
+                            <span className="text-xs text-slate-600">
+                              {formatTime(log.dutyEnd)}
+                            </span>
+                          </TableCell>
+
+                          {/* Duration */}
+                          <TableCell>
+                            <span className="text-xs font-bold font-mono text-teal-700">
+                              {calculateDuration(log.dutyStart, log.dutyEnd)}
+                            </span>
+                          </TableCell>
+
+                          {/* Status */}
+                          <TableCell>
+                            <Badge variant={isOnDuty ? 'onDuty' : 'completed'} dot>
+                              {isOnDuty ? 'On Duty' : 'Completed'}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Mobile Card List View (< md) */}
+              <div className="block md:hidden flex-1 min-h-0 overflow-y-auto p-1.5 sm:p-2.5 space-y-2 bg-slate-50/40">
+                {logs.map((log: any) => {
+                  const caregiverName =
+                    log.caregiver?.caregiverName || log.caregiverName || 'Caregiver';
+                  const isOnDuty = !log.dutyEnd;
+
+                  return (
+                    <div
+                      key={log._id}
+                      className="w-full p-3 bg-white rounded-xl border border-slate-200/80 shadow-2xs space-y-2.5"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2.5">
+                          <Avatar name={caregiverName} size="sm" />
+                          <div>
+                            <p className="font-bold text-slate-900 text-sm leading-tight">
+                              {caregiverName}
+                            </p>
+                            <p className="text-[11px] text-slate-400 font-mono">
+                              {log.booking?.bookingNumber || 'No Booking #'}
+                            </p>
                           </div>
-                          <span className="text-sm font-medium text-gray-900">
-                            {log.caregiver?.caregiverName || log.caregiverName}
-                          </span>
                         </div>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
-                        {log.booking?.bookingNumber || '-'}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
-                        {formatTime(log.dutyStart)}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
-                        {log.dutyEnd ? formatTime(log.dutyEnd) : '-'}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-1 text-sm text-gray-600">
-                          <Timer size={14} className="text-gray-400" />
-                          {calculateDuration(log.dutyStart, log.dutyEnd)}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          log.status === 'completed' 
-                            ? 'bg-green-100 text-green-700' 
-                            : 'bg-blue-100 text-blue-700'
-                        }`}>
-                          {log.status === 'completed' ? 'ပြီးဆုံးပြီ' : 'လုပ်နေဆဲ'}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Mobile Cards */}
-            <div className="md:hidden divide-y divide-gray-100">
-              {logs.map((log: any) => (
-                <div key={log._id} className="p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <div className="bg-primary/10 w-10 h-10 rounded-full flex items-center justify-center">
-                        <User className="text-primary h-5 w-5" />
+                        <Badge variant={isOnDuty ? 'onDuty' : 'completed'} dot>
+                          {isOnDuty ? 'On Duty' : 'Completed'}
+                        </Badge>
                       </div>
-                      <div>
-                        <p className="font-semibold text-gray-900">
-                          {log.caregiver?.caregiverName || log.caregiverName}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {log.booking?.bookingNumber || 'Booking'}
-                        </p>
+
+                      <div className="flex items-center justify-between text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                        <div>
+                          <p className="text-[10px] text-slate-400 font-semibold uppercase">Shift Period</p>
+                          <p className="font-semibold text-slate-800 text-xs mt-0.5">
+                            {formatTime(log.dutyStart)} — {formatTime(log.dutyEnd)}
+                          </p>
+                        </div>
+
+                        <div className="text-right">
+                          <p className="text-[10px] text-slate-400 font-semibold uppercase">Duration</p>
+                          <p className="font-black text-teal-700 font-mono text-xs mt-0.5">
+                            {calculateDuration(log.dutyStart, log.dutyEnd)}
+                          </p>
+                        </div>
                       </div>
                     </div>
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                      log.status === 'completed' 
-                        ? 'bg-green-100 text-green-700' 
-                        : 'bg-blue-100 text-blue-700'
-                    }`}>
-                      {log.status === 'completed' ? 'ပြီးဆုံးပြီ' : 'လုပ်နေဆဲ'}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2 text-sm">
-                    <div>
-                      <p className="text-xs text-gray-500">စတင်ချိန်</p>
-                      <p className="font-medium">{formatTime(log.dutyStart)}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500">ပြီးဆုံးချိန်</p>
-                      <p className="font-medium">{log.dutyEnd ? formatTime(log.dutyEnd) : '-'}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500">ကြာချိန်</p>
-                      <p className="font-medium">{calculateDuration(log.dutyStart, log.dutyEnd)}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
-      </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
 
-      {/* Summary Stats */}
-      {logs && logs.length > 0 && (
-        <div className="grid grid-cols-3 gap-4">
-          <div className="bg-white rounded-2xl shadow-sm p-4 border border-primary/10 text-center">
-            <p className="text-2xl font-bold text-primary">
-              {logs.filter((l: any) => l.status === 'active').length}
-            </p>
-            <p className="text-xs text-gray-500">လုပ်နေဆဲ</p>
-          </div>
-          <div className="bg-white rounded-2xl shadow-sm p-4 border border-primary/10 text-center">
-            <p className="text-2xl font-bold text-green-600">
-              {logs.filter((l: any) => l.status === 'completed').length}
-            </p>
-            <p className="text-xs text-gray-500">ပြီးဆုံးပြီ</p>
-          </div>
-          <div className="bg-white rounded-2xl shadow-sm p-4 border border-primary/10 text-center">
-            <p className="text-2xl font-bold text-gray-900">{logs.length}</p>
-            <p className="text-xs text-gray-500">စုစုပေါင်း</p>
-          </div>
-        </div>
-      )}
+          <TableFooterBar
+            showingText={`Showing ${logs.length} duty logs`}
+            updatedText="Real-time attendance"
+          />
+        </CardContent>
+      </Card>
     </div>
   );
 };

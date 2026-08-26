@@ -464,4 +464,69 @@ export const resetUserPassword = async (id: string, newPassword: string) => {
   return data;
 };
 
+// --- Blog API ---
+export interface BlogItem {
+  _id: string;
+  title: string;
+  slug: string;
+  excerpt?: string;
+  content: string;
+  coverImage?: string;
+  category: string;
+  tags?: string[];
+  author?: string;
+  authorName?: string;
+  status: "Draft" | "Published" | "Archived";
+  isFeatured?: boolean;
+  publishedAt?: string;
+  readTimeMinutes?: number;
+  viewCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BlogListResponse {
+  blogs: BlogItem[];
+  total: number;
+  page: number;
+  totalPages: number;
+  stats: {
+    totalPosts: number;
+    publishedPosts: number;
+    draftPosts: number;
+    totalViews: number;
+  };
+}
+
+export const fetchBlogs = async (params: Record<string, any> = {}): Promise<BlogListResponse> => {
+  const { data } = await api.get('/blogs', { params });
+  return data;
+};
+
+export const fetchBlogById = async (idOrSlug: string): Promise<BlogItem> => {
+  const { data } = await api.get(`/blogs/${idOrSlug}`);
+  return data;
+};
+
+export const createBlog = async (blogData: Partial<BlogItem>): Promise<BlogItem> => {
+  const { data } = await api.post('/blogs', blogData);
+  return data;
+};
+
+export const updateBlog = async (id: string, blogData: Partial<BlogItem>): Promise<BlogItem> => {
+  const { data } = await api.put(`/blogs/${id}`, blogData);
+  return data;
+};
+
+export const updateBlogStatus = async (id: string, status: "Draft" | "Published" | "Archived"): Promise<BlogItem> => {
+  const { data } = await api.patch(`/blogs/${id}/status`, { status });
+  return data;
+};
+
+export const deleteBlog = async (id: string): Promise<void> => {
+  const { data } = await api.delete(`/blogs/${id}`);
+  return data;
+};
+
 export default api;
+

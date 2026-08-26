@@ -1,11 +1,32 @@
+import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchFinancialReport } from '../api';
-import { useState, useMemo } from 'react';
 import { format } from 'date-fns';
-import { BarChart3, TrendingUp, TrendingDown, Wallet, Calendar, ArrowDown, ReceiptText } from 'lucide-react';
+import {
+  TrendingUp,
+  TrendingDown,
+  Wallet,
+  Calendar,
+  ArrowDown,
+  ReceiptText,
+  Loader2,
+  PieChart,
+} from 'lucide-react';
 import CustomDatePicker from '../components/CustomDatePicker';
+import { Button } from '../components/ui/Button';
+import { Badge } from '../components/ui/Badge';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
+import { PageHeader } from '../components/ui/PageHeader';
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from '../components/ui/Table';
 
-const BankReport = () => {
+export const BankReport = () => {
   const todayStr = format(new Date(), 'dd-MM-yyyy');
   const [dateRange, setDateRange] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   const [startDate, setStartDate] = useState(todayStr);
@@ -30,21 +51,50 @@ const BankReport = () => {
     }
   };
 
-  const toApiDate = (d: string) => d ? d.split('-').reverse().join('-') : '';
+  const toApiDate = (d: string) => (d ? d.split('-').reverse().join('-') : '');
 
   const { data: report, isLoading } = useQuery({
     queryKey: ['financial-report', startDate, endDate],
-    queryFn: () => fetchFinancialReport(toApiDate(startDate) || undefined, toApiDate(endDate) || undefined),
+    queryFn: () =>
+      fetchFinancialReport(toApiDate(startDate) || undefined, toApiDate(endDate) || undefined),
   });
 
   const summaryCards = useMemo(() => {
     if (!report) return [];
     return [
-      { label: 'Total Income', value: report.totalIncome, icon: TrendingUp, color: 'bg-green-100 text-green-700', border: 'border-green-200' },
-      { label: 'NA Payouts', value: report.totalPayouts, icon: ArrowDown, color: 'bg-orange-100 text-orange-700', border: 'border-orange-200' },
-      { label: 'Platform Fees', value: report.totalFees, icon: Wallet, color: 'bg-primary/10 text-primary', border: 'border-primary/20' },
-      { label: 'Total Expenses', value: report.totalExpenses, icon: ReceiptText, color: 'bg-red-100 text-red-700', border: 'border-red-200' },
-      { label: 'Net Profit', value: report.netProfit, icon: report.netProfit >= 0 ? TrendingUp : TrendingDown, color: report.netProfit >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700', border: report.netProfit >= 0 ? 'border-emerald-200' : 'border-red-200' },
+      {
+        label: 'Total Income',
+        value: report.totalIncome,
+        icon: TrendingUp,
+        color: 'text-emerald-700 bg-emerald-50',
+      },
+      {
+        label: 'NA Payouts',
+        value: report.totalPayouts,
+        icon: ArrowDown,
+        color: 'text-amber-700 bg-amber-50',
+      },
+      {
+        label: 'Platform Fees',
+        value: report.totalFees,
+        icon: Wallet,
+        color: 'text-teal-700 bg-teal-50',
+      },
+      {
+        label: 'Total Expenses',
+        value: report.totalExpenses,
+        icon: ReceiptText,
+        color: 'text-rose-700 bg-rose-50',
+      },
+      {
+        label: 'Net Profit',
+        value: report.netProfit,
+        icon: report.netProfit >= 0 ? TrendingUp : TrendingDown,
+        color:
+          report.netProfit >= 0
+            ? 'text-teal-700 bg-teal-50'
+            : 'text-rose-700 bg-rose-50',
+      },
     ];
   }, [report]);
 
@@ -58,147 +108,225 @@ const BankReport = () => {
 
   const dailyEntries = useMemo(() => {
     if (!report?.dailyData) return [];
-    return Object.entries(report.dailyData)
-      .sort(([a], [b]) => b.localeCompare(a));
+    return Object.entries(report.dailyData).sort(([a], [b]) => b.localeCompare(a));
   }, [report]);
 
-  const fmt = (n: number) => n?.toLocaleString() || '0';
+  const fmt = (n: number) => `${(n || 0).toLocaleString()} MMK`;
 
   return (
-    <div className="space-y-4 max-w-7xl mx-auto pb-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Bank Report</h1>
-        <p className="text-sm text-gray-500 mt-1">Financial overview — payment channel breakdown</p>
-      </div>
+    <div className="space-y-6">
+      {/* Top Page Header */}
+      <PageHeader
+        category="FINANCIAL AUDIT"
+        title="Bank Reconciliation Report"
+        subtitle="Financial overview, income/expense breakdown, and bank payment channels."
+      />
 
-      {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex gap-1 bg-gray-100 p-0.5 rounded-lg">
-            {(['daily', 'weekly', 'monthly'] as const).map(range => (
-              <button
-                key={range}
-                onClick={() => handleRangeChange(range)}
-                className={`px-3 py-1.5 rounded-md text-xs font-bold capitalize transition-all ${
-                  dateRange === range
-                    ? 'bg-white shadow-sm text-primary'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                {range}
-              </button>
-            ))}
-          </div>
-          <div className="flex items-center gap-2">
-            <Calendar size={14} className="text-gray-400" />
-            <CustomDatePicker
-              selected={startDate ? new Date(startDate.split('-').reverse().join('-')) : new Date()}
-              onChange={(date) => setStartDate(format(date, 'dd-MM-yyyy'))}
-            />
-            <span className="text-xs text-gray-400">to</span>
-            <CustomDatePicker
-              selected={endDate ? new Date(endDate.split('-').reverse().join('-')) : new Date()}
-              onChange={(date) => setEndDate(format(date, 'dd-MM-yyyy'))}
-            />
-          </div>
-        </div>
-      </div>
+      {/* Date Filter Toolbar */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-2xl">
+              {(['daily', 'weekly', 'monthly'] as const).map((range) => (
+                <Button
+                  key={range}
+                  variant={dateRange === range ? 'primary' : 'ghost'}
+                  size="xs"
+                  onClick={() => handleRangeChange(range)}
+                  className="capitalize text-xs rounded-xl"
+                >
+                  {range}
+                </Button>
+              ))}
+            </div>
 
-      {isLoading ? (
-        <div className="text-center py-12 text-gray-500">Loading report...</div>
-      ) : !report ? (
-        <div className="text-center py-12 text-gray-400">No data available</div>
-      ) : (
-        <>
-          {/* Summary Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {summaryCards.map(card => (
-              <div key={card.label} className={`bg-white rounded-xl shadow-sm border ${card.border} p-5`}>
-                <div className="flex items-center gap-3">
-                  <div className={`p-2.5 rounded-xl ${card.color}`}>
-                    <card.icon size={18} />
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-bold text-gray-500 uppercase">{card.label}</p>
-                    <p className={`text-lg font-black ${card.color.split(' ')[1]}`}>{fmt(card.value)} MMK</p>
-                  </div>
+            <div className="flex items-center gap-2">
+              <Calendar size={15} className="text-slate-400" />
+              <CustomDatePicker
+                selected={
+                  startDate
+                    ? new Date(startDate.split('-').reverse().join('-'))
+                    : new Date()
+                }
+                onChange={(date) => setStartDate(format(date, 'dd-MM-yyyy'))}
+              />
+              <span className="text-xs text-slate-400 font-bold">to</span>
+              <CustomDatePicker
+                selected={
+                  endDate ? new Date(endDate.split('-').reverse().join('-')) : new Date()
+                }
+                onChange={(date) => setEndDate(format(date, 'dd-MM-yyyy'))}
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 5 Financial Summary Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+        {summaryCards.map((card, idx) => {
+          const Icon = card.icon;
+          return (
+            <div
+              key={idx}
+              className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs flex flex-col justify-between"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  {card.label}
+                </span>
+                <div className={`p-1.5 rounded-lg ${card.color}`}>
+                  <Icon size={14} />
                 </div>
               </div>
-            ))}
-          </div>
-
-          {/* Channel Breakdown */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="px-5 py-3 border-b border-gray-200 bg-gray-50">
-              <h2 className="text-sm font-bold text-gray-900">Payment Channel Breakdown</h2>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-200">
-                    <th className="px-5 py-3 text-left text-[10px] font-bold text-gray-500 uppercase">Channel</th>
-                    <th className="px-5 py-3 text-right text-[10px] font-bold text-gray-500 uppercase">Income</th>
-                    <th className="px-5 py-3 text-right text-[10px] font-bold text-gray-500 uppercase">NA Payouts</th>
-                    <th className="px-5 py-3 text-right text-[10px] font-bold text-gray-500 uppercase">Platform Fees</th>
-                    <th className="px-5 py-3 text-right text-[10px] font-bold text-gray-500 uppercase">Count</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {channelList.map(ch => (
-                    <tr key={ch.channel} className="hover:bg-gray-50/50">
-                      <td className="px-5 py-3 font-bold text-gray-900">{ch.channel}</td>
-                      <td className="px-5 py-3 text-right font-semibold text-green-700">{fmt(ch.income)} MMK</td>
-                      <td className="px-5 py-3 text-right font-semibold text-orange-700">{fmt(ch.payouts)} MMK</td>
-                      <td className="px-5 py-3 text-right font-semibold text-primary">{fmt(ch.fees)} MMK</td>
-                      <td className="px-5 py-3 text-right text-gray-500">{ch.count}</td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr className="bg-gray-50 font-bold border-t-2 border-gray-300">
-                    <td className="px-5 py-3 text-gray-900 uppercase text-xs">Total</td>
-                    <td className="px-5 py-3 text-right text-green-700">{fmt(report.totalIncome)} MMK</td>
-                    <td className="px-5 py-3 text-right text-orange-700">{fmt(report.totalPayouts)} MMK</td>
-                    <td className="px-5 py-3 text-right text-primary">{fmt(report.totalFees)} MMK</td>
-                    <td className="px-5 py-3 text-right text-gray-900">{report.paymentCount + report.payoutCount}</td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-          </div>
-
-          {/* Daily Trend */}
-          {dailyEntries.length > 0 && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-              <div className="px-5 py-3 border-b border-gray-200 bg-gray-50">
-                <h2 className="text-sm font-bold text-gray-900">Daily Breakdown</h2>
-              </div>
-              <div className="divide-y divide-gray-100">
-                {dailyEntries.map(([date, data]: [string, any]) => (
-                  <div key={date} className="px-5 py-3 flex items-center justify-between hover:bg-gray-50/50">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-primary/10 rounded-lg">
-                        <BarChart3 size={14} className="text-primary" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold text-gray-900">{date}</p>
-                        <p className="text-[10px] text-gray-400">Net: {fmt(data.income - data.payouts - (data.expense || 0))} MMK</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4 text-xs">
-                      <span className="text-green-600 font-semibold">+{fmt(data.income)}</span>
-                      <span className="text-orange-600 font-semibold">-{fmt(data.payouts)}</span>
-                      <span className="text-primary font-semibold">Fees: {fmt(data.fees)}</span>
-                      <span className="text-red-600 font-semibold">Exp: {fmt(data.expense || 0)}</span>
-                    </div>
-                  </div>
-                ))}
+              <div className="mt-3">
+                <div className="text-lg sm:text-xl font-black text-slate-900 font-mono tracking-tight">
+                  {fmt(card.value)}
+                </div>
               </div>
             </div>
-          )}
-        </>
-      )}
+          );
+        })}
+      </div>
+
+      {/* 2-Column Details: Channel Breakdown & Daily Log */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Payment Channel Breakdown Card */}
+        <Card>
+          <CardHeader>
+            <div>
+              <CardTitle>Payment Channel Breakdown</CardTitle>
+              <CardDescription>Collection across payment gateways and banks</CardDescription>
+            </div>
+          </CardHeader>
+
+          <CardContent className="p-0">
+            {isLoading ? (
+              <div className="text-center py-16 text-slate-400 text-sm">
+                <Loader2 className="w-6 h-6 animate-spin mx-auto text-teal-500 mb-2" />
+                Calculating channel totals...
+              </div>
+            ) : channelList.length === 0 ? (
+              <div className="text-center py-16 text-slate-400 text-sm space-y-2">
+                <PieChart className="w-10 h-10 mx-auto text-slate-300" />
+                <p className="font-bold text-slate-600">No transactions in selected period</p>
+              </div>
+            ) : (
+              <Table containerClassName="max-h-72 overflow-auto">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>CHANNEL</TableHead>
+                    <TableHead>INFLOW</TableHead>
+                    <TableHead>OUTFLOW</TableHead>
+                    <TableHead className="text-right">NET</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {channelList.map((c: any) => {
+                    const net = (c.income || 0) - (c.payout || 0) - (c.expense || 0);
+                    return (
+                      <TableRow key={c.channel}>
+                        <TableCell>
+                          <Badge variant="teal" dot>
+                            {c.channel}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-xs font-bold text-emerald-700 font-mono">
+                            +{fmt(c.income || 0)}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-xs font-bold text-rose-600 font-mono">
+                            -{fmt((c.payout || 0) + (c.expense || 0))}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <span
+                            className={`text-xs font-black font-mono ${
+                              net >= 0 ? 'text-teal-700' : 'text-rose-600'
+                            }`}
+                          >
+                            {fmt(net)}
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Daily Financial Log Card */}
+        <Card>
+          <CardHeader>
+            <div>
+              <CardTitle>Daily Financial Log</CardTitle>
+              <CardDescription>Day-by-day revenue & expenditure summary</CardDescription>
+            </div>
+          </CardHeader>
+
+          <CardContent className="p-0">
+            {isLoading ? (
+              <div className="text-center py-16 text-slate-400 text-sm">
+                <Loader2 className="w-6 h-6 animate-spin mx-auto text-teal-500 mb-2" />
+                Loading daily breakdown...
+              </div>
+            ) : dailyEntries.length === 0 ? (
+              <div className="text-center py-16 text-slate-400 text-sm space-y-2">
+                <Calendar className="w-10 h-10 mx-auto text-slate-300" />
+                <p className="font-bold text-slate-600">No data found</p>
+              </div>
+            ) : (
+              <Table containerClassName="max-h-72 overflow-auto">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>DATE</TableHead>
+                    <TableHead>INCOME</TableHead>
+                    <TableHead>EXPENSE/PAYOUT</TableHead>
+                    <TableHead className="text-right">PROFIT</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {dailyEntries.map(([dateKey, val]: [string, any]) => {
+                    const net = (val.income || 0) - (val.payout || 0) - (val.expense || 0);
+                    return (
+                      <TableRow key={dateKey}>
+                        <TableCell>
+                          <span className="font-bold text-xs text-slate-800 font-mono">
+                            {dateKey}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-xs font-bold text-emerald-700 font-mono">
+                            {fmt(val.income || 0)}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-xs font-bold text-rose-600 font-mono">
+                            {fmt((val.payout || 0) + (val.expense || 0))}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <span
+                            className={`text-xs font-black font-mono ${
+                              net >= 0 ? 'text-teal-700' : 'text-rose-600'
+                            }`}
+                          >
+                            {fmt(net)}
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };

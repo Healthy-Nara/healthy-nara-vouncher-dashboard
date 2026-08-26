@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { login as loginApi } from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Navigate } from 'react-router-dom';
-import { Lock, User as UserIcon, Loader2, Eye, EyeOff } from 'lucide-react';
+import { Lock, User as UserIcon, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { Button } from '../components/ui/Button';
 
-const Login = () => {
+export const Login = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -20,7 +21,7 @@ const Login = () => {
       navigate('/');
     },
     onError: (err: any) => {
-      setError(err.response?.data?.error || 'Failed to login');
+      setError(err.response?.data?.error || 'Invalid credentials or connection error');
     },
   });
 
@@ -35,33 +36,37 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center">
-      <div className="max-w-md w-full bg-white p-8 rounded-2xl shadow-xl border border-primary/10">
-        <div className="text-center mb-8">
-          <div className="bg-primary/10 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Lock className="text-primary h-8 w-8" />
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+      <div className="max-w-md w-full bg-white p-8 rounded-3xl shadow-xl border border-slate-200/80 space-y-6">
+        {/* Brand Header */}
+        <div className="text-center space-y-2">
+          <div className="w-14 h-14 rounded-2xl bg-teal-500 text-white flex items-center justify-center font-black text-xl mx-auto shadow-md shadow-teal-500/20">
+            HN
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">Sign In</h1>
-          <p className="text-gray-500 mt-2">Access Healthy Nara Finance Admin</p>
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Healthy Nara</h1>
+          <p className="text-xs font-semibold text-slate-400">
+            Care Platform & Finance Operations
+          </p>
         </div>
 
         {error && (
-          <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 text-red-700 text-sm">
-            {error}
+          <div className="p-3 bg-rose-50 border border-rose-200 rounded-2xl flex items-center gap-2.5 text-rose-700 text-xs font-medium">
+            <AlertCircle size={16} className="text-rose-500 shrink-0" />
+            <span>{error}</span>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Username</label>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">Username</label>
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <UserIcon className="h-5 w-5 text-gray-400" />
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                <UserIcon size={16} />
               </div>
               <input
                 type="text"
                 required
-                className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl focus:ring-primary focus:border-primary text-sm transition-all"
+                className="w-full pl-10 pr-3.5 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-500/10 transition-all outline-none"
                 placeholder="Enter your username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
@@ -70,15 +75,15 @@ const Login = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Password</label>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">Password</label>
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Lock className="h-5 w-5 text-gray-400" />
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                <Lock size={16} />
               </div>
               <input
-                type={showPassword ? "text" : "password"}
+                type={showPassword ? 'text' : 'password'}
                 required
-                className="block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-xl focus:ring-primary focus:border-primary text-sm transition-all"
+                className="w-full pl-10 pr-10 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-500/10 transition-all outline-none"
                 placeholder="Enter your password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -86,27 +91,28 @@ const Login = () => {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-primary transition-all rounded-r-xl"
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-teal-600 transition-colors"
               >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
           </div>
 
-          <button
+          <Button
             type="submit"
-            disabled={mutation.isPending}
-            className="w-full py-3 px-4 bg-primary hover:bg-primary-dark text-white rounded-xl font-bold shadow-lg shadow-primary/20 transition-all flex items-center justify-center disabled:opacity-70"
+            variant="primary"
+            size="lg"
+            className="w-full mt-2"
+            isLoading={mutation.isPending}
           >
-            {mutation.isPending ? (
-              <Loader2 className="animate-spin mr-2" />
-            ) : null}
-            Sign In
-          </button>
+            Sign In to Dashboard
+          </Button>
         </form>
 
-        <div className="mt-8 pt-6 border-t border-gray-100 text-center text-xs text-gray-400">
-          <p>&copy; 2026 Healthy Nara. All rights reserved.</p>
+        <div className="text-center pt-2 border-t border-slate-100">
+          <p className="text-[11px] text-slate-400 font-semibold">
+            Healthy Nara Internal Management System • v2.0
+          </p>
         </div>
       </div>
     </div>

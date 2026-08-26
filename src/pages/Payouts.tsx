@@ -1,14 +1,37 @@
+import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchPayoutSummary } from '../api';
-import { useState } from 'react';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
-import { Banknote, CheckCircle, Clock, ExternalLink, Search } from 'lucide-react';
+import {
+  Banknote,
+  CheckCircle2,
+  Clock,
+  ChevronRight,
+  Loader2,
+  Receipt,
+} from 'lucide-react';
+import { Button } from '../components/ui/Button';
+import { Badge } from '../components/ui/Badge';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
+import { PageHeader } from '../components/ui/PageHeader';
+import { SearchInput } from '../components/ui/SearchInput';
+import { Avatar } from '../components/ui/Avatar';
+import { Tabs } from '../components/ui/Tabs';
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+  TableFooterBar,
+} from '../components/ui/Table';
 
-const Payouts = () => {
+export const Payouts = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState<'pending' | 'paid'>('pending');
+  const [activeTab, setActiveTab] = useState<string>('pending');
 
   const { data: summary, isLoading } = useQuery({
     queryKey: ['payouts'],
@@ -21,191 +44,269 @@ const Payouts = () => {
   const filterList = (list: any[]) => {
     if (!searchTerm) return list;
     const s = searchTerm.toLowerCase();
-    return list.filter((inv: any) =>
-      inv.invoiceNumber?.toLowerCase().includes(s) ||
-      inv.caregiverName?.toLowerCase().includes(s) ||
-      inv.customerName?.toLowerCase().includes(s)
+    return list.filter(
+      (inv: any) =>
+        inv.invoiceNumber?.toLowerCase().includes(s) ||
+        inv.caregiverName?.toLowerCase().includes(s) ||
+        inv.customerName?.toLowerCase().includes(s)
     );
   };
 
-  const displayList = filterList(activeTab === 'pending' ? pendingInvoices : paidInvoices);
+  const displayList = useMemo(() => {
+    return filterList(activeTab === 'pending' ? pendingInvoices : paidInvoices);
+  }, [activeTab, pendingInvoices, paidInvoices, searchTerm]);
 
-  const formatDate = (dateStr: string) => {
-    return format(new Date(dateStr), 'dd-MM-yyyy');
-  };
+  const tabItems = [
+    { id: 'pending', label: 'Pending Payouts', count: pendingInvoices.length },
+    { id: 'paid', label: 'Paid History', count: paidInvoices.length },
+  ];
+
+  const formatMMK = (n: number) => `${(n || 0).toLocaleString()} MMK`;
 
   return (
-    <div className="space-y-4 max-w-7xl mx-auto pb-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Payouts</h1>
-        <p className="text-sm text-gray-500 mt-1">NA (Caregiver) payment management</p>
+    <div className="h-full flex flex-col space-y-4 min-h-0 overflow-hidden">
+      {/* Top Page Header */}
+      <div className="shrink-0">
+        <PageHeader
+          category="FINANCIALS & PAYROLL"
+          title="Caregiver Payouts"
+          subtitle="Manage salary disbursements, caregiver payouts, and payment vouchers."
+          actions={
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => navigate('/update-payout')}
+              leftIcon={<Banknote size={16} />}
+            >
+              Update Payout
+            </Button>
+          }
+        />
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-white rounded-xl shadow-sm border border-orange-200 p-5">
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-orange-100 rounded-xl">
-              <Clock size={20} className="text-orange-600" />
+      {/* 2 Metric Summary Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 shrink-0">
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold shrink-0">
+            <Clock size={18} />
+          </div>
+          <div>
+            <div className="text-xl font-black text-amber-700 tracking-tight">
+              {formatMMK(summary?.totalPending || 0)}
             </div>
-            <div>
-              <p className="text-xs font-bold text-gray-500 uppercase">Pending Payout</p>
-              <p className="text-2xl font-black text-orange-600">{summary?.totalPending?.toLocaleString() || 0} MMK</p>
-              <p className="text-xs text-gray-400">{pendingInvoices.length} invoice(s)</p>
-            </div>
+            <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">
+              Pending Payout ({pendingInvoices.length} invoices)
+            </p>
           </div>
         </div>
-        <div className="bg-white rounded-xl shadow-sm border border-green-200 p-5">
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-green-100 rounded-xl">
-              <CheckCircle size={20} className="text-green-600" />
+
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold shrink-0">
+            <CheckCircle2 size={18} />
+          </div>
+          <div>
+            <div className="text-xl font-black text-emerald-700 tracking-tight">
+              {formatMMK(summary?.totalPaid || 0)}
             </div>
-            <div>
-              <p className="text-xs font-bold text-gray-500 uppercase">Total Paid</p>
-              <p className="text-2xl font-black text-green-600">{summary?.totalPaid?.toLocaleString() || 0} MMK</p>
-              <p className="text-xs text-gray-400">{paidInvoices.length} invoice(s)</p>
-            </div>
+            <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">
+              Total Disbursed ({paidInvoices.length} invoices)
+            </p>
           </div>
         </div>
       </div>
 
-      {/* Tabs + Search */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 space-y-3">
-        <div className="flex gap-2 overflow-x-auto md:hidden">
-          <button
-            onClick={() => setActiveTab('pending')}
-            className={`flex-shrink-0 px-4 py-2 rounded-full text-xs font-bold border transition-all ${
-              activeTab === 'pending'
-                ? 'bg-orange-100 text-orange-700 border-orange-300'
-                : 'bg-white text-gray-500 border-gray-200'
-            }`}
-          >
-            <Clock size={12} className="inline mr-1" />
-            Pending ({pendingInvoices.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('paid')}
-            className={`flex-shrink-0 px-4 py-2 rounded-full text-xs font-bold border transition-all ${
-              activeTab === 'paid'
-                ? 'bg-green-100 text-green-700 border-green-300'
-                : 'bg-white text-gray-500 border-gray-200'
-            }`}
-          >
-            <CheckCircle size={12} className="inline mr-1" />
-            Paid ({paidInvoices.length})
-          </button>
-        </div>
-        <div className="hidden md:flex gap-2">
-          <button
-            onClick={() => setActiveTab('pending')}
-            className={`px-4 py-2 rounded-lg text-xs font-bold border transition-all ${
-              activeTab === 'pending'
-                ? 'bg-orange-100 text-orange-700 border-orange-300'
-                : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
-            }`}
-          >
-            <Clock size={12} className="inline mr-1" />
-            Pending ({pendingInvoices.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('paid')}
-            className={`px-4 py-2 rounded-lg text-xs font-bold border transition-all ${
-              activeTab === 'paid'
-                ? 'bg-green-100 text-green-700 border-green-300'
-                : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
-            }`}
-          >
-            <CheckCircle size={12} className="inline mr-1" />
-            Paid ({paidInvoices.length})
-          </button>
-        </div>
-        <div className="relative">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search by invoice #, caregiver, or customer..."
+      {/* Tabs & Search */}
+      <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <Tabs
+          items={tabItems}
+          activeId={activeTab}
+          onChange={(id) => setActiveTab(id)}
+        />
+
+        <div className="w-full md:w-72">
+          <SearchInput
+            placeholder="Search invoice, caregiver..."
             value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-primary focus:border-primary"
+            onChange={(e) => setSearchTerm(e.target.value)}
+            onClear={() => setSearchTerm('')}
           />
         </div>
       </div>
 
-      {/* Invoice List */}
-      {isLoading ? (
-        <div className="text-center py-12 text-gray-500">Loading payouts...</div>
-      ) : displayList.length === 0 ? (
-        <div className="text-center py-12 text-gray-400">
-          <Banknote size={32} className="mx-auto mb-2 opacity-50" />
-          <p className="text-sm">No {activeTab} payouts found</p>
-        </div>
-      ) : (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          {/* Mobile Cards */}
-          <div className="md:hidden divide-y divide-gray-100">
-            {displayList.map((inv: any) => (
-              <div
-                key={inv._id}
-                onClick={() => navigate(`/invoice/${inv.invoiceNumber}`)}
-                className="p-4 active:bg-gray-50 transition-colors cursor-pointer"
-              >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-xs font-bold text-gray-500">{inv.invoiceNumber}</p>
-                    <p className="text-sm font-semibold text-gray-900 mt-0.5">{inv.caregiverName}</p>
-                    <p className="text-xs text-gray-500">for {inv.customerName}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-bold text-gray-900">{inv.amount.toLocaleString()} MMK</p>
-                    <p className="text-[10px] text-gray-400">{formatDate(inv.updatedAt)}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
+      {/* Payouts Table Card */}
+      <Card className="flex-1 min-h-0 flex flex-col overflow-hidden">
+        <CardHeader className="shrink-0">
+          <div>
+            <CardTitle>
+              {activeTab === 'pending' ? 'Pending Payouts' : 'Paid Invoices'}
+            </CardTitle>
+            <CardDescription>
+              {displayList.length} caregiver payout records
+            </CardDescription>
           </div>
+        </CardHeader>
 
-          {/* Desktop Table */}
-          <div className="hidden md:block">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-gray-50 border-b border-gray-200">
-                  <th className="px-4 py-3 text-left text-[10px] font-bold text-gray-500 uppercase">Invoice #</th>
-                  <th className="px-4 py-3 text-left text-[10px] font-bold text-gray-500 uppercase">Caregiver</th>
-                  <th className="px-4 py-3 text-left text-[10px] font-bold text-gray-500 uppercase">Customer</th>
-                  <th className="px-4 py-3 text-right text-[10px] font-bold text-gray-500 uppercase">Amount</th>
-                  <th className="px-4 py-3 text-left text-[10px] font-bold text-gray-500 uppercase">Date</th>
-                  <th className="px-4 py-3 text-right text-[10px] font-bold text-gray-500 uppercase">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {displayList.map((inv: any) => (
-                  <tr
-                    key={inv._id}
-                    onClick={() => navigate(`/invoice/${inv.invoiceNumber}`)}
-                    className="hover:bg-gray-50/50 transition-colors cursor-pointer"
-                  >
-                    <td className="px-4 py-3">
-                      <span className="font-bold text-gray-900 text-xs">{inv.invoiceNumber}</span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="text-gray-900 font-medium">{inv.caregiverName}</span>
-                    </td>
-                    <td className="px-4 py-3 text-gray-600">{inv.customerName}</td>
-                    <td className="px-4 py-3 text-right font-bold text-gray-900">{inv.amount.toLocaleString()} MMK</td>
-                    <td className="px-4 py-3 text-gray-500 text-xs">{formatDate(inv.updatedAt)}</td>
-                    <td className="px-4 py-3 text-right">
-                      <button className="p-1.5 text-gray-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-all">
-                        <ExternalLink size={14} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+        <CardContent className="p-0 flex-1 min-h-0 flex flex-col overflow-hidden">
+          {isLoading ? (
+            <div className="text-center py-16 text-slate-400 text-sm">
+              <Loader2 className="w-6 h-6 animate-spin mx-auto text-teal-500 mb-2" />
+              Loading payout data...
+            </div>
+          ) : displayList.length === 0 ? (
+            <div className="text-center py-16 text-slate-400 text-sm space-y-2">
+              <Receipt className="w-10 h-10 mx-auto text-slate-300" />
+              <p className="font-bold text-slate-600">No payout records found</p>
+              <p className="text-xs text-slate-400">All caregiver dues are settled.</p>
+            </div>
+          ) : (
+            <>
+              {/* Desktop Table View (>= md) */}
+              <div className="hidden md:block flex-1 min-h-0 overflow-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>INVOICE #</TableHead>
+                      <TableHead>CAREGIVER</TableHead>
+                      <TableHead>CUSTOMER</TableHead>
+                      <TableHead>SERVICE DATE</TableHead>
+                      <TableHead>PAYOUT AMOUNT</TableHead>
+                      <TableHead>STATUS</TableHead>
+                      <TableHead className="text-right">ACTIONS</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {displayList.map((inv: any) => {
+                      const isPaid = inv.caregiverPayoutStatus === 'Paid';
+                      return (
+                        <TableRow
+                          key={inv._id}
+                          onClick={() => navigate(`/update-payout/${inv.invoiceNumber}`)}
+                          className="cursor-pointer group"
+                        >
+                          {/* Invoice # */}
+                          <TableCell>
+                            <span className="font-extrabold text-slate-900 font-mono text-xs group-hover:text-teal-600 transition-colors">
+                              {inv.invoiceNumber}
+                            </span>
+                          </TableCell>
+
+                          {/* Caregiver with Avatar */}
+                          <TableCell>
+                            <div className="flex items-center gap-2.5">
+                              <Avatar name={inv.caregiverName || 'Caregiver'} size="xs" />
+                              <span className="font-bold text-slate-800 text-xs">
+                                {inv.caregiverName || '—'}
+                              </span>
+                            </div>
+                          </TableCell>
+
+                          {/* Customer */}
+                          <TableCell>
+                            <span className="text-xs text-slate-600">
+                              {inv.customerName || '—'}
+                            </span>
+                          </TableCell>
+
+                          {/* Date */}
+                          <TableCell>
+                            <span className="text-xs text-slate-600">
+                              {inv.date ? format(new Date(inv.date), 'dd MMM yyyy') : '—'}
+                            </span>
+                          </TableCell>
+
+                          {/* Payout Amount */}
+                          <TableCell>
+                            <span className="font-extrabold text-slate-900 font-mono text-xs">
+                              {formatMMK(inv.amount)}
+                            </span>
+                          </TableCell>
+
+                          {/* Payout Status */}
+                          <TableCell>
+                            <Badge variant={isPaid ? 'teal' : 'amber'} dot>
+                              {isPaid ? 'Paid' : 'Pending'}
+                            </Badge>
+                          </TableCell>
+
+                          {/* Actions */}
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/update-payout/${inv.invoiceNumber}`);
+                              }}
+                              className="w-7 h-7 text-slate-400 hover:text-teal-600"
+                              title="Update Payout"
+                            >
+                              <ChevronRight size={14} />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Mobile Card List View (< md) */}
+              <div className="block md:hidden flex-1 min-h-0 overflow-y-auto p-1.5 sm:p-2.5 space-y-2 bg-slate-50/40">
+                {displayList.map((inv: any) => {
+                  const isPaid = inv.caregiverPayoutStatus === 'Paid';
+                  return (
+                    <div
+                      key={inv._id}
+                      onClick={() => navigate(`/update-payout/${inv.invoiceNumber}`)}
+                      className="w-full p-3 bg-white rounded-xl border border-slate-200/80 shadow-2xs space-y-2.5 active:bg-slate-50 transition-colors cursor-pointer"
+                    >
+                      {/* Top Row: Inv # & Status */}
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-extrabold text-slate-900 font-mono text-xs">
+                          {inv.invoiceNumber}
+                        </span>
+                        <Badge variant={isPaid ? 'teal' : 'amber'} dot>
+                          {isPaid ? 'Paid' : 'Pending'}
+                        </Badge>
+                      </div>
+
+                      {/* Caregiver & Client */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Avatar name={inv.caregiverName || 'Caregiver'} size="xs" />
+                          <div>
+                            <p className="font-bold text-slate-900 text-xs">{inv.caregiverName}</p>
+                            <p className="text-[10px] text-slate-400">Client: {inv.customerName}</p>
+                          </div>
+                        </div>
+
+                        <div className="text-right">
+                          <p className="text-xs font-black text-slate-900 font-mono">
+                            {formatMMK(inv.amount)}
+                          </p>
+                          <p className="text-[10px] text-slate-400">
+                            {inv.date ? format(new Date(inv.date), 'dd MMM yyyy') : '—'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-end text-xs text-teal-600 font-bold gap-1 pt-1 border-t border-slate-100/80">
+                        <span>Update Payout</span>
+                        <ChevronRight size={14} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
+          <TableFooterBar
+            showingText={`Showing ${displayList.length} records`}
+            updatedText="Last updated just now"
+          />
+        </CardContent>
+      </Card>
     </div>
   );
 };
