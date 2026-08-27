@@ -1169,8 +1169,6 @@ const BookingDetail = () => {
                 >
                   <option value="Newborn Service">Newborn Service</option>
                   <option value="Childcare Service">Childcare Service</option>
-                  <option value="Elderly Care">Elderly Care</option>
-                  <option value="Nursing Care">Nursing Care</option>
                 </select>
               </div>
 
@@ -1187,14 +1185,14 @@ const BookingDetail = () => {
                     className="w-full p-2.5 text-xs rounded-xl border border-slate-200 bg-white font-semibold text-slate-800 outline-none"
                   >
                     <option value="Day Shift">Day Shift</option>
-                    <option value="Night Duty">Night Duty</option>
-                    <option value="24 Hours">24 Hours</option>
+                    <option value="Night Shift">Night Shift</option>
+                    <option value="Both">Both</option>
                   </select>
                 </div>
 
                 <div>
                   <label className="block text-[11px] font-bold text-slate-500 mb-1">
-                    Frequency / Duration
+                    Duty Duration
                   </label>
                   <select
                     value={bookingForm.dutyDuration}
@@ -1203,10 +1201,10 @@ const BookingDetail = () => {
                     }
                     className="w-full p-2.5 text-xs rounded-xl border border-slate-200 bg-white font-semibold text-slate-800 outline-none"
                   >
-                    <option value="daily">Daily</option>
-                    <option value="weekly">Weekly</option>
-                    <option value="monthly">Monthly</option>
-                    <option value="custom">Custom</option>
+                    <option value="Daily">Daily</option>
+                    <option value="Weekly">Weekly</option>
+                    <option value="Monthly">Monthly</option>
+                    <option value="Custom">Custom</option>
                   </select>
                 </div>
               </div>

@@ -700,7 +700,7 @@ export const Bookings = () => {
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div>
                 <h3 className="text-base font-extrabold text-slate-900">
-                  Create Booking for Customer
+                  Create Booking from Parent
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
                   Select a registered parent and assign duty shifts
@@ -716,36 +716,38 @@ export const Bookings = () => {
               </Button>
             </div>
 
-            <div className="space-y-3">
-              <label className="text-xs font-bold text-slate-700 block">
-                1. Select Parent / Customer
-              </label>
-              <SearchInput
-                placeholder="Search registered parents..."
-                value={parentSearch}
-                onChange={(e) => setParentSearch(e.target.value)}
-              />
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                  1. Select Parent / Customer
+                </label>
+                <SearchInput
+                  placeholder="Search registered parents..."
+                  value={parentSearch}
+                  onChange={(e) => setParentSearch(e.target.value)}
+                />
 
-              <div className="max-h-40 overflow-y-auto divide-y divide-slate-100 border border-slate-200 rounded-xl">
-                {filteredParents.map((p: any) => (
-                  <div
-                    key={p._id}
-                    onClick={() => setSelectedParentId(p._id)}
-                    className={`p-3 text-xs flex items-center justify-between cursor-pointer transition-colors ${
-                      selectedParentId === p._id
-                        ? 'bg-teal-50 text-teal-900 font-bold'
-                        : 'hover:bg-slate-50 text-slate-700'
-                    }`}
-                  >
-                    <div>
-                      <p className="font-bold">{p.parentName}</p>
-                      <p className="text-[11px] text-slate-400">{p.contactNumber} • {p.township}</p>
+                <div className="max-h-36 overflow-y-auto divide-y divide-slate-100 border border-slate-200 rounded-xl mt-2">
+                  {filteredParents.map((p: any) => (
+                    <div
+                      key={p._id}
+                      onClick={() => setSelectedParentId(p._id)}
+                      className={`p-3 text-xs flex items-center justify-between cursor-pointer transition-colors ${
+                        selectedParentId === p._id
+                          ? 'bg-teal-50 text-teal-900 font-bold'
+                          : 'hover:bg-slate-50 text-slate-700'
+                      }`}
+                    >
+                      <div>
+                        <p className="font-bold">{p.parentName}</p>
+                        <p className="text-[11px] text-slate-400">{p.contactNumber} • {p.township}</p>
+                      </div>
+                      {selectedParentId === p._id && (
+                        <span className="w-2 h-2 rounded-full bg-teal-500" />
+                      )}
                     </div>
-                    {selectedParentId === p._id && (
-                      <span className="w-2 h-2 rounded-full bg-teal-500" />
-                    )}
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
 
               {selectedParent && (
@@ -755,10 +757,16 @@ export const Bookings = () => {
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-3 pt-2">
+              {/* BOOKING DETAILS */}
+              <div className="space-y-3 pt-1 border-t border-slate-100">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  BOOKING DETAILS
+                </p>
+
+                {/* Service Type */}
                 <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">
-                    Service Package
+                  <label className="text-xs font-semibold text-slate-700 block mb-1">
+                    Service Type
                   </label>
                   <select
                     value={parentForm.servicePackage}
@@ -767,16 +775,35 @@ export const Bookings = () => {
                     }
                     className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-white"
                   >
-                    <option value="">Select Package</option>
-                    <option value="Newborn Care Only">Newborn Care Only</option>
-                    <option value="Elderly Care">Elderly Care</option>
-                    <option value="Post-surgery Care">Post-surgery Care</option>
-                    <option value="Special Need Child Care">Special Need Child Care</option>
+                    <option value="">Select service type</option>
+                    <option value="Newborn Service">Newborn Service</option>
+                    <option value="Childcare Service">Childcare Service</option>
                   </select>
                 </div>
 
+                {/* Duty Duration */}
                 <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">
+                  <label className="text-xs font-semibold text-slate-700 block mb-1">
+                    Duty Duration
+                  </label>
+                  <select
+                    value={parentForm.dutyDuration}
+                    onChange={(e) =>
+                      setParentForm({ ...parentForm, dutyDuration: e.target.value })
+                    }
+                    className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-white"
+                  >
+                    <option value="">Select duration</option>
+                    <option value="Daily">Daily</option>
+                    <option value="Weekly">Weekly</option>
+                    <option value="Monthly">Monthly</option>
+                    <option value="Custom">Custom</option>
+                  </select>
+                </div>
+
+                {/* Duty Shift */}
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 block mb-1">
                     Duty Shift
                   </label>
                   <select
@@ -786,51 +813,69 @@ export const Bookings = () => {
                     }
                     className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-white"
                   >
-                    <option value="">Select Shift</option>
-                    <option value="Day (9 AM - 5 PM)">Day (9 AM - 5 PM)</option>
-                    <option value="Night (8 PM - 8 AM)">Night (8 PM - 8 AM)</option>
-                    <option value="24 Hours">24 Hours</option>
+                    <option value="">Select shift</option>
+                    <option value="Day Shift">Day Shift</option>
+                    <option value="Night Shift">Night Shift</option>
+                    <option value="Both">Both</option>
                   </select>
                 </div>
-              </div>
 
-              {/* Duty Dates Picker */}
-              <div className="pt-2">
-                <label className="text-xs font-bold text-slate-700 block mb-1">
-                  Requested Duty Dates
-                </label>
-                <div className="flex gap-2 items-center">
-                  <div className="flex-1">
-                    <CustomDatePicker
-                      selected={selectedDateObj}
-                      onChange={(val) => setSelectedDateObj(val)}
-                      placeholder="Select Duty Date"
-                    />
+                {/* Duty Dates Picker */}
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 block mb-1">
+                    Requested Duty Dates
+                  </label>
+                  <div className="flex gap-2 items-center">
+                    <div className="flex-1">
+                      <CustomDatePicker
+                        selected={selectedDateObj}
+                        onChange={(val) => setSelectedDateObj(val)}
+                        placeholder="Select Duty Date"
+                      />
+                    </div>
+                    <Button variant="subtle" size="sm" onClick={handleAddDate}>
+                      + Add Date
+                    </Button>
                   </div>
-                  <Button variant="subtle" size="sm" onClick={handleAddDate}>
-                    + Add Date
-                  </Button>
+
+                  {parentForm.requestedDates.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {parentForm.requestedDates.map((d) => (
+                        <span
+                          key={d}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-teal-50 text-teal-800 border border-teal-200 text-xs font-bold"
+                        >
+                          {d.slice(0, 10)}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveDate(d)}
+                            className="hover:text-rose-600"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-400 mt-1">No dates added yet</p>
+                  )}
                 </div>
 
-                {parentForm.requestedDates.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mt-2">
-                    {parentForm.requestedDates.map((d) => (
-                      <span
-                        key={d}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-teal-50 text-teal-800 border border-teal-200 text-xs font-bold"
-                      >
-                        {d.slice(0, 10)}
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveDate(d)}
-                          className="hover:text-rose-600"
-                        >
-                          ×
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                )}
+                {/* Additional Notes */}
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 block mb-1">
+                    Additional Notes
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={parentForm.additionalNotes}
+                    onChange={(e) =>
+                      setParentForm({ ...parentForm, additionalNotes: e.target.value })
+                    }
+                    placeholder=""
+                    className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-white outline-none resize-none"
+                  />
+                </div>
               </div>
             </div>
 

@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Menu, Bell, ChevronDown, LogOut } from 'lucide-react';
+import { Menu, ChevronDown, LogOut } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { format } from 'date-fns';
-import { SearchInput } from './ui/SearchInput';
 import { Avatar } from './ui/Avatar';
 
 interface NavbarProps {
@@ -71,23 +70,8 @@ export const Navbar = ({ onToggleSidebar }: NavbarProps) => {
         </div>
       </div>
 
-      {/* Right: Search, Notifications & User Profile */}
+      {/* Right: User Profile */}
       <div className="flex items-center gap-3 sm:gap-4">
-        {/* Global Search Bar (Hidden on small mobile) */}
-        <div className="hidden md:block w-56 lg:w-72">
-          <SearchInput placeholder="Search records..." />
-        </div>
-
-        {/* Notification Bell */}
-        <button
-          type="button"
-          className="relative p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
-          title="Notifications"
-        >
-          <Bell size={18} />
-          <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-teal-500 ring-2 ring-white" />
-        </button>
-
         {/* User Profile Dropdown */}
         <div className="relative">
           <button

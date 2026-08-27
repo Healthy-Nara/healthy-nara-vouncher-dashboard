@@ -165,7 +165,6 @@ const PublicNewBooking = () => {
                 <select className={inputStyle} value={servicePackage} onChange={(e) => setServicePackage(e.target.value)}>
                   <option value="Newborn Service">Newborn Service</option>
                   <option value="Childcare Service">Childcare Service</option>
-                  <option value="N/A">N/A</option>
                 </select>
               </div>
               <div>
