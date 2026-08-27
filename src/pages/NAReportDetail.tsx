@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getAdminNAReportById, generateNAReportAISummary } from '../api';
@@ -29,7 +29,10 @@ import {
   Lightbulb,
   HeartPulse,
 } from 'lucide-react';
-import { downloadAsImage, downloadAsPDF } from '../utils/export';
+import {
+  downloadMultiPageImages,
+  downloadMultiPagePDF,
+} from '../utils/export';
 import halogo from '../assets/halogo.png';
 import patternBg from '../assets/pattern.png';
 import autosign from '../assets/autosign.png';
@@ -69,6 +72,306 @@ const formatMyanmarDate = (dateStr?: string) => {
   }
 };
 
+export interface ReportSection {
+  type: 'executive' | 'activity' | 'clinical' | 'recommendations' | 'general';
+  title: string;
+  paragraphs: string[];
+  bullets: string[];
+}
+
+const isHeaderLine = (line: string) => {
+  const l = line.trim();
+  if (!l) return false;
+  if (l.startsWith('#')) return true;
+  if (
+    /^[0-9]+[\.\)]\s+/.test(l) &&
+    (l.includes('**') ||
+      l.includes('အကျဉ်းချုပ်') ||
+      l.includes('မှတ်တမ်း') ||
+      l.includes('ကျန်းမာရေး') ||
+      l.includes('အကြံပြုချက်') ||
+      l.includes('လှုပ်ရှားမှု'))
+  )
+    return true;
+  if (l.startsWith('**') && l.endsWith('**') && l.length > 5 && !l.includes(':**')) return true;
+  if (l.includes('Executive Summary') || l.includes('EXECUTIVE SUMMARY') || l.includes('အကျဉ်းချုပ်'))
+    return true;
+  if (
+    l.includes('Activities & Mood') ||
+    l.includes('ACTIVITIES & MOOD') ||
+    l.includes('ကစားလှုပ်ရှားမှု') ||
+    l.includes('ကလေးလှုပ်ရှားမှု') ||
+    l.includes('Care Highlights')
+  )
+    return true;
+  if (
+    l.includes('Clinical Observations') ||
+    l.includes('CLINICAL OBSERVATIONS') ||
+    l.includes('Unusual Findings') ||
+    l.includes('ကျန်းမာရေး စောင့်ကြည့်စစ်ဆေးချက်')
+  )
+    return true;
+  if (l.includes('Recommendations') || l.includes('RECOMMENDATIONS') || l.includes('အကြံပြုချက်များ'))
+    return true;
+  return false;
+};
+
+const determineSectionType = (
+  title: string
+): 'executive' | 'activity' | 'clinical' | 'recommendations' | 'general' => {
+  const t = title.toLowerCase();
+  if (t.includes('executive') || t.includes('အကျဉ်းချုပ်')) return 'executive';
+  if (
+    t.includes('activit') ||
+    t.includes('mood') ||
+    t.includes('highlight') ||
+    t.includes('လှုပ်ရှားမှု') ||
+    t.includes('စိတ်ခံစားမှု') ||
+    t.includes('အာဟာရ') ||
+    t.includes('သန့်ရှင်းရေး')
+  )
+    return 'activity';
+  if (
+    t.includes('clinical') ||
+    t.includes('observation') ||
+    t.includes('unusual') ||
+    t.includes('finding') ||
+    t.includes('ကျန်းမာရေး') ||
+    t.includes('ထူးခြားဖြစ်စဉ်')
+  )
+    return 'clinical';
+  if (t.includes('recommend') || t.includes('အကြံပြုချက်')) return 'recommendations';
+  return 'general';
+};
+
+const cleanHeaderTitle = (title: string): string => {
+  return title
+    .replace(/^#{1,4}\s+/, '')
+    .replace(/^[0-9]+[\.\)]\s+/, '')
+    .replace(/^\*+\s*/, '')
+    .replace(/\*+:\s*$/, '')
+    .replace(/:\s*\**$/, '')
+    .replace(/\*+$/, '')
+    .replace(/^[🌟📋🔍💡🩺⚙️🍲🧼🛌🎨]+\s*/, '')
+    .trim();
+};
+
+const isMetadataLine = (l: string): boolean => {
+  const line = l.trim();
+  if (!line) return true;
+  if (
+    line.includes('Healthy Nara') ||
+    line.includes('ကလေးသူငယ်နှင့် မိသားစု') ||
+    line.includes('နေ့စဉ် ပြုစုစောင့်ရှောက်မှု အကျဉ်းချုပ် အစီရင်ခံစာ') ||
+    line.includes('နေ့စဉ် ပြုစုစောင့်ရှောက်မှု အစီရင်ခံစာ') ||
+    line.startsWith('ကလေးအမည်') ||
+    line.startsWith('ရက်စွဲ') ||
+    line.startsWith('ပြုစုစောင့်ရှောက်သူ') ||
+    line.startsWith('တာဝန်ကျဆရာမ') ||
+    line === '---' ||
+    line === '***'
+  ) {
+    return true;
+  }
+  return false;
+};
+
+export const parseSummarySections = (summaryText: string): ReportSection[] => {
+  if (!summaryText) return [];
+
+  const lines = summaryText.split('\n');
+  const sections: ReportSection[] = [];
+
+  let currentSection: ReportSection = {
+    type: 'executive',
+    title: 'နေ့စဉ် ပြုစုစောင့်ရှောက်မှု အကျဉ်းချုပ် (EXECUTIVE SUMMARY)',
+    paragraphs: [],
+    bullets: [],
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const rawLine = lines[i];
+    const line = rawLine.trim();
+    if (!line) continue;
+
+    // Skip redundant top document headers and metadata lines
+    if (isMetadataLine(line)) {
+      continue;
+    }
+
+    if (isHeaderLine(line)) {
+      if (currentSection.paragraphs.length > 0 || currentSection.bullets.length > 0) {
+        sections.push(currentSection);
+      }
+      const cleaned = cleanHeaderTitle(line);
+      const sType = determineSectionType(cleaned);
+      currentSection = {
+        type: sType,
+        title: cleaned,
+        paragraphs: [],
+        bullets: [],
+      };
+    } else if (line.startsWith('* ') || line.startsWith('- ') || line.startsWith('• ')) {
+      currentSection.bullets.push(line.replace(/^[\*\-•]\s+/, '').trim());
+    } else if (/^[0-9]+[\.\)]\s+/.test(line)) {
+      currentSection.bullets.push(line.replace(/^[0-9]+[\.\)]\s+/, '').trim());
+    } else {
+      currentSection.paragraphs.push(line);
+    }
+  }
+
+  if (currentSection.paragraphs.length > 0 || currentSection.bullets.length > 0) {
+    sections.push(currentSection);
+  }
+
+  // Filter out any empty sections
+  return sections.filter((s) => s.paragraphs.length > 0 || s.bullets.length > 0);
+};
+
+// Calculate weight/height of a section to balance pages
+export const getSectionWeight = (section: ReportSection): number => {
+  let weight = 40; // base title & icon header
+  for (const p of section.paragraphs) {
+    const lines = Math.max(1, Math.ceil(p.length / 55));
+    weight += lines * 18 + 6;
+  }
+  for (const b of section.bullets) {
+    const lines = Math.max(1, Math.ceil(b.length / 55));
+    weight += lines * 16 + 4;
+  }
+  return weight;
+};
+
+// Smartly split sections so Page 1 is filled first, leaving any extra spacing on the last page
+export const splitSectionsForPages = (sections: ReportSection[]) => {
+  if (!sections || sections.length === 0) {
+    return { page1Sections: [], page2Sections: [], isMultiPage: false };
+  }
+
+  const totalWeight = sections.reduce((sum, s) => sum + getSectionWeight(s), 0);
+
+  // If total content fits on a single A4 page comfortably (<= 560 weight)
+  if (totalWeight <= 560 || sections.length <= 1) {
+    return { page1Sections: sections, page2Sections: [], isMultiPage: false };
+  }
+
+  // Standard Medical/Care synthesis split:
+  // If we have clinical or recommendation sections, let Page 1 take Executive & Care Highlights/Activities,
+  // and Page 2 take Clinical Observations & Recommendations + Supervisor Signature.
+  const clinicalOrRecIndex = sections.findIndex(
+    (s, idx) => idx > 0 && (s.type === 'clinical' || s.type === 'recommendations')
+  );
+
+  if (clinicalOrRecIndex > 0 && clinicalOrRecIndex < sections.length) {
+    let splitIdx = clinicalOrRecIndex;
+    const page1Candidate = sections.slice(0, splitIdx);
+    const page1Weight = page1Candidate.reduce((sum, s) => sum + getSectionWeight(s), 0);
+
+    // If Page 1 has plenty of extra space (< 350 weight) and next section is clinical with more sections after it
+    if (page1Weight < 350 && splitIdx + 1 < sections.length) {
+      const nextWeight = getSectionWeight(sections[splitIdx]);
+      if (page1Weight + nextWeight <= 620) {
+        splitIdx++;
+      }
+    }
+
+    return {
+      page1Sections: sections.slice(0, splitIdx),
+      page2Sections: sections.slice(splitIdx),
+      isMultiPage: true,
+    };
+  }
+
+  // Fallback: fill Page 1 with up to 620 weight
+  let page1Weight = 0;
+  let splitIndex = 1;
+
+  for (let i = 0; i < sections.length; i++) {
+    const w = getSectionWeight(sections[i]);
+    if (i === 0 || (page1Weight + w <= 620 && i < sections.length - 1)) {
+      page1Weight += w;
+      splitIndex = i + 1;
+    } else {
+      break;
+    }
+  }
+
+  splitIndex = Math.max(1, Math.min(splitIndex, sections.length - 1));
+
+  return {
+    page1Sections: sections.slice(0, splitIndex),
+    page2Sections: sections.slice(splitIndex),
+    isMultiPage: true,
+  };
+};
+
+// Helper for parsing inline bold `**text**` and formatting
+const InlineMarkdown = ({ text }: { text: string }) => {
+  if (!text) return null;
+  const parts = text.split(/(\*\*[^*]+?\*\*)/g);
+  return (
+    <>
+      {parts.map((part, i) => {
+        if (part.startsWith('**') && part.endsWith('**')) {
+          const boldText = part.slice(2, -2);
+          return (
+            <strong key={i} className="font-bold text-slate-900">
+              {boldText}
+            </strong>
+          );
+        }
+        return <span key={i}>{part}</span>;
+      })}
+    </>
+  );
+};
+
+const getSectionConfig = (type: string, title: string) => {
+  switch (type) {
+    case 'executive':
+      return {
+        icon: <Sun size={13} className="text-amber-700" />,
+        iconBg: 'bg-amber-100',
+        borderAccent: 'border-amber-300',
+        defaultTitle: 'နေ့စဉ် ပြုစုစောင့်ရှောက်မှု အကျဉ်းချုပ် (EXECUTIVE SUMMARY)',
+        isItalic: true,
+      };
+    case 'activity':
+      return {
+        icon: <Baby size={13} className="text-emerald-700" />,
+        iconBg: 'bg-emerald-100',
+        borderAccent: 'border-emerald-300',
+        defaultTitle: 'ကလေးလှုပ်ရှားမှုနှင့် စိတ်ခံစားမှု (ACTIVITIES & MOOD)',
+        isItalic: false,
+      };
+    case 'clinical':
+      return {
+        icon: <HeartPulse size={13} className="text-rose-700" />,
+        iconBg: 'bg-rose-100',
+        borderAccent: 'border-rose-300',
+        defaultTitle:
+          'ကျန်းမာရေး စောင့်ကြည့်စစ်ဆေးချက်နှင့် ထူးခြားဖြစ်စဉ်များ (CLINICAL OBSERVATIONS & UNUSUAL FINDINGS)',
+        isItalic: false,
+      };
+    case 'recommendations':
+      return {
+        icon: <Lightbulb size={13} className="text-indigo-700" />,
+        iconBg: 'bg-indigo-100',
+        borderAccent: 'border-indigo-300',
+        defaultTitle: 'မိဘများနှင့် နောက်တာဝန်ကျ ဆရာမအတွက် အကြံပြုချက်များ (RECOMMENDATIONS)',
+        isItalic: false,
+      };
+    default:
+      return {
+        icon: <Activity size={13} className="text-teal-700" />,
+        iconBg: 'bg-teal-100',
+        borderAccent: 'border-teal-300',
+        defaultTitle: title,
+        isItalic: false,
+      };
+  }
+};
+
 const NAReportDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -84,6 +387,14 @@ const NAReportDetail = () => {
     queryFn: () => getAdminNAReportById(id!),
     enabled: !!id,
   });
+
+  const parsedSections = useMemo(() => {
+    return parseSummarySections(report?.aiSummary || '');
+  }, [report?.aiSummary]);
+
+  const { page1Sections, page2Sections, isMultiPage } = useMemo(() => {
+    return splitSectionsForPages(parsedSections);
+  }, [parsedSections]);
 
   const aiSummaryMutation = useMutation({
     mutationFn: () => generateNAReportAISummary(id!),
@@ -113,7 +424,10 @@ const NAReportDetail = () => {
     try {
       const safeName = (report?.childName || 'Child').replace(/[\s/]+/g, '_');
       const safeDate = (report?.date ? new Date(report.date).toISOString().split('T')[0] : 'Date');
-      await downloadAsPDF('ai-summary-voucher', `Care_Summary_${safeName}_${safeDate}`);
+      const elementIds = isMultiPage
+        ? ['ai-summary-voucher-p1', 'ai-summary-voucher-p2']
+        : ['ai-summary-voucher-p1'];
+      await downloadMultiPagePDF(elementIds, `Care_Summary_${safeName}_${safeDate}`);
     } catch (e) {
       console.error(e);
     } finally {
@@ -126,7 +440,10 @@ const NAReportDetail = () => {
     try {
       const safeName = (report?.childName || 'Child').replace(/[\s/]+/g, '_');
       const safeDate = (report?.date ? new Date(report.date).toISOString().split('T')[0] : 'Date');
-      await downloadAsImage('ai-summary-voucher', `Care_Summary_${safeName}_${safeDate}`);
+      const elementIds = isMultiPage
+        ? ['ai-summary-voucher-p1', 'ai-summary-voucher-p2']
+        : ['ai-summary-voucher-p1'];
+      await downloadMultiPageImages(elementIds, `Care_Summary_${safeName}_${safeDate}`);
     } catch (e) {
       console.error(e);
     } finally {
@@ -804,13 +1121,14 @@ const NAReportDetail = () => {
                       onClick={handleExportPNG}
                       disabled={exportLoading !== null}
                       className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold backdrop-blur-md transition-all cursor-pointer border border-white/15"
+                      title={isMultiPage ? 'Download Page 1 & Page 2 PNG Images' : 'Download PNG Image'}
                     >
                       {exportLoading === 'png' ? (
                         <Loader2 size={14} className="animate-spin" />
                       ) : (
                         <ImageIcon size={14} />
                       )}
-                      <span>Export Image</span>
+                      <span>Export Image {isMultiPage && '(2 Pages)'}</span>
                     </button>
                   </>
                 )}
@@ -874,7 +1192,7 @@ const NAReportDetail = () => {
               /* Inner White Paper Container (Matches screenshot precisely) */
               <div className="mt-5 bg-white rounded-2xl sm:rounded-3xl p-6 sm:p-9 text-slate-800 shadow-sm border border-slate-100">
                 <ClinicalReportPaper
-                  summaryText={report.aiSummary}
+                  sections={parsedSections}
                   childName={childName}
                   date={report.date}
                 />
@@ -894,10 +1212,13 @@ const NAReportDetail = () => {
         </div>
       )}
 
-      {/* Hidden container strictly for PDF / Image Export */}
+      {/* Hidden container strictly for PDF / Image Multi-page Export */}
       <div style={{ position: 'fixed', left: '-9999px', top: '0', pointerEvents: 'none', zIndex: -100 }}>
-        <VoucherElement
+        <VoucherMultiPageElement
           report={report}
+          page1Sections={page1Sections}
+          page2Sections={page2Sections}
+          isMultiPage={isMultiPage}
           childName={childName}
           customerName={customerName}
           customerPhone={customerPhone}
@@ -911,203 +1232,90 @@ const NAReportDetail = () => {
 };
 
 // ============================================================================
-// CLINICAL REPORT PAPER COMPONENT (Standardized layout matching UI Screenshot)
+// CLINICAL REPORT SECTIONS RENDERER
+// ============================================================================
+const ClinicalReportSectionsRenderer = ({
+  sections,
+}: {
+  sections: ReportSection[];
+}) => {
+  if (!sections || sections.length === 0) return null;
+
+  return (
+    <div className="space-y-4">
+      {sections.map((section, idx) => {
+        const config = getSectionConfig(section.type, section.title);
+        const displayTitle = section.title || config.defaultTitle;
+
+        return (
+          <div key={idx} className="space-y-1.5">
+            {/* Section Header with Icon Box */}
+            <div className="flex items-center gap-2">
+              <div
+                className={`w-6 h-6 rounded-lg ${config.iconBg} flex items-center justify-center shrink-0`}
+              >
+                {config.icon}
+              </div>
+              <h4 className="text-xs sm:text-sm font-bold text-slate-900 tracking-tight">
+                {displayTitle}
+              </h4>
+            </div>
+
+            {/* Section Paragraphs with left accent line */}
+            {section.paragraphs.map((p, pIdx) => (
+              <div
+                key={pIdx}
+                className={`border-l-2 ${config.borderAccent} pl-3.5 my-1.5 text-xs sm:text-sm text-slate-700 leading-relaxed ${
+                  config.isItalic ? 'italic font-medium' : 'font-normal'
+                }`}
+              >
+                <InlineMarkdown text={p} />
+              </div>
+            ))}
+
+            {/* Section Bullets */}
+            {section.bullets.length > 0 && (
+              <ul className="space-y-1.5 pl-2 pt-0.5">
+                {section.bullets.map((b, bIdx) => (
+                  <li
+                    key={bIdx}
+                    className="flex items-start gap-2 text-xs sm:text-sm text-slate-700 leading-relaxed"
+                  >
+                    <span className="text-slate-400 font-bold text-base leading-none select-none">
+                      •
+                    </span>
+                    <div className="flex-1">
+                      <InlineMarkdown text={b} />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+// ============================================================================
+// CLINICAL REPORT PAPER COMPONENT (Web Screen Presentation)
 // ============================================================================
 interface ClinicalReportPaperProps {
-  summaryText: string;
+  sections: ReportSection[];
   childName: string;
   date?: string;
-  isVoucher?: boolean;
 }
 
 const ClinicalReportPaper = ({
-  summaryText,
+  sections,
   childName,
   date,
-  isVoucher = false,
 }: ClinicalReportPaperProps) => {
-  if (!summaryText) return null;
-
-  const lines = summaryText.split('\n');
-  const sections: {
-    type: 'executive' | 'activity' | 'clinical' | 'recommendations' | 'general';
-    title: string;
-    paragraphs: string[];
-    bullets: string[];
-  }[] = [];
-
-  let currentSection: (typeof sections)[0] = {
-    type: 'executive',
-    title: 'နေ့စဉ် ပြုစုစောင့်ရှောက်မှု အကျဉ်းချုပ် (EXECUTIVE SUMMARY)',
-    paragraphs: [],
-    bullets: [],
-  };
-
-  const isHeaderLine = (line: string) => {
-    const l = line.trim();
-    if (!l) return false;
-    if (l.startsWith('#')) return true;
-    if (
-      /^[0-9]+[\.\)]\s+/.test(l) &&
-      (l.includes('**') ||
-        l.includes('အကျဉ်းချုပ်') ||
-        l.includes('မှတ်တမ်း') ||
-        l.includes('ကျန်းမာရေး') ||
-        l.includes('အကြံပြုချက်') ||
-        l.includes('လှုပ်ရှားမှု'))
-    )
-      return true;
-    if (l.startsWith('**') && l.endsWith('**') && l.length > 5 && !l.includes(':**')) return true;
-    if (l.includes('Executive Summary') || l.includes('EXECUTIVE SUMMARY') || l.includes('အကျဉ်းချုပ်'))
-      return true;
-    if (
-      l.includes('Activities & Mood') ||
-      l.includes('ACTIVITIES & MOOD') ||
-      l.includes('ကစားလှုပ်ရှားမှု') ||
-      l.includes('ကလေးလှုပ်ရှားမှု') ||
-      l.includes('Care Highlights')
-    )
-      return true;
-    if (
-      l.includes('Clinical Observations') ||
-      l.includes('CLINICAL OBSERVATIONS') ||
-      l.includes('Unusual Findings') ||
-      l.includes('ကျန်းမာရေး စောင့်ကြည့်စစ်ဆေးချက်')
-    )
-      return true;
-    if (l.includes('Recommendations') || l.includes('RECOMMENDATIONS') || l.includes('အကြံပြုချက်များ'))
-      return true;
-    return false;
-  };
-
-  const determineSectionType = (
-    title: string
-  ): 'executive' | 'activity' | 'clinical' | 'recommendations' | 'general' => {
-    const t = title.toLowerCase();
-    if (t.includes('executive') || t.includes('အကျဉ်းချုပ်')) return 'executive';
-    if (
-      t.includes('activit') ||
-      t.includes('mood') ||
-      t.includes('highlight') ||
-      t.includes('လှုပ်ရှားမှု') ||
-      t.includes('စိတ်ခံစားမှု') ||
-      t.includes('အာဟာရ') ||
-      t.includes('သန့်ရှင်းရေး')
-    )
-      return 'activity';
-    if (
-      t.includes('clinical') ||
-      t.includes('observation') ||
-      t.includes('unusual') ||
-      t.includes('finding') ||
-      t.includes('ကျန်းမာရေး') ||
-      t.includes('ထူးခြားဖြစ်စဉ်')
-    )
-      return 'clinical';
-    if (t.includes('recommend') || t.includes('အကြံပြုချက်')) return 'recommendations';
-    return 'general';
-  };
-
-  const cleanHeaderTitle = (title: string): string => {
-    return title
-      .replace(/^#{1,4}\s+/, '')
-      .replace(/^[0-9]+[\.\)]\s+/, '')
-      .replace(/^\*+\s*/, '')
-      .replace(/\*+$/, '')
-      .replace(/^[🌟📋🔍💡🩺⚙️🍲🧼🛌🎨]+\s*/, '')
-      .trim();
-  };
-
-  for (let i = 0; i < lines.length; i++) {
-    const rawLine = lines[i];
-    const line = rawLine.trim();
-    if (!line) continue;
-
-    // Skip redundant top document headers
-    if (
-      line.includes('Healthy Nara') ||
-      line.includes('နေ့စဉ် ပြုစုစောင့်ရှောက်မှု အကျဉ်းချုပ် အစီရင်ခံစာ') ||
-      line.startsWith('ကလေးအမည်:') ||
-      line.startsWith('ရက်စွဲ:') ||
-      line === '---' ||
-      line === '***'
-    ) {
-      continue;
-    }
-
-    if (isHeaderLine(line)) {
-      if (currentSection.paragraphs.length > 0 || currentSection.bullets.length > 0) {
-        sections.push(currentSection);
-      }
-      const cleaned = cleanHeaderTitle(line);
-      const sType = determineSectionType(cleaned);
-      currentSection = {
-        type: sType,
-        title: cleaned,
-        paragraphs: [],
-        bullets: [],
-      };
-    } else if (line.startsWith('* ') || line.startsWith('- ') || line.startsWith('• ')) {
-      currentSection.bullets.push(line.replace(/^[\*\-•]\s+/, '').trim());
-    } else if (/^[0-9]+[\.\)]\s+/.test(line)) {
-      currentSection.bullets.push(line.replace(/^[0-9]+[\.\)]\s+/, '').trim());
-    } else {
-      currentSection.paragraphs.push(line);
-    }
-  }
-
-  if (currentSection.paragraphs.length > 0 || currentSection.bullets.length > 0) {
-    sections.push(currentSection);
-  }
-
-  const getSectionConfig = (type: string, title: string) => {
-    switch (type) {
-      case 'executive':
-        return {
-          icon: <Sun size={13} className="text-amber-700" />,
-          iconBg: 'bg-amber-100',
-          borderAccent: 'border-amber-300',
-          defaultTitle: 'နေ့စဉ် ပြုစုစောင့်ရှောက်မှု အကျဉ်းချုပ် (EXECUTIVE SUMMARY)',
-          isItalic: true,
-        };
-      case 'activity':
-        return {
-          icon: <Baby size={13} className="text-emerald-700" />,
-          iconBg: 'bg-emerald-100',
-          borderAccent: 'border-emerald-300',
-          defaultTitle: 'ကလေးလှုပ်ရှားမှုနှင့် စိတ်ခံစားမှု (ACTIVITIES & MOOD)',
-          isItalic: false,
-        };
-      case 'clinical':
-        return {
-          icon: <HeartPulse size={13} className="text-rose-700" />,
-          iconBg: 'bg-rose-100',
-          borderAccent: 'border-rose-300',
-          defaultTitle:
-            'ကျန်းမာရေး စောင့်ကြည့်စစ်ဆေးချက်နှင့် ထူးခြားဖြစ်စဉ်များ (CLINICAL OBSERVATIONS & UNUSUAL FINDINGS)',
-          isItalic: false,
-        };
-      case 'recommendations':
-        return {
-          icon: <Lightbulb size={13} className="text-indigo-700" />,
-          iconBg: 'bg-indigo-100',
-          borderAccent: 'border-indigo-300',
-          defaultTitle: 'မိဘများနှင့် နောက်တာဝန်ကျ ဆရာမအတွက် အကြံပြုချက်များ (RECOMMENDATIONS)',
-          isItalic: false,
-        };
-      default:
-        return {
-          icon: <Activity size={13} className="text-teal-700" />,
-          iconBg: 'bg-teal-100',
-          borderAccent: 'border-teal-300',
-          defaultTitle: title,
-          isItalic: false,
-        };
-    }
-  };
+  if (!sections || sections.length === 0) return null;
 
   return (
-    <div className={`space-y-6 font-sans ${isVoucher ? 'text-slate-800' : 'text-slate-800'}`}>
+    <div className="space-y-6 font-sans text-slate-800">
       {/* Top Document Header matching UI Screenshot */}
       <div className="space-y-2.5 pb-3">
         <div>
@@ -1129,68 +1337,19 @@ const ClinicalReportPaper = ({
       </div>
 
       {/* Rendered Sections */}
-      <div className="space-y-5">
-        {sections.map((section, idx) => {
-          const config = getSectionConfig(section.type, section.title);
-          const displayTitle = section.title || config.defaultTitle;
-
-          return (
-            <div key={idx} className="space-y-2">
-              {/* Section Header with Icon Box */}
-              <div className="flex items-center gap-2">
-                <div
-                  className={`w-6 h-6 rounded-lg ${config.iconBg} flex items-center justify-center shrink-0`}
-                >
-                  {config.icon}
-                </div>
-                <h4 className="text-xs sm:text-sm font-bold text-slate-900 tracking-tight">
-                  {displayTitle}
-                </h4>
-              </div>
-
-              {/* Section Paragraphs with left accent line */}
-              {section.paragraphs.map((p, pIdx) => (
-                <div
-                  key={pIdx}
-                  className={`border-l-2 ${config.borderAccent} pl-3.5 my-2 text-xs sm:text-sm text-slate-700 leading-relaxed ${
-                    config.isItalic ? 'italic font-medium' : 'font-normal'
-                  }`}
-                >
-                  <InlineMarkdown text={p} />
-                </div>
-              ))}
-
-              {/* Section Bullets */}
-              {section.bullets.length > 0 && (
-                <ul className="space-y-2 pl-2 pt-0.5">
-                  {section.bullets.map((b, bIdx) => (
-                    <li
-                      key={bIdx}
-                      className="flex items-start gap-2 text-xs sm:text-sm text-slate-700 leading-relaxed"
-                    >
-                      <span className="text-slate-400 font-bold text-base leading-none select-none">
-                        •
-                      </span>
-                      <div className="flex-1">
-                        <InlineMarkdown text={b} />
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          );
-        })}
-      </div>
+      <ClinicalReportSectionsRenderer sections={sections} />
     </div>
   );
 };
 
 // ============================================================================
-// VOUCHER / RECEIPT TEMPLATE (A4 Sized Container for PDF / Image Export)
+// MULTI-PAGE VOUCHER / RECEIPT TEMPLATE (Standard A4 Sized for Clean PDF & PNG Export)
 // ============================================================================
 interface VoucherProps {
   report: any;
+  page1Sections: ReportSection[];
+  page2Sections: ReportSection[];
+  isMultiPage: boolean;
   childName: string;
   customerName: string;
   customerPhone: string;
@@ -1199,8 +1358,11 @@ interface VoucherProps {
   reportDateFormatted: string;
 }
 
-const VoucherElement = ({
+const VoucherMultiPageElement = ({
   report,
+  page1Sections,
+  page2Sections,
+  isMultiPage,
   childName,
   customerName,
   customerPhone,
@@ -1209,356 +1371,496 @@ const VoucherElement = ({
   reportDateFormatted,
 }: VoucherProps) => {
   return (
-    <div
-      id="ai-summary-voucher"
-      style={{
-        width: '794px',
-        minHeight: '1123px',
-        backgroundColor: '#ffffff',
-        padding: '44px 48px',
-        position: 'relative',
-        boxSizing: 'border-box',
-        fontFamily: "'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif",
-        color: '#1f2937',
-        border: '1px solid #e5e7eb',
-        borderRadius: '16px',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.06)',
-      }}
-    >
-      {/* Background Decorative Pattern Top */}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
+      {/* ================= PAGE 1 ================= */}
       <div
+        id="ai-summary-voucher-p1"
         style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          height: '8px',
-          backgroundColor: '#0d6d5c',
-          borderTopLeftRadius: '16px',
-          borderTopRightRadius: '16px',
-        }}
-      />
-
-      {/* Full Background Watermark Pattern */}
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          zIndex: 0,
-          backgroundImage: `url(${patternBg})`,
-          backgroundRepeat: 'repeat',
-          backgroundSize: '480px',
-          opacity: 0.28,
-          pointerEvents: 'none',
+          width: '794px',
+          minHeight: '1123px',
+          backgroundColor: '#ffffff',
+          padding: '40px 44px',
+          position: 'relative',
+          boxSizing: 'border-box',
+          fontFamily: "'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif",
+          color: '#1f2937',
+          border: '1px solid #e5e7eb',
           borderRadius: '16px',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.06)',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
         }}
-      />
-
-      {/* Content wrapper above watermark */}
-      <div style={{ position: 'relative', zIndex: 1 }}>
-        {/* Header: Company Brand + Reference */}
+      >
+        {/* Top 8px Accent Bar */}
         <div
           style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'flex-start',
-            paddingBottom: '20px',
-            borderBottom: '2px solid #f3f4f6',
-            marginBottom: '20px',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: '8px',
+            backgroundColor: '#0d6d5c',
+            borderTopLeftRadius: '16px',
+            borderTopRightRadius: '16px',
           }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <img
-              src={halogo}
-              alt="Healthy Nara Logo"
-              style={{
-                width: '46px',
-                height: '46px',
-                objectFit: 'contain',
-                borderRadius: '10px',
-              }}
-            />
-            <div>
-              <h2
+        />
+
+        {/* Watermark */}
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            zIndex: 0,
+            backgroundImage: `url(${patternBg})`,
+            backgroundRepeat: 'repeat',
+            backgroundSize: '480px',
+            opacity: 0.28,
+            pointerEvents: 'none',
+            borderRadius: '16px',
+          }}
+        />
+
+        <div style={{ position: 'relative', zIndex: 1, flex: 1, display: 'flex', flexDirection: 'column' }}>
+          {/* Header */}
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'flex-start',
+              paddingBottom: '14px',
+              borderBottom: '2px solid #f3f4f6',
+              marginBottom: '14px',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <img
+                src={halogo}
+                alt="Healthy Nara Logo"
                 style={{
-                  fontSize: '22px',
-                  fontWeight: 800,
+                  width: '44px',
+                  height: '44px',
+                  objectFit: 'contain',
+                  borderRadius: '10px',
+                }}
+              />
+              <div>
+                <h2
+                  style={{
+                    fontSize: '21px',
+                    fontWeight: 800,
+                    color: '#0d6d5c',
+                    letterSpacing: '-0.5px',
+                    margin: 0,
+                    lineHeight: '1.2',
+                  }}
+                >
+                  Healthy Nara
+                </h2>
+                <p
+                  style={{
+                    fontSize: '11px',
+                    color: '#6b7280',
+                    margin: '2px 0 0 0',
+                    fontWeight: 500,
+                  }}
+                >
+                  Pediatric & Home Health Care Management
+                </p>
+              </div>
+            </div>
+
+            <div style={{ textAlign: 'right' }}>
+              <p
+                style={{
+                  fontSize: '12px',
+                  fontFamily: 'monospace',
+                  fontWeight: 700,
                   color: '#0d6d5c',
-                  letterSpacing: '-0.5px',
-                  margin: 0,
-                  lineHeight: '1.2',
+                  margin: '0 0 2px 0',
                 }}
               >
-                Healthy Nara
-              </h2>
+                REF: {report._id?.substring(0, 16).toUpperCase()}
+              </p>
               <p
                 style={{
                   fontSize: '11px',
                   color: '#6b7280',
-                  margin: '2px 0 0 0',
+                  margin: '0 0 4px 0',
                   fontWeight: 500,
                 }}
               >
-                Pediatric & Home Health Care Management
+                Date: {reportDateFormatted}
               </p>
+              {isMultiPage && (
+                <span
+                  style={{
+                    display: 'inline-block',
+                    fontSize: '10px',
+                    fontWeight: 700,
+                    color: '#0d6d5c',
+                    backgroundColor: '#e6f4f1',
+                    border: '1px solid #c2e7df',
+                    padding: '1px 8px',
+                    borderRadius: '6px',
+                  }}
+                >
+                  Page 1 of 2
+                </span>
+              )}
             </div>
           </div>
 
-          <div style={{ textAlign: 'right' }}>
-            <p
+          {/* 3-Column Info Box */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: '14px',
+              backgroundColor: '#f9fafb',
+              border: '1px solid #e5e7eb',
+              borderRadius: '12px',
+              padding: '10px 14px',
+              marginBottom: '14px',
+            }}
+          >
+            <div>
+              <span
+                style={{
+                  fontSize: '9px',
+                  fontWeight: 700,
+                  color: '#9ca3af',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                  display: 'block',
+                  marginBottom: '2px',
+                }}
+              >
+                Child Information
+              </span>
+              <p style={{ fontSize: '13px', fontWeight: 700, color: '#111827', margin: '0 0 1px 0' }}>
+                {childName}
+              </p>
+              <span style={{ fontSize: '10.5px', color: '#0d6d5c', fontWeight: 600 }}>
+                {serviceType} Service
+              </span>
+            </div>
+
+            <div>
+              <span
+                style={{
+                  fontSize: '9px',
+                  fontWeight: 700,
+                  color: '#9ca3af',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                  display: 'block',
+                  marginBottom: '2px',
+                }}
+              >
+                Parent / Customer
+              </span>
+              <p style={{ fontSize: '13px', fontWeight: 700, color: '#111827', margin: '0 0 1px 0' }}>
+                {customerName}
+              </p>
+              <span style={{ fontSize: '10.5px', color: '#6b7280', fontFamily: 'monospace' }}>
+                Ph: {customerPhone}
+              </span>
+            </div>
+
+            <div>
+              <span
+                style={{
+                  fontSize: '9px',
+                  fontWeight: 700,
+                  color: '#9ca3af',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                  display: 'block',
+                  marginBottom: '2px',
+                }}
+              >
+                Assigned Nurse Aid
+              </span>
+              <p style={{ fontSize: '13px', fontWeight: 700, color: '#111827', margin: '0 0 1px 0' }}>
+                {caregiverName}
+              </p>
+              <span style={{ fontSize: '10.5px', color: '#4f46e5', fontWeight: 600 }}>
+                Status: {report.status === 'submitted' ? 'Verified' : 'In Progress'}
+              </span>
+            </div>
+          </div>
+
+          {/* Document Title Header */}
+          <div style={{ marginBottom: '12px' }}>
+            <h2
               style={{
-                fontSize: '12px',
-                fontFamily: 'monospace',
-                fontWeight: 700,
+                fontSize: '13px',
+                fontWeight: 800,
                 color: '#0d6d5c',
+                borderBottom: '2px solid #0d6d5c',
+                paddingBottom: '1px',
+                display: 'inline-block',
                 margin: '0 0 3px 0',
               }}
             >
-              REF: {report._id?.substring(0, 16).toUpperCase()}
-            </p>
-            <p
-              style={{
-                fontSize: '11px',
-                color: '#6b7280',
-                margin: 0,
-                fontWeight: 500,
-              }}
-            >
-              Date: {reportDateFormatted}
+              Healthy Nara (ကလေးသူငယ်နှင့် မိသားစု ကျန်းမာရေး ပြုစုစောင့်ရှောက်မှု အဖွဲ့)
+            </h2>
+            <h3 style={{ fontSize: '13.5px', fontWeight: 800, color: '#111827', margin: '3px 0 2px 0' }}>
+              နေ့စဉ် ပြုစုစောင့်ရှောက်မှု အကျဉ်းချုပ် အစီရင်ခံစာ
+            </h3>
+            <p style={{ fontSize: '11px', color: '#4b5563', margin: 0, fontWeight: 500 }}>
+              ကလေးအမည်: <strong style={{ color: '#111827' }}>{childName}</strong> | ရက်စွဲ:{' '}
+              <strong style={{ color: '#111827' }}>{formatMyanmarDate(report.date)}</strong>
             </p>
           </div>
-        </div>
 
-        {/* Voucher Info Box */}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
-            gap: '16px',
-            backgroundColor: '#f9fafb',
-            border: '1px solid #e5e7eb',
-            borderRadius: '12px',
-            padding: '14px 18px',
-            marginBottom: '20px',
-          }}
-        >
-          {/* Child */}
-          <div>
-            <span
-              style={{
-                fontSize: '10px',
-                fontWeight: 700,
-                color: '#9ca3af',
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px',
-                display: 'block',
-                marginBottom: '4px',
-              }}
-            >
-              Child Information
-            </span>
-            <p
-              style={{
-                fontSize: '14px',
-                fontWeight: 700,
-                color: '#111827',
-                margin: '0 0 2px 0',
-              }}
-            >
-              {childName}
-            </p>
-            <span
-              style={{
-                fontSize: '11px',
-                color: '#0d6d5c',
-                fontWeight: 600,
-              }}
-            >
-              {serviceType} Service
-            </span>
-          </div>
-
-          {/* Customer / Parent */}
-          <div>
-            <span
-              style={{
-                fontSize: '10px',
-                fontWeight: 700,
-                color: '#9ca3af',
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px',
-                display: 'block',
-                marginBottom: '4px',
-              }}
-            >
-              Parent / Customer
-            </span>
-            <p
-              style={{
-                fontSize: '14px',
-                fontWeight: 700,
-                color: '#111827',
-                margin: '0 0 2px 0',
-              }}
-            >
-              {customerName}
-            </p>
-            <span
-              style={{
-                fontSize: '11px',
-                color: '#6b7280',
-                fontFamily: 'monospace',
-              }}
-            >
-              Ph: {customerPhone}
-            </span>
-          </div>
-
-          {/* Caregiver */}
-          <div>
-            <span
-              style={{
-                fontSize: '10px',
-                fontWeight: 700,
-                color: '#9ca3af',
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px',
-                display: 'block',
-                marginBottom: '4px',
-              }}
-            >
-              Assigned Nurse Aid
-            </span>
-            <p
-              style={{
-                fontSize: '14px',
-                fontWeight: 700,
-                color: '#111827',
-                margin: '0 0 2px 0',
-              }}
-            >
-              {caregiverName}
-            </p>
-            <span
-              style={{
-                fontSize: '11px',
-                color: '#4f46e5',
-                fontWeight: 600,
-              }}
-            >
-              Status: {report.status === 'submitted' ? 'Verified' : 'In Progress'}
-            </span>
-          </div>
-        </div>
-
-        {/* AI Clinical Care Analysis Box in Voucher */}
-        {report.aiSummary && (
+          {/* Page 1 Sections Container */}
           <div
             style={{
               backgroundColor: '#ffffff',
               border: '1.5px solid #e2e8f0',
-              borderRadius: '16px',
-              padding: '24px',
-              marginBottom: '20px',
+              borderRadius: '14px',
+              padding: '18px 20px',
+              marginBottom: '14px',
+              flex: 1,
             }}
           >
-            <ClinicalReportPaper
-              summaryText={report.aiSummary}
-              childName={childName}
-              date={report.date}
-              isVoucher={true}
-            />
+            <ClinicalReportSectionsRenderer sections={page1Sections} />
           </div>
-        )}
+        </div>
 
-        {/* Footer & Signature Section */}
+        {/* Page 1 Footer */}
         <div
           style={{
+            position: 'relative',
+            zIndex: 1,
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'flex-end',
-            paddingTop: '16px',
+            paddingTop: '10px',
             borderTop: '1px solid #e5e7eb',
           }}
         >
-          {/* Left: Security & Disclaimer */}
           <div style={{ maxWidth: '380px' }}>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                marginBottom: '4px',
-              }}
-            >
-              <span style={{ fontSize: '11px', fontWeight: 700, color: '#0d6d5c' }}>
-                Healthy Nara Quality Assurance
-              </span>
-            </div>
-            <p style={{ fontSize: '10px', color: '#6b7280', lineHeight: '1.5', margin: 0 }}>
-              This care voucher is electronically synthesized and verified for pediatric home care supervision.
+            <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#0d6d5c' }}>
+              Healthy Nara Quality Assurance
+            </span>
+            <p style={{ fontSize: '9px', color: '#6b7280', lineHeight: '1.4', margin: '2px 0 0 0' }}>
+              {isMultiPage
+                ? 'This care summary continues on Page 2. Electronically synthesized for pediatric supervision.'
+                : 'This care voucher is electronically synthesized and verified for pediatric home care supervision.'}
             </p>
           </div>
 
-          {/* Right: Signature & Stamp */}
-          <div style={{ textAlign: 'center', minWidth: '180px' }}>
-            <div
-              style={{
-                height: '50px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: '2px',
-              }}
-            >
-              <img
-                src={autosign}
-                alt="Authorized Signature"
-                style={{ width: '90px', objectFit: 'contain' }}
-              />
-            </div>
-            <div
-              style={{
-                width: '160px',
-                height: '1px',
-                backgroundColor: '#9ca3af',
-                margin: '0 auto 4px auto',
-              }}
-            />
-            <p style={{ fontSize: '11px', fontWeight: 700, color: '#111827', margin: '0 0 2px 0' }}>
-              Clinical Supervisor
-            </p>
-            <p style={{ fontSize: '9.5px', color: '#6b7280', margin: 0 }}>
-              Healthy Nara Clinical Operations
-            </p>
+          <div style={{ textAlign: 'center', minWidth: '160px' }}>
+            {!isMultiPage ? (
+              <>
+                <div style={{ height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <img src={autosign} alt="Signature" style={{ width: '75px', objectFit: 'contain' }} />
+                </div>
+                <div style={{ width: '130px', height: '1px', backgroundColor: '#9ca3af', margin: '0 auto 3px auto' }} />
+                <p style={{ fontSize: '10px', fontWeight: 700, color: '#111827', margin: 0 }}>Clinical Supervisor</p>
+              </>
+            ) : (
+              <span
+                style={{
+                  fontSize: '10.5px',
+                  fontWeight: 700,
+                  color: '#6b7280',
+                  backgroundColor: '#f3f4f6',
+                  padding: '3px 9px',
+                  borderRadius: '6px',
+                }}
+              >
+                Page 1 of 2
+              </span>
+            )}
           </div>
         </div>
       </div>
+
+      {/* ================= PAGE 2 (Rendered only when multi-page) ================= */}
+      {isMultiPage && page2Sections.length > 0 && (
+        <div
+          id="ai-summary-voucher-p2"
+          style={{
+            width: '794px',
+            minHeight: '1123px',
+            backgroundColor: '#ffffff',
+            padding: '40px 44px',
+            position: 'relative',
+            boxSizing: 'border-box',
+            fontFamily: "'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif",
+            color: '#1f2937',
+            border: '1px solid #e5e7eb',
+            borderRadius: '16px',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.06)',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+          }}
+        >
+          {/* Top 8px Accent Bar */}
+          <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: '8px',
+              backgroundColor: '#0d6d5c',
+              borderTopLeftRadius: '16px',
+              borderTopRightRadius: '16px',
+            }}
+          />
+
+          {/* Watermark */}
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              zIndex: 0,
+              backgroundImage: `url(${patternBg})`,
+              backgroundRepeat: 'repeat',
+              backgroundSize: '480px',
+              opacity: 0.28,
+              pointerEvents: 'none',
+              borderRadius: '16px',
+            }}
+          />
+
+          <div style={{ position: 'relative', zIndex: 1, flex: 1, display: 'flex', flexDirection: 'column' }}>
+            {/* Header Page 2 - Clean and spacious without overlap */}
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
+                paddingBottom: '14px',
+                borderBottom: '2px solid #f3f4f6',
+                marginBottom: '16px',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <img
+                  src={halogo}
+                  alt="Healthy Nara Logo"
+                  style={{
+                    width: '42px',
+                    height: '42px',
+                    objectFit: 'contain',
+                    borderRadius: '10px',
+                  }}
+                />
+                <div>
+                  <h2
+                    style={{
+                      fontSize: '18px',
+                      fontWeight: 800,
+                      color: '#0d6d5c',
+                      letterSpacing: '-0.3px',
+                      margin: '0 0 2px 0',
+                      lineHeight: '1.2',
+                    }}
+                  >
+                    Healthy Nara
+                  </h2>
+                  <p style={{ fontSize: '11px', color: '#4b5563', margin: 0, fontWeight: 600 }}>
+                    Daily Care Summary • <strong style={{ color: '#111827' }}>Child: {childName}</strong>
+                  </p>
+                </div>
+              </div>
+
+              <div style={{ textAlign: 'right' }}>
+                <span
+                  style={{
+                    display: 'inline-block',
+                    fontSize: '10px',
+                    fontWeight: 700,
+                    color: '#0d6d5c',
+                    backgroundColor: '#e6f4f1',
+                    border: '1px solid #c2e7df',
+                    padding: '2px 8px',
+                    borderRadius: '6px',
+                    marginBottom: '2px',
+                  }}
+                >
+                  Page 2 of 2
+                </span>
+                <p style={{ fontSize: '11px', color: '#6b7280', margin: 0, fontWeight: 500 }}>
+                  Date: {reportDateFormatted}
+                </p>
+              </div>
+            </div>
+
+            {/* Page 2 Sections Container */}
+            <div
+              style={{
+                backgroundColor: '#ffffff',
+                border: '1.5px solid #e2e8f0',
+                borderRadius: '14px',
+                padding: '18px 20px',
+                marginBottom: '16px',
+                flex: 1,
+              }}
+            >
+              <ClinicalReportSectionsRenderer sections={page2Sections} />
+            </div>
+          </div>
+
+          {/* Page 2 Footer with Supervisor Signature & Stamp */}
+          <div
+            style={{
+              position: 'relative',
+              zIndex: 1,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'flex-end',
+              paddingTop: '12px',
+              borderTop: '1px solid #e5e7eb',
+            }}
+          >
+            <div style={{ maxWidth: '380px' }}>
+              <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#0d6d5c' }}>
+                Healthy Nara Quality Assurance
+              </span>
+              <p style={{ fontSize: '9.5px', color: '#6b7280', lineHeight: '1.4', margin: '2px 0 0 0' }}>
+                This care voucher is electronically synthesized and verified for pediatric home care supervision.
+              </p>
+            </div>
+
+            <div style={{ textAlign: 'center', minWidth: '180px' }}>
+              <div
+                style={{
+                  height: '46px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: '2px',
+                }}
+              >
+                <img src={autosign} alt="Authorized Signature" style={{ width: '85px', objectFit: 'contain' }} />
+              </div>
+              <div
+                style={{
+                  width: '150px',
+                  height: '1px',
+                  backgroundColor: '#9ca3af',
+                  margin: '0 auto 4px auto',
+                }}
+              />
+              <p style={{ fontSize: '11px', fontWeight: 700, color: '#111827', margin: '0 0 1px 0' }}>
+                Clinical Supervisor
+              </p>
+              <p style={{ fontSize: '9px', color: '#6b7280', margin: 0 }}>
+                Healthy Nara Clinical Operations
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
-  );
-};
-
-// Helper for parsing inline bold `**text**` and formatting
-const InlineMarkdown = ({ text }: { text: string }) => {
-  if (!text) return null;
-
-  // Split by bold pattern `**something**`
-  const parts = text.split(/(\*\*[^*]+?\*\*)/g);
-
-  return (
-    <>
-      {parts.map((part, i) => {
-        if (part.startsWith('**') && part.endsWith('**')) {
-          const boldText = part.slice(2, -2);
-          return (
-            <strong key={i} className="font-bold text-slate-900">
-              {boldText}
-            </strong>
-          );
-        }
-        return <span key={i}>{part}</span>;
-      })}
-    </>
   );
 };
 
