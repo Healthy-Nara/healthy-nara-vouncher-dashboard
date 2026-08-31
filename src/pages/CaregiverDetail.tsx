@@ -3,7 +3,7 @@ import { fetchCaregiverStats, updateCaregiver } from '../api';
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Phone, MapPin, Calendar, ChevronRight, Edit2, Banknote, TrendingUp, Clock, User, FileText } from 'lucide-react';
+import { ArrowLeft, Phone, MapPin, Calendar, ChevronRight, Edit2, Banknote, TrendingUp, Clock, User, FileText, Copy, Check, Eye, EyeOff, KeyRound } from 'lucide-react';
 import CustomDatePicker from '../components/CustomDatePicker';
 import { CaregiverCVModal } from '../components/CaregiverCVModal';
 
@@ -20,8 +20,12 @@ const CaregiverDetail = () => {
   const queryClient = useQueryClient();
   const [showCVModal, setShowCVModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+
   const [editForm, setEditForm] = useState({
     caregiverName: '',
+    username: '',
     contactNumber: '',
     gender: '',
     township: '',
@@ -39,6 +43,23 @@ const CaregiverDetail = () => {
     specialization: '',
     note: '',
   });
+
+  const getFallbackUsername = (name?: string) => {
+    return name ? name.toLowerCase().replace(/\s/g, '') : '';
+  };
+
+  const getFallbackPassword = (nrc?: string) => {
+    if (!nrc) return '123456';
+    const match = nrc.match(/(\d+)$/);
+    return match ? match[1] : '123456';
+  };
+
+  const copyToClipboard = (text: string, field: string) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setCopiedField(field);
+    setTimeout(() => setCopiedField(null), 2000);
+  };
 
   const { data: stats, isLoading } = useQuery({
     queryKey: ['caregiverStats', id],
@@ -63,6 +84,7 @@ const CaregiverDetail = () => {
     const c = stats?.caregiver;
     setEditForm({
       caregiverName: c?.caregiverName || '',
+      username: c?.username || getFallbackUsername(c?.caregiverName),
       contactNumber: c?.contactNumber || '',
       gender: c?.gender || '',
       township: c?.township || '',
@@ -139,6 +161,92 @@ const CaregiverDetail = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Left Panel */}
         <div className="lg:col-span-1 space-y-4">
+          {/* NA Mobile App Login Account */}
+          <div className="bg-gradient-to-br from-teal-500/10 via-emerald-500/5 to-teal-500/10 rounded-2xl p-4 border border-teal-200/80 shadow-2xs space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-[#0d6d5c] text-white flex items-center justify-center shadow-xs">
+                  <KeyRound size={15} />
+                </div>
+                <div>
+                  <h3 className="text-xs font-bold text-slate-800">NA Mobile Login</h3>
+                  <p className="text-[10px] text-[#0d6d5c] font-semibold">Duty & Daily Report Portal</p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  const u = c.username || getFallbackUsername(c.caregiverName);
+                  const p = c.defaultPassword || getFallbackPassword(c.NRC);
+                  copyToClipboard(`Caregiver: ${c.caregiverName}\nUsername: ${u}\nPassword: ${p}`, 'all');
+                }}
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-white hover:bg-teal-50 text-[#0d6d5c] text-[11px] font-bold rounded-xl border border-teal-200 shadow-2xs transition-all cursor-pointer"
+                title="Copy both username and password"
+              >
+                {copiedField === 'all' ? (
+                  <>
+                    <Check size={12} className="text-teal-600" />
+                    <span>Copied!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy size={12} />
+                    <span>Copy All</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            <div className="space-y-2 pt-0.5">
+              {/* Username Field */}
+              <div className="bg-white p-2.5 rounded-xl border border-teal-100/90 flex items-center justify-between gap-2 shadow-2xs">
+                <div className="min-w-0 flex-1">
+                  <span className="block text-[9px] uppercase font-bold tracking-wider text-slate-400">Username</span>
+                  <span className="text-xs font-mono font-bold text-slate-800 select-all truncate block">
+                    {c.username || getFallbackUsername(c.caregiverName)}
+                  </span>
+                </div>
+                <button
+                  onClick={() => copyToClipboard(c.username || getFallbackUsername(c.caregiverName), 'username')}
+                  className="p-1.5 text-slate-400 hover:text-[#0d6d5c] hover:bg-teal-50 rounded-lg transition-all cursor-pointer shrink-0"
+                  title="Copy Username"
+                >
+                  {copiedField === 'username' ? <Check size={14} className="text-teal-600" /> : <Copy size={14} />}
+                </button>
+              </div>
+
+              {/* Password Field */}
+              <div className="bg-white p-2.5 rounded-xl border border-teal-100/90 flex items-center justify-between gap-2 shadow-2xs">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <span className="block text-[9px] uppercase font-bold tracking-wider text-slate-400">Password</span>
+                    <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-teal-50 text-[#0d6d5c] font-bold border border-teal-200/60">
+                      Default from NRC
+                    </span>
+                  </div>
+                  <span className="text-xs font-mono font-bold text-slate-800 select-all tracking-wider block">
+                    {showPassword ? (c.defaultPassword || getFallbackPassword(c.NRC)) : '••••••••'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-all cursor-pointer"
+                    title={showPassword ? 'Hide Password' : 'Show Password'}
+                  >
+                    {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                  </button>
+                  <button
+                    onClick={() => copyToClipboard(c.defaultPassword || getFallbackPassword(c.NRC), 'password')}
+                    className="p-1.5 text-slate-400 hover:text-[#0d6d5c] hover:bg-teal-50 rounded-lg transition-all cursor-pointer"
+                    title="Copy Password"
+                  >
+                    {copiedField === 'password' ? <Check size={14} className="text-teal-600" /> : <Copy size={14} />}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Caregiver Info */}
           <div className="bg-white rounded-2xl shadow-2xs border border-slate-200/80 overflow-hidden">
             <div className="px-4 sm:px-5 py-3.5 border-b border-slate-100 bg-slate-50/60 flex items-center justify-between">
@@ -158,6 +266,11 @@ const CaregiverDetail = () => {
                     <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">Name</label>
                     <input type="text" value={editForm.caregiverName} onChange={e => setEditForm({ ...editForm, caregiverName: e.target.value })}
                       className="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-primary focus:border-primary" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">Username (NA Mobile Login)</label>
+                    <input type="text" value={editForm.username} onChange={e => setEditForm({ ...editForm, username: e.target.value.toLowerCase().replace(/\s/g, '') })}
+                      className="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:ring-primary focus:border-primary" placeholder="e.g. ayeayemaw" />
                   </div>
                   <div>
                     <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">Contact</label>
@@ -271,6 +384,52 @@ const CaregiverDetail = () => {
                     <a href={`tel:${c.contactNumber}`} className="text-sm font-semibold text-primary hover:underline inline-flex items-center gap-1">
                       <Phone size={12} /> {c.contactNumber}
                     </a>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-gray-500 uppercase">Username (NA Login)</p>
+                    <div className="flex items-center justify-between mt-0.5">
+                      <span className="text-sm font-mono font-bold text-gray-900 select-all">
+                        {c.username || getFallbackUsername(c.caregiverName)}
+                      </span>
+                      <button
+                        onClick={() => copyToClipboard(c.username || getFallbackUsername(c.caregiverName), 'info-username')}
+                        className="inline-flex items-center gap-1 px-2 py-1 text-slate-500 hover:text-[#0d6d5c] hover:bg-teal-50 rounded-lg text-xs font-semibold border border-slate-200 transition-all cursor-pointer"
+                        title="Copy Username"
+                      >
+                        {copiedField === 'info-username' ? <Check size={12} className="text-teal-600" /> : <Copy size={12} />}
+                        <span>{copiedField === 'info-username' ? 'Copied' : 'Copy'}</span>
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-[10px] text-gray-500 uppercase">Password (NA Login)</p>
+                      <span className="text-[9px] px-1.5 py-0.2 rounded bg-teal-50 text-[#0d6d5c] font-semibold border border-teal-200/50">
+                        Default from NRC
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between mt-0.5">
+                      <span className="text-sm font-mono font-bold text-gray-900 tracking-wider select-all">
+                        {showPassword ? (c.defaultPassword || getFallbackPassword(c.NRC)) : '••••••••'}
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-all cursor-pointer"
+                          title={showPassword ? 'Hide Password' : 'Show Password'}
+                        >
+                          {showPassword ? <EyeOff size={13} /> : <Eye size={13} />}
+                        </button>
+                        <button
+                          onClick={() => copyToClipboard(c.defaultPassword || getFallbackPassword(c.NRC), 'info-password')}
+                          className="inline-flex items-center gap-1 px-2 py-1 text-slate-500 hover:text-[#0d6d5c] hover:bg-teal-50 rounded-lg text-xs font-semibold border border-slate-200 transition-all cursor-pointer"
+                          title="Copy Password"
+                        >
+                          {copiedField === 'info-password' ? <Check size={12} className="text-teal-600" /> : <Copy size={12} />}
+                          <span>{copiedField === 'info-password' ? 'Copied' : 'Copy'}</span>
+                        </button>
+                      </div>
+                    </div>
                   </div>
                   {c.gender && (
                     <div>

@@ -156,6 +156,11 @@ export const fetchCaregiverStats = async (id: string) => {
   return data;
 };
 
+export const resetCaregiverPassword = async (id: string, password?: string) => {
+  const { data } = await api.post(`/caregivers/${id}/reset-password`, { password });
+  return data;
+};
+
 export const fetchLogs = async () => {
   const { data } = await api.get('/logs');
   return data;
