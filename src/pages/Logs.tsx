@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchLogs } from '../api';
 import { Clock, Calendar, Shield, Loader2 } from 'lucide-react';
 import { PageHeader } from '../components/ui/PageHeader';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
+import { Card, CardContent } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { Avatar } from '../components/ui/Avatar';
 import {
@@ -42,15 +42,6 @@ export const Logs = () => {
 
       {/* Logs Table Card */}
       <Card className="flex-1 min-h-0 flex flex-col overflow-hidden">
-        <CardHeader className="shrink-0">
-          <div>
-            <CardTitle>System Audit Trail</CardTitle>
-            <CardDescription>
-              {logs.length} logged events recorded
-            </CardDescription>
-          </div>
-        </CardHeader>
-
         <CardContent className="p-0 flex-1 min-h-0 flex flex-col overflow-hidden">
           {isLoading ? (
             <div className="text-center py-16 text-slate-400 text-sm">
@@ -69,6 +60,7 @@ export const Logs = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-12 text-center">#</TableHead>
                       <TableHead>DATE & TIME</TableHead>
                       <TableHead>ACCOUNT</TableHead>
                       <TableHead>ACTION</TableHead>
@@ -77,8 +69,12 @@ export const Logs = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {logs.map((log: any) => (
+                    {logs.map((log: any, index: number) => (
                       <TableRow key={log._id}>
+                        {/* Row Number */}
+                        <TableCell className="text-center font-mono text-xs text-slate-400 font-semibold w-12">
+                          {index + 1}
+                        </TableCell>
                         {/* Date & Time */}
                         <TableCell>
                           <div className="flex items-center gap-1.5 text-xs text-slate-900 font-semibold">

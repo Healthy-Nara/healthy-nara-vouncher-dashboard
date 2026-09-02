@@ -16,7 +16,7 @@ import {
 import { useStatsToggle } from '../hooks/useStatsToggle';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
+import { Card, CardContent } from '../components/ui/Card';
 import { PageHeader } from '../components/ui/PageHeader';
 import { SearchInput } from '../components/ui/SearchInput';
 import { Avatar } from '../components/ui/Avatar';
@@ -152,17 +152,6 @@ export const Payouts = () => {
 
       {/* Payouts Table Card */}
       <Card className="flex-1 min-h-0 flex flex-col overflow-hidden">
-        <CardHeader className="shrink-0">
-          <div>
-            <CardTitle>
-              {activeTab === 'pending' ? 'Pending Payouts' : 'Paid Invoices'}
-            </CardTitle>
-            <CardDescription>
-              {displayList.length} caregiver payout records
-            </CardDescription>
-          </div>
-        </CardHeader>
-
         <CardContent className="p-0 flex-1 min-h-0 flex flex-col overflow-hidden">
           {isLoading ? (
             <div className="text-center py-16 text-slate-400 text-sm">
@@ -182,6 +171,7 @@ export const Payouts = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-12 text-center">#</TableHead>
                       <TableHead>INVOICE #</TableHead>
                       <TableHead>CAREGIVER</TableHead>
                       <TableHead>CUSTOMER</TableHead>
@@ -192,7 +182,7 @@ export const Payouts = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {displayList.map((inv: any) => {
+                    {displayList.map((inv: any, index: number) => {
                       const isPaid = inv.caregiverPayoutStatus === 'Paid';
                       return (
                         <TableRow
@@ -200,6 +190,11 @@ export const Payouts = () => {
                           onClick={() => navigate(`/update-payout/${inv.invoiceNumber}`)}
                           className="cursor-pointer group"
                         >
+                          {/* Row Number */}
+                          <TableCell className="text-center font-mono text-xs text-slate-400 font-semibold w-12">
+                            {index + 1}
+                          </TableCell>
+
                           {/* Invoice # */}
                           <TableCell>
                             <span className="font-extrabold text-slate-900 font-mono text-xs group-hover:text-teal-600 transition-colors">

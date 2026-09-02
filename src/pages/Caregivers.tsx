@@ -23,7 +23,7 @@ import { useStatsToggle } from '../hooks/useStatsToggle';
 import { CaregiverCVModal } from '../components/CaregiverCVModal';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
+import { Card, CardContent } from '../components/ui/Card';
 import { PageHeader } from '../components/ui/PageHeader';
 import { SearchInput } from '../components/ui/SearchInput';
 import { Avatar } from '../components/ui/Avatar';
@@ -221,9 +221,9 @@ export const Caregivers = () => {
                 onClick={toggleStats}
                 leftIcon={showStats ? <EyeOff size={15} /> : <BarChart3 size={15} />}
                 className="border-slate-200 text-slate-700 hover:bg-slate-50 font-semibold cursor-pointer"
-                title={showStats ? 'Hide summary statistics' : 'Show summary statistics'}
+                title={showStats ? 'Hide search & summary statistics' : 'Show search & summary statistics'}
               >
-                {showStats ? 'Hide Stats' : 'Show Stats'}
+                {showStats ? 'Hide Filters & Stats' : 'Show Filters & Stats'}
               </Button>
               <Button variant="primary" size="md" onClick={openCreate} leftIcon={<Plus size={16} />}>
                 Add Caregiver
@@ -288,15 +288,9 @@ export const Caregivers = () => {
         </div>
       )}
 
-      {/* Main Table Card matching reference image */}
-      <Card className="flex-1 min-h-0 flex flex-col overflow-hidden">
-        <CardHeader className="shrink-0">
-          <div>
-            <CardTitle>All caregivers</CardTitle>
-            <CardDescription>
-              {filteredCaregivers.length} of {caregivers.length} caregivers shown
-            </CardDescription>
-          </div>
+      {/* Search Toolbar (Collapsible) */}
+      {showStats && (
+        <div className="shrink-0 flex justify-end animate-fadeIn">
           <div className="w-full sm:w-72">
             <SearchInput
               placeholder="Search by name or skill..."
@@ -305,8 +299,11 @@ export const Caregivers = () => {
               onClear={() => setSearchTerm('')}
             />
           </div>
-        </CardHeader>
+        </div>
+      )}
 
+      {/* Main Table Card matching reference image */}
+      <Card className="flex-1 min-h-0 flex flex-col overflow-hidden">
         <CardContent className="p-0 flex-1 min-h-0 flex flex-col overflow-hidden">
           {isLoading ? (
             <div className="text-center py-16 text-slate-400 text-sm">
@@ -326,6 +323,7 @@ export const Caregivers = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-12 text-center">#</TableHead>
                       <TableHead>PROFILE</TableHead>
                       <TableHead>SKILLSET</TableHead>
                       <TableHead>EXPERIENCE</TableHead>
@@ -350,6 +348,11 @@ export const Caregivers = () => {
                           onClick={() => navigate(`/caregivers/${c._id}`)}
                           className="cursor-pointer group"
                         >
+                          {/* Row Number */}
+                          <TableCell className="text-center font-mono text-xs text-slate-400 font-semibold w-12">
+                            {idx + 1}
+                          </TableCell>
+
                           {/* Profile with Avatar */}
                           <TableCell>
                             <div className="flex items-center gap-3">

@@ -23,7 +23,7 @@ import CustomDatePicker from '../components/CustomDatePicker';
 import * as XLSX from 'xlsx';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
+import { Card, CardContent } from '../components/ui/Card';
 import { PageHeader } from '../components/ui/PageHeader';
 import { SearchInput } from '../components/ui/SearchInput';
 import { Avatar } from '../components/ui/Avatar';
@@ -384,6 +384,19 @@ export const Bookings = () => {
                 {importing ? 'Importing...' : 'Import Excel'}
               </Button>
               <Button
+                variant="outline"
+                size="sm"
+                leftIcon={<FileSpreadsheet size={14} className="text-teal-600" />}
+                onClick={() => {
+                  const ws = XLSX.utils.json_to_sheet(filteredBookings);
+                  const wb = XLSX.utils.book_new();
+                  XLSX.utils.book_append_sheet(wb, ws, 'Bookings');
+                  XLSX.writeFile(wb, `HealthyNara_Bookings_${format(new Date(), 'yyyyMMdd')}.xlsx`);
+                }}
+              >
+                Export Excel
+              </Button>
+              <Button
                 variant="primary"
                 size="md"
                 onClick={() => setShowParentModal(true)}
@@ -454,28 +467,6 @@ export const Bookings = () => {
 
       {/* Main Table Card matching reference image */}
       <Card className="flex-1 min-h-0 flex flex-col overflow-hidden">
-        <CardHeader className="shrink-0">
-          <div>
-            <CardTitle>All bookings</CardTitle>
-            <CardDescription>
-              {filteredBookings.length} of {bookings.length} bookings
-            </CardDescription>
-          </div>
-          <Button
-            variant="ghost"
-            size="xs"
-            leftIcon={<FileSpreadsheet size={14} className="text-teal-600" />}
-            onClick={() => {
-              const ws = XLSX.utils.json_to_sheet(filteredBookings);
-              const wb = XLSX.utils.book_new();
-              XLSX.utils.book_append_sheet(wb, ws, 'Bookings');
-              XLSX.writeFile(wb, `HealthyNara_Bookings_${format(new Date(), 'yyyyMMdd')}.xlsx`);
-            }}
-          >
-            Export list
-          </Button>
-        </CardHeader>
-
         <CardContent className="p-0 flex-1 min-h-0 flex flex-col overflow-hidden">
           {bookingsLoading ? (
             <div className="text-center py-16 text-slate-400 text-sm">
@@ -497,6 +488,7 @@ export const Bookings = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-12 text-center">#</TableHead>
                       <TableHead>BOOKING ID</TableHead>
                       <TableHead>CLIENT NAME</TableHead>
                       <TableHead>CAREGIVER</TableHead>
@@ -508,7 +500,7 @@ export const Bookings = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredBookings.map((booking: any) => {
+                    {filteredBookings.map((booking: any, index: number) => {
                       const clientName =
                         booking.parent?.parentName || booking.customerName || 'Customer';
                       const caregiverName =
@@ -522,6 +514,11 @@ export const Bookings = () => {
                           onClick={() => navigate(`/bookings/${booking._id}`)}
                           className="cursor-pointer group"
                         >
+                          {/* Row Number */}
+                          <TableCell className="text-center font-mono text-xs text-slate-400 font-semibold w-12">
+                            {index + 1}
+                          </TableCell>
+
                           {/* Booking ID */}
                           <TableCell>
                             <span className="font-extrabold text-slate-900 font-mono text-xs group-hover:text-teal-600 transition-colors">

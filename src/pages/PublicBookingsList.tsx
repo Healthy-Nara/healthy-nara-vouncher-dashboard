@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
+import { Card, CardContent } from '../components/ui/Card';
 import { PageHeader } from '../components/ui/PageHeader';
 import { SearchInput } from '../components/ui/SearchInput';
 import { Avatar } from '../components/ui/Avatar';
@@ -123,15 +123,6 @@ export const PublicBookingsList = () => {
 
       {/* Table Card */}
       <Card className="flex-1 min-h-0 flex flex-col overflow-hidden">
-        <CardHeader className="shrink-0">
-          <div>
-            <CardTitle>Public Form Submissions</CardTitle>
-            <CardDescription>
-              {filteredBookings.length} of {publicBookings.length} bookings
-            </CardDescription>
-          </div>
-        </CardHeader>
-
         <CardContent className="p-0 flex-1 min-h-0 flex flex-col overflow-hidden">
           {isLoading ? (
             <div className="text-center py-16 text-slate-400 text-sm">
@@ -151,6 +142,7 @@ export const PublicBookingsList = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-12 text-center">#</TableHead>
                       <TableHead>BOOKING ID</TableHead>
                       <TableHead>CLIENT NAME</TableHead>
                       <TableHead>PACKAGE & SHIFT</TableHead>
@@ -160,12 +152,17 @@ export const PublicBookingsList = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredBookings.map((b: any) => (
+                    {filteredBookings.map((b: any, index: number) => (
                       <TableRow
                         key={b._id}
                         onClick={() => navigate(`/bookings/${b._id}`)}
                         className="cursor-pointer group"
                       >
+                        {/* Row Number */}
+                        <TableCell className="text-center font-mono text-xs text-slate-400 font-semibold w-12">
+                          {index + 1}
+                        </TableCell>
+
                         {/* Booking ID */}
                         <TableCell>
                           <span className="font-extrabold text-slate-900 font-mono text-xs group-hover:text-teal-600 transition-colors">

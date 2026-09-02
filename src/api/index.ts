@@ -376,7 +376,7 @@ export const deleteExpense = async (id: string) => {
 };
 
 // --- Admin NA API ---
-export const getAdminNAReports = async (params?: { date?: string; caregiverId?: string; status?: string }) => {
+export const getAdminNAReports = async (params?: { date?: string; startDate?: string; endDate?: string; caregiverId?: string; status?: string }) => {
   const { data } = await api.get('/admin/na-reports', { params });
   return data;
 };
@@ -391,7 +391,7 @@ export const generateNAReportAISummary = async (id: string) => {
   return data;
 };
 
-export const getAdminDutyLogs = async (params?: { date?: string; caregiverId?: string }) => {
+export const getAdminDutyLogs = async (params?: { date?: string; startDate?: string; endDate?: string; caregiverId?: string }) => {
   const { data } = await api.get('/admin/duty-logs', { params });
   return data;
 };

@@ -20,7 +20,7 @@ import {
 import * as XLSX from 'xlsx';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
+import { Card, CardContent } from '../components/ui/Card';
 import { PageHeader } from '../components/ui/PageHeader';
 import { SearchInput } from '../components/ui/SearchInput';
 import { Avatar } from '../components/ui/Avatar';
@@ -366,25 +366,20 @@ export const Parents = () => {
         </div>
       )}
 
+      {/* Search Toolbar */}
+      <div className="shrink-0 flex justify-end">
+        <div className="w-full sm:w-72">
+          <SearchInput
+            placeholder="Search by parent or child..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            onClear={() => setSearchTerm('')}
+          />
+        </div>
+      </div>
+
       {/* Main Table Card */}
       <Card className="flex-1 min-h-0 flex flex-col overflow-hidden">
-        <CardHeader className="shrink-0">
-          <div>
-            <CardTitle>Parents Directory</CardTitle>
-            <CardDescription>
-              {filteredParents.length} of {parents.length} total families registered
-            </CardDescription>
-          </div>
-          <div className="w-full sm:w-72">
-            <SearchInput
-              placeholder="Search by parent or child..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onClear={() => setSearchTerm('')}
-            />
-          </div>
-        </CardHeader>
-
         <CardContent className="p-0 flex-1 min-h-0 flex flex-col overflow-hidden">
           {isLoading ? (
             <div className="text-center py-16 text-slate-400 text-sm">
@@ -404,6 +399,7 @@ export const Parents = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-12 text-center">#</TableHead>
                       <TableHead>PARENT NAME</TableHead>
                       <TableHead>CONTACT & LOCATION</TableHead>
                       <TableHead>CHILDREN</TableHead>
@@ -412,7 +408,7 @@ export const Parents = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredParents.map((p: any) => {
+                    {filteredParents.map((p: any, index: number) => {
                       const children = p.children || [];
                       return (
                         <TableRow
@@ -420,6 +416,11 @@ export const Parents = () => {
                           onClick={() => navigate(`/parents/${p._id}`)}
                           className="cursor-pointer group"
                         >
+                          {/* Row Number */}
+                          <TableCell className="text-center font-mono text-xs text-slate-400 font-semibold w-12">
+                            {index + 1}
+                          </TableCell>
+
                           {/* Parent Name */}
                           <TableCell>
                             <div className="flex items-center gap-3">

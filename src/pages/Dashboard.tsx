@@ -1,8 +1,7 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchStats } from '../api';
 import { format } from 'date-fns';
-import CustomDatePicker from '../components/CustomDatePicker';
 import {
   Clock,
   FileText,
@@ -10,41 +9,173 @@ import {
   Activity,
   PhoneCall,
   Calendar,
+  Calendar as CalendarIcon,
   Waves,
   Mail,
   TrendingUp,
+  X,
 } from 'lucide-react';
+import { DateRange, type Range, type RangeKeyDict } from 'react-date-range';
+import 'react-date-range/dist/styles.css';
+import 'react-date-range/dist/theme/default.css';
+import { Button } from '../components/ui/Button';
 
 const Dashboard = () => {
-  const [dateRange, setDateRange] = useState<'all' | 'daily' | 'weekly' | 'monthly'>('all');
+  const [dateRange, setDateRange] = useState<'all' | 'daily' | 'weekly' | 'monthly' | 'custom'>('all');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [dateRangeSelection, setDateRangeSelection] = useState<Range[]>([
+    {
+      startDate: new Date(),
+      endDate: new Date(),
+      key: 'selection',
+    },
+  ]);
+  const [tempDateRange, setTempDateRange] = useState<Range[]>([
+    {
+      startDate: new Date(),
+      endDate: new Date(),
+      key: 'selection',
+    },
+  ]);
+  const datePickerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        datePickerRef.current &&
+        !datePickerRef.current.contains(event.target as Node)
+      ) {
+        setShowDatePicker(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleRangeChange = (range: 'all' | 'daily' | 'weekly' | 'monthly') => {
     setDateRange(range);
     if (range === 'all') {
       setStartDate('');
       setEndDate('');
+      const defaultRange = [{ startDate: new Date(), endDate: new Date(), key: 'selection' }];
+      setDateRangeSelection(defaultRange);
+      setTempDateRange(defaultRange);
       return;
     }
     const today = new Date();
-    const fmt = (d: Date) => format(d, 'dd-MM-yyyy');
+    const fmt = (d: Date) => format(d, 'yyyy-MM-dd');
     if (range === 'daily') {
       setStartDate(fmt(today));
       setEndDate(fmt(today));
+      const r = [{ startDate: today, endDate: today, key: 'selection' }];
+      setDateRangeSelection(r);
+      setTempDateRange(r);
     } else if (range === 'weekly') {
       const weekAgo = new Date(today);
       weekAgo.setDate(weekAgo.getDate() - 6);
       setStartDate(fmt(weekAgo));
       setEndDate(fmt(today));
+      const r = [{ startDate: weekAgo, endDate: today, key: 'selection' }];
+      setDateRangeSelection(r);
+      setTempDateRange(r);
     } else {
       const first = new Date(today.getFullYear(), today.getMonth(), 1);
       setStartDate(fmt(first));
       setEndDate(fmt(today));
+      const r = [{ startDate: first, endDate: today, key: 'selection' }];
+      setDateRangeSelection(r);
+      setTempDateRange(r);
     }
   };
 
-  const toApiDate = (d: string) => (d ? d.split('-').reverse().join('-') : '');
+  const openDatePicker = () => {
+    if (startDate && endDate) {
+      const [sYear, sMonth, sDay] = startDate.split('-').map(Number);
+      const [eYear, eMonth, eDay] = endDate.split('-').map(Number);
+      const current = [
+        {
+          startDate: new Date(sYear, sMonth - 1, sDay),
+          endDate: new Date(eYear, eMonth - 1, eDay),
+          key: 'selection',
+        },
+      ];
+      setTempDateRange(current);
+    } else {
+      setTempDateRange(dateRangeSelection);
+    }
+    setShowDatePicker(true);
+  };
+
+  const handleDateRangeChange = (ranges: RangeKeyDict) => {
+    const { selection } = ranges;
+    setTempDateRange([selection]);
+  };
+
+  const applyPreset = (preset: 'today' | 'yesterday' | 'thisWeek' | 'thisMonth' | 'all') => {
+    const today = new Date();
+    if (preset === 'all') {
+      const resetRange = [{ startDate: new Date(), endDate: new Date(), key: 'selection' }];
+      setDateRangeSelection(resetRange);
+      setTempDateRange(resetRange);
+      setStartDate('');
+      setEndDate('');
+      setDateRange('all');
+      setShowDatePicker(false);
+      return;
+    }
+
+    let start = new Date(today);
+    let end = new Date(today);
+
+    if (preset === 'today') {
+      start = today;
+      end = today;
+    } else if (preset === 'yesterday') {
+      const y = new Date(today);
+      y.setDate(y.getDate() - 1);
+      start = y;
+      end = y;
+    } else if (preset === 'thisWeek') {
+      const day = today.getDay();
+      const diff = today.getDate() - day + (day === 0 ? -6 : 1);
+      start = new Date(today.getFullYear(), today.getMonth(), diff);
+      end = new Date();
+    } else if (preset === 'thisMonth') {
+      start = new Date(today.getFullYear(), today.getMonth(), 1);
+      end = new Date();
+    }
+
+    setTempDateRange([{ startDate: start, endDate: end, key: 'selection' }]);
+  };
+
+  const handleApplyDateRange = () => {
+    const sel = tempDateRange[0];
+    if (sel?.startDate && sel?.endDate) {
+      setDateRangeSelection(tempDateRange);
+      setStartDate(format(sel.startDate as Date, 'yyyy-MM-dd'));
+      setEndDate(format(sel.endDate as Date, 'yyyy-MM-dd'));
+      setDateRange('custom');
+    }
+    setShowDatePicker(false);
+  };
+
+  const handleClearDateFilter = () => {
+    const defaultRange = [{ startDate: new Date(), endDate: new Date(), key: 'selection' }];
+    setDateRangeSelection(defaultRange);
+    setTempDateRange(defaultRange);
+    setStartDate('');
+    setEndDate('');
+    setDateRange('all');
+    setShowDatePicker(false);
+  };
+
+  const toApiDate = (d: string) => {
+    if (!d) return '';
+    if (d.includes('-') && d.split('-')[0].length === 4) return d;
+    return d.split('-').reverse().join('-');
+  };
 
   const { data: stats, isLoading } = useQuery({
     queryKey: ['stats', startDate, endDate],
@@ -114,27 +245,29 @@ const Dashboard = () => {
           })}
         </div>
 
-        {/* Date Pickers on the Right */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="w-40 sm:w-44">
-            <CustomDatePicker
-              selected={
-                startDate ? new Date(startDate.split('-').reverse().join('-')) : new Date()
-              }
-              onChange={(date) => setStartDate(format(date, 'dd-MM-yyyy'))}
-              placeholder="27-08-2026"
-            />
-          </div>
-          <span className="text-xs font-semibold text-slate-400">to</span>
-          <div className="w-40 sm:w-44">
-            <CustomDatePicker
-              selected={
-                endDate ? new Date(endDate.split('-').reverse().join('-')) : new Date()
-              }
-              onChange={(date) => setEndDate(format(date, 'dd-MM-yyyy'))}
-              placeholder="27-08-2026"
-            />
-          </div>
+        {/* Date Range Picker Button on the Right */}
+        <div className="flex items-center gap-1">
+          <Button
+            variant={startDate ? 'primary' : 'outline'}
+            size="sm"
+            onClick={openDatePicker}
+            leftIcon={<CalendarIcon size={14} />}
+            className="cursor-pointer"
+          >
+            {startDate
+              ? `${startDate} — ${endDate || startDate}`
+              : 'Date Range'}
+          </Button>
+          {startDate && (
+            <button
+              type="button"
+              onClick={handleClearDateFilter}
+              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
+              title="Clear date range filter"
+            >
+              <X size={14} />
+            </button>
+          )}
         </div>
       </div>
 
@@ -549,6 +682,98 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* DATE RANGE MODAL */}
+      {showDatePicker && (
+        <div 
+          className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-3 animate-fadeIn"
+          onClick={() => setShowDatePicker(false)}
+        >
+          <div
+            ref={datePickerRef}
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-3xl max-w-lg w-full p-5 shadow-2xl border border-slate-100 space-y-3.5 animate-fadeIn max-h-[95vh] overflow-y-auto"
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center font-bold">
+                  <CalendarIcon size={18} />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900">Select Date Range</h4>
+                  <p className="text-xs text-slate-400">Filter financial reports by date range</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowDatePicker(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Quick Presets */}
+            <div>
+              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Quick Presets</p>
+              <div className="flex flex-wrap gap-1.5">
+                <Button size="xs" variant="outline" onClick={() => applyPreset('today')}>
+                  Today
+                </Button>
+                <Button size="xs" variant="outline" onClick={() => applyPreset('yesterday')}>
+                  Yesterday
+                </Button>
+                <Button size="xs" variant="outline" onClick={() => applyPreset('thisWeek')}>
+                  This Week
+                </Button>
+                <Button size="xs" variant="outline" onClick={() => applyPreset('thisMonth')}>
+                  This Month
+                </Button>
+                <Button size="xs" variant="outline" onClick={() => applyPreset('all')}>
+                  All Time
+                </Button>
+              </div>
+            </div>
+
+            {/* Calendar Widget */}
+            <div className="overflow-x-auto flex justify-center bg-slate-50/50 rounded-2xl p-2 border border-slate-100">
+              <DateRange
+                ranges={tempDateRange}
+                onChange={handleDateRangeChange}
+                rangeColors={['#14B8A6']}
+                editableDateInputs={true}
+                moveRangeOnFirstSelection={false}
+              />
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+              <span className="text-xs font-semibold text-slate-600">
+                {tempDateRange[0]?.startDate && tempDateRange[0]?.endDate
+                  ? `${format(tempDateRange[0].startDate, 'yyyy-MM-dd')} to ${format(tempDateRange[0].endDate, 'yyyy-MM-dd')}`
+                  : 'No date selected'}
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleClearDateFilter}
+                >
+                  Clear Filter
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={handleApplyDateRange}
+                >
+                  Done
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

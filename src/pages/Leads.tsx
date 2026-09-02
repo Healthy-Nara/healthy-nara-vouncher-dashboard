@@ -19,7 +19,7 @@ import {
 import { useStatsToggle } from '../hooks/useStatsToggle';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
+import { Card, CardContent } from '../components/ui/Card';
 import { PageHeader } from '../components/ui/PageHeader';
 import { SearchInput } from '../components/ui/SearchInput';
 import { Avatar } from '../components/ui/Avatar';
@@ -247,15 +247,6 @@ export const Leads = () => {
 
       {/* Leads Table Card */}
       <Card className="flex-1 min-h-0 flex flex-col overflow-hidden">
-        <CardHeader className="shrink-0">
-          <div>
-            <CardTitle>Inquiries & Leads</CardTitle>
-            <CardDescription>
-              {filteredLeads.length} of {allLeads.length} total leads
-            </CardDescription>
-          </div>
-        </CardHeader>
-
         <CardContent className="p-0 flex-1 min-h-0 flex flex-col overflow-hidden">
           {isLoading ? (
             <div className="text-center py-16 text-slate-400 text-sm">
@@ -275,6 +266,7 @@ export const Leads = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-12 text-center">#</TableHead>
                       <TableHead>CUSTOMER NAME</TableHead>
                       <TableHead>CHANNEL</TableHead>
                       <TableHead>REQUIREMENTS</TableHead>
@@ -284,7 +276,7 @@ export const Leads = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredLeads.map((lead: any) => {
+                    {filteredLeads.map((lead: any, index: number) => {
                       const ChannelIcon = CHANNEL_ICONS[lead.channel] || Phone;
                       return (
                         <TableRow
@@ -292,6 +284,10 @@ export const Leads = () => {
                           onClick={() => navigate(`/leads/${lead._id}`)}
                           className="cursor-pointer group"
                         >
+                          {/* Row Number */}
+                          <TableCell className="text-center font-mono text-xs text-slate-400 font-semibold w-12">
+                            {index + 1}
+                          </TableCell>
                           {/* Customer Name with Avatar */}
                           <TableCell>
                             <div className="flex items-center gap-3">

@@ -15,7 +15,7 @@ import {
 import { useStatsToggle } from '../hooks/useStatsToggle';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
+import { Card, CardContent } from '../components/ui/Card';
 import { PageHeader } from '../components/ui/PageHeader';
 import { SearchInput } from '../components/ui/SearchInput';
 import { Avatar } from '../components/ui/Avatar';
@@ -175,15 +175,6 @@ export const Tickets = () => {
 
       {/* Tickets Table Card */}
       <Card className="flex-1 min-h-0 flex flex-col overflow-hidden">
-        <CardHeader className="shrink-0">
-          <div>
-            <CardTitle>Tickets List</CardTitle>
-            <CardDescription>
-              {tickets.length} total tickets found
-            </CardDescription>
-          </div>
-        </CardHeader>
-
         <CardContent className="p-0 flex-1 min-h-0 flex flex-col overflow-hidden">
           {isLoading ? (
             <div className="text-center py-16 text-slate-400 text-sm">
@@ -203,6 +194,7 @@ export const Tickets = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-12 text-center">#</TableHead>
                       <TableHead>TICKET TITLE</TableHead>
                       <TableHead>PRIORITY</TableHead>
                       <TableHead>ASSIGNEE</TableHead>
@@ -212,12 +204,17 @@ export const Tickets = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {tickets.map((t: any) => (
+                    {tickets.map((t: any, index: number) => (
                       <TableRow
                         key={t._id}
                         onClick={() => navigate(`/tickets/${t._id}`)}
                         className="cursor-pointer group"
                       >
+                        {/* Row Number */}
+                        <TableCell className="text-center font-mono text-xs text-slate-400 font-semibold w-12">
+                          {index + 1}
+                        </TableCell>
+
                         {/* Title & Description */}
                         <TableCell>
                           <div>

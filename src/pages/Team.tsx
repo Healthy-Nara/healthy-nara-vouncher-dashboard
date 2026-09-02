@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
+import { Card, CardContent } from '../components/ui/Card';
 import { PageHeader } from '../components/ui/PageHeader';
 import { Avatar } from '../components/ui/Avatar';
 import {
@@ -104,15 +104,6 @@ export const Team = () => {
 
       {/* Users Table Card */}
       <Card className="flex-1 min-h-0 flex flex-col overflow-hidden">
-        <CardHeader className="shrink-0">
-          <div>
-            <CardTitle>Team Members</CardTitle>
-            <CardDescription>
-              {users.length} active administrative accounts
-            </CardDescription>
-          </div>
-        </CardHeader>
-
         <CardContent className="p-0 flex-1 min-h-0 flex flex-col overflow-hidden">
           {isLoading ? (
             <div className="text-center py-16 text-slate-400 text-sm">
@@ -126,6 +117,7 @@ export const Team = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-12 text-center">#</TableHead>
                       <TableHead>USER</TableHead>
                       <TableHead>ROLE</TableHead>
                       <TableHead>STATUS</TableHead>
@@ -134,10 +126,15 @@ export const Team = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {users.map((u: any) => {
+                    {users.map((u: any, index: number) => {
                       const isMe = u._id === currentUser?.id;
                       return (
                         <TableRow key={u._id} className={u.isActive === false ? 'opacity-60 bg-slate-50' : ''}>
+                          {/* Row Number */}
+                          <TableCell className="text-center font-mono text-xs text-slate-400 font-semibold w-12">
+                            {index + 1}
+                          </TableCell>
+
                           {/* User Avatar & Name */}
                           <TableCell>
                             <div className="flex items-center gap-3">
