@@ -12,7 +12,10 @@ import {
   CreditCard,
   Tag,
   Loader2,
+  BarChart3,
+  EyeOff,
 } from 'lucide-react';
+import { useStatsToggle } from '../hooks/useStatsToggle';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
@@ -78,6 +81,7 @@ export const Expenses = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<ExpenseForm>(emptyForm());
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [showStats, toggleStats] = useStatsToggle('expenses');
 
   const { data: expenses = [], isLoading } = useQuery<any[]>({
     queryKey: ['expenses'],
@@ -182,89 +186,105 @@ export const Expenses = () => {
           title="Operating Expenses"
           subtitle="Track company expenditures, operational costs, and payment channels."
           actions={
-            <Button
-              variant="primary"
-              size="md"
-              onClick={openCreate}
-              leftIcon={<Plus size={16} />}
-            >
-              Add Expense
-            </Button>
+            <>
+              <Button
+                variant="outline"
+                size="md"
+                onClick={toggleStats}
+                leftIcon={showStats ? <EyeOff size={15} /> : <BarChart3 size={15} />}
+                className="border-slate-200 text-slate-700 hover:bg-slate-50 font-semibold cursor-pointer"
+                title={showStats ? 'Hide filters & summary statistics' : 'Show filters & summary statistics'}
+              >
+                {showStats ? 'Hide Filters & Stats' : 'Show Filters & Stats'}
+              </Button>
+              <Button
+                variant="primary"
+                size="md"
+                onClick={openCreate}
+                leftIcon={<Plus size={16} />}
+              >
+                Add Expense
+              </Button>
+            </>
           }
         />
       </div>
 
-      {/* 2 Metric Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 shrink-0">
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center font-bold shrink-0">
-            <Wallet size={18} />
-          </div>
-          <div>
-            <div className="text-xl font-black text-rose-600 tracking-tight">
-              {formatMMK(totalExpenses)}
+      {/* 2 Metric Summary Cards (Collapsible) */}
+      {showStats && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 shrink-0 animate-fadeIn">
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center font-bold shrink-0">
+              <Wallet size={18} />
             </div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-              Total Expenses Recorded
-            </p>
+            <div>
+              <div className="text-xl font-black text-rose-600 tracking-tight">
+                {formatMMK(totalExpenses)}
+              </div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                Total Expenses Recorded
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center font-bold shrink-0">
+              <Tag size={18} />
+            </div>
+            <div>
+              <div className="text-xl font-black text-slate-900 tracking-tight">
+                {expenses.length} Entries
+              </div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                Transaction Records
+              </p>
+            </div>
           </div>
         </div>
+      )}
 
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center font-bold shrink-0">
-            <Tag size={18} />
-          </div>
-          <div>
-            <div className="text-xl font-black text-slate-900 tracking-tight">
-              {expenses.length} Entries
-            </div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-              Transaction Records
-            </p>
-          </div>
-        </div>
-      </div>
+      {/* Filter Toolbar (Collapsible with stats) */}
+      {showStats && (
+        <Card className="shrink-0 animate-fadeIn">
+          <CardContent className="p-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-bold text-slate-500">Category:</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {CATEGORIES.map((cat) => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setCategoryFilter(cat)}
+                      className={`px-3 py-1 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                        categoryFilter === cat
+                          ? 'bg-teal-50 text-teal-800 border border-teal-200 font-bold'
+                          : 'bg-slate-50 text-slate-600 border border-slate-200/70 hover:bg-slate-100'
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-      {/* Filter Toolbar */}
-      <Card className="shrink-0">
-        <CardContent className="p-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-bold text-slate-500">Category:</span>
-              <div className="flex flex-wrap gap-1.5">
-                {CATEGORIES.map((cat) => (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => setCategoryFilter(cat)}
-                    className={`px-3 py-1 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                      categoryFilter === cat
-                        ? 'bg-teal-50 text-teal-800 border border-teal-200 font-bold'
-                        : 'bg-slate-50 text-slate-600 border border-slate-200/70 hover:bg-slate-100'
-                    }`}
-                  >
-                    {cat}
-                  </button>
-                ))}
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  value={dateFilter}
+                  onChange={(e) => setDateFilter(e.target.value)}
+                  className="p-2 text-xs rounded-xl border border-slate-200 bg-white text-slate-700 outline-none"
+                />
+                {dateFilter && (
+                  <Button variant="ghost" size="xs" onClick={() => setDateFilter('')}>
+                    Clear Date
+                  </Button>
+                )}
               </div>
             </div>
-
-            <div className="flex items-center gap-2">
-              <input
-                type="date"
-                value={dateFilter}
-                onChange={(e) => setDateFilter(e.target.value)}
-                className="p-2 text-xs rounded-xl border border-slate-200 bg-white text-slate-700 outline-none"
-              />
-              {dateFilter && (
-                <Button variant="ghost" size="xs" onClick={() => setDateFilter('')}>
-                  Clear Date
-                </Button>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Expenses Table Card */}
       <Card className="flex-1 min-h-0 flex flex-col overflow-hidden">

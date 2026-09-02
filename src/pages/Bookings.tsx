@@ -15,7 +15,10 @@ import {
   FileSpreadsheet,
   Edit2,
   Phone,
+  EyeOff,
+  Filter,
 } from 'lucide-react';
+import { useStatsToggle } from '../hooks/useStatsToggle';
 import CustomDatePicker from '../components/CustomDatePicker';
 import * as XLSX from 'xlsx';
 import { Button } from '../components/ui/Button';
@@ -46,6 +49,7 @@ export const Bookings = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('All');
+  const [showStats, toggleStats] = useStatsToggle('bookings');
   const [showParentModal, setShowParentModal] = useState(false);
   const [parentSearch, setParentSearch] = useState('');
   const [selectedParentId, setSelectedParentId] = useState('');
@@ -357,6 +361,16 @@ export const Bookings = () => {
               <Button
                 variant="outline"
                 size="sm"
+                onClick={toggleStats}
+                leftIcon={showStats ? <EyeOff size={14} /> : <Filter size={14} />}
+                className="border-slate-200 text-slate-700 hover:bg-slate-50 font-semibold cursor-pointer"
+                title={showStats ? 'Hide filter tabs & search' : 'Show filter tabs & search'}
+              >
+                {showStats ? 'Hide Filters' : 'Show Filters'}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={handleImportClick}
                 disabled={importing}
                 leftIcon={
@@ -418,23 +432,25 @@ export const Bookings = () => {
         </div>
       )}
 
-      {/* Filter Tabs & Search Bar row matching reference image */}
-      <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <Tabs
-          items={tabItems}
-          activeId={statusFilter}
-          onChange={(id) => setStatusFilter(id)}
-        />
-
-        <div className="w-full md:w-72">
-          <SearchInput
-            placeholder="Search bookings..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            onClear={() => setSearchTerm('')}
+      {/* Filter Tabs & Search Bar row (Collapsible) */}
+      {showStats && (
+        <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-4 animate-fadeIn">
+          <Tabs
+            items={tabItems}
+            activeId={statusFilter}
+            onChange={(id) => setStatusFilter(id)}
           />
+
+          <div className="w-full md:w-72">
+            <SearchInput
+              placeholder="Search bookings..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onClear={() => setSearchTerm('')}
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Main Table Card matching reference image */}
       <Card className="flex-1 min-h-0 flex flex-col overflow-hidden">

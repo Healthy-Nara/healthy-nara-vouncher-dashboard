@@ -13,7 +13,10 @@ import {
   Trash2,
   CalendarDays,
   Loader2,
+  EyeOff,
+  Filter,
 } from 'lucide-react';
+import { useStatsToggle } from '../hooks/useStatsToggle';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
@@ -85,6 +88,7 @@ export const Leads = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form, setForm] = useState<LeadForm>(emptyForm());
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [showStats, toggleStats] = useStatsToggle('leads');
 
   const { data: allLeads = [], isLoading } = useQuery<any[]>({
     queryKey: ['leads'],
@@ -188,44 +192,58 @@ export const Leads = () => {
           title="Leads Pipeline"
           subtitle="Manage customer inquiries, channels, and conversion stages."
           actions={
-            <Button
-              variant="primary"
-              size="md"
-              onClick={() => setIsModalOpen(true)}
-              leftIcon={<Plus size={16} />}
-            >
-              Add New Lead
-            </Button>
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={toggleStats}
+                leftIcon={showStats ? <EyeOff size={14} /> : <Filter size={14} />}
+                className="border-slate-200 text-slate-700 hover:bg-slate-50 font-semibold cursor-pointer"
+                title={showStats ? 'Hide pipeline tabs & search' : 'Show pipeline tabs & search'}
+              >
+                {showStats ? 'Hide Filters' : 'Show Filters'}
+              </Button>
+              <Button
+                variant="primary"
+                size="md"
+                onClick={() => setIsModalOpen(true)}
+                leftIcon={<Plus size={16} />}
+              >
+                Add New Lead
+              </Button>
+            </>
           }
         />
       </div>
 
-      {/* Tabs and Search */}
-      <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <Tabs
-          items={tabItems}
-          activeId={stageFilter}
-          onChange={(id) => setStageFilter(id)}
-        />
+      {/* Tabs and Search (Collapsible) */}
+      {showStats && (
+        <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-4 animate-fadeIn">
+          <Tabs
+            items={tabItems}
+            activeId={stageFilter}
+            onChange={(id) => setStageFilter(id)}
+          />
 
-        <div className="flex items-center gap-2">
-          <div className="w-full md:w-64">
-            <SearchInput
-              placeholder="Search leads..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onClear={() => setSearchTerm('')}
+          <div className="flex items-center gap-2">
+            <div className="w-full md:w-64">
+              <SearchInput
+                placeholder="Search leads..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onClear={() => setSearchTerm('')}
+              />
+            </div>
+            <input
+              type="date"
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
+              className="p-2 text-xs rounded-xl border border-slate-200 bg-white text-slate-700 outline-none"
+              title="Filter by date"
             />
           </div>
-          <input
-            type="date"
-            value={dateFilter}
-            onChange={(e) => setDateFilter(e.target.value)}
-            className="p-2 text-xs rounded-xl border border-slate-200 bg-white text-slate-700 outline-none"
-            title="Filter by date"
-          />
         </div>
-      </div>
+      )}
 
       {/* Leads Table Card */}
       <Card className="flex-1 min-h-0 flex flex-col overflow-hidden">

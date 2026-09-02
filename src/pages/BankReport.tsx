@@ -11,7 +11,10 @@ import {
   ReceiptText,
   Loader2,
   PieChart,
+  BarChart3,
+  EyeOff,
 } from 'lucide-react';
+import { useStatsToggle } from '../hooks/useStatsToggle';
 import CustomDatePicker from '../components/CustomDatePicker';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
@@ -31,6 +34,7 @@ export const BankReport = () => {
   const [dateRange, setDateRange] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   const [startDate, setStartDate] = useState(todayStr);
   const [endDate, setEndDate] = useState(todayStr);
+  const [showStats, toggleStats] = useStatsToggle('bankreport');
 
   const handleRangeChange = (range: 'daily' | 'weekly' | 'monthly') => {
     setDateRange(range);
@@ -120,74 +124,90 @@ export const BankReport = () => {
         category="FINANCIAL AUDIT"
         title="Bank Reconciliation Report"
         subtitle="Financial overview, income/expense breakdown, and bank payment channels."
+        actions={
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={toggleStats}
+            leftIcon={showStats ? <EyeOff size={14} /> : <BarChart3 size={14} />}
+            className="border-slate-200 text-slate-700 hover:bg-slate-50 font-semibold cursor-pointer"
+            title={showStats ? 'Hide filters & financial overview' : 'Show filters & financial overview'}
+          >
+            {showStats ? 'Hide Filters & Overview' : 'Show Filters & Overview'}
+          </Button>
+        }
       />
 
-      {/* Date Filter Toolbar */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-2xl">
-              {(['daily', 'weekly', 'monthly'] as const).map((range) => (
-                <Button
-                  key={range}
-                  variant={dateRange === range ? 'primary' : 'ghost'}
-                  size="xs"
-                  onClick={() => handleRangeChange(range)}
-                  className="capitalize text-xs rounded-xl"
-                >
-                  {range}
-                </Button>
-              ))}
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Calendar size={15} className="text-slate-400" />
-              <CustomDatePicker
-                selected={
-                  startDate
-                    ? new Date(startDate.split('-').reverse().join('-'))
-                    : new Date()
-                }
-                onChange={(date) => setStartDate(format(date, 'dd-MM-yyyy'))}
-              />
-              <span className="text-xs text-slate-400 font-bold">to</span>
-              <CustomDatePicker
-                selected={
-                  endDate ? new Date(endDate.split('-').reverse().join('-')) : new Date()
-                }
-                onChange={(date) => setEndDate(format(date, 'dd-MM-yyyy'))}
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* 5 Financial Summary Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        {summaryCards.map((card, idx) => {
-          const Icon = card.icon;
-          return (
-            <div
-              key={idx}
-              className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs flex flex-col justify-between"
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                  {card.label}
-                </span>
-                <div className={`p-1.5 rounded-lg ${card.color}`}>
-                  <Icon size={14} />
-                </div>
+      {/* Date Filter Toolbar (Collapsible with overview) */}
+      {showStats && (
+        <Card className="animate-fadeIn">
+          <CardContent className="p-4">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-2xl">
+                {(['daily', 'weekly', 'monthly'] as const).map((range) => (
+                  <Button
+                    key={range}
+                    variant={dateRange === range ? 'primary' : 'ghost'}
+                    size="xs"
+                    onClick={() => handleRangeChange(range)}
+                    className="capitalize text-xs rounded-xl"
+                  >
+                    {range}
+                  </Button>
+                ))}
               </div>
-              <div className="mt-3">
-                <div className="text-lg sm:text-xl font-black text-slate-900 font-mono tracking-tight">
-                  {fmt(card.value)}
-                </div>
+
+              <div className="flex items-center gap-2">
+                <Calendar size={15} className="text-slate-400" />
+                <CustomDatePicker
+                  selected={
+                    startDate
+                      ? new Date(startDate.split('-').reverse().join('-'))
+                      : new Date()
+                  }
+                  onChange={(date) => setStartDate(format(date, 'dd-MM-yyyy'))}
+                />
+                <span className="text-xs text-slate-400 font-bold">to</span>
+                <CustomDatePicker
+                  selected={
+                    endDate ? new Date(endDate.split('-').reverse().join('-')) : new Date()
+                  }
+                  onChange={(date) => setEndDate(format(date, 'dd-MM-yyyy'))}
+                />
               </div>
             </div>
-          );
-        })}
-      </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 5 Financial Summary Cards (Collapsible) */}
+      {showStats && (
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 animate-fadeIn">
+          {summaryCards.map((card, idx) => {
+            const Icon = card.icon;
+            return (
+              <div
+                key={idx}
+                className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs flex flex-col justify-between"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    {card.label}
+                  </span>
+                  <div className={`p-1.5 rounded-lg ${card.color}`}>
+                    <Icon size={14} />
+                  </div>
+                </div>
+                <div className="mt-3">
+                  <div className="text-lg sm:text-xl font-black text-slate-900 font-mono tracking-tight">
+                    {fmt(card.value)}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* 2-Column Details: Channel Breakdown & Daily Log */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

@@ -10,7 +10,10 @@ import {
   ChevronRight,
   Loader2,
   Receipt,
+  BarChart3,
+  EyeOff,
 } from 'lucide-react';
+import { useStatsToggle } from '../hooks/useStatsToggle';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
@@ -32,6 +35,7 @@ export const Payouts = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<string>('pending');
+  const [showStats, toggleStats] = useStatsToggle('payouts');
 
   const { data: summary, isLoading } = useQuery({
     queryKey: ['payouts'],
@@ -41,7 +45,8 @@ export const Payouts = () => {
   const pendingInvoices = summary?.pending || [];
   const paidInvoices = summary?.paid || [];
 
-  const filterList = (list: any[]) => {
+  const displayList = useMemo(() => {
+    const list = activeTab === 'pending' ? pendingInvoices : paidInvoices;
     if (!searchTerm) return list;
     const s = searchTerm.toLowerCase();
     return list.filter(
@@ -50,88 +55,100 @@ export const Payouts = () => {
         inv.caregiverName?.toLowerCase().includes(s) ||
         inv.customerName?.toLowerCase().includes(s)
     );
-  };
-
-  const displayList = useMemo(() => {
-    return filterList(activeTab === 'pending' ? pendingInvoices : paidInvoices);
   }, [activeTab, pendingInvoices, paidInvoices, searchTerm]);
 
   const tabItems = [
     { id: 'pending', label: 'Pending Payouts', count: pendingInvoices.length },
-    { id: 'paid', label: 'Paid History', count: paidInvoices.length },
+    { id: 'paid', label: 'Disbursed Payouts', count: paidInvoices.length },
   ];
 
   const formatMMK = (n: number) => `${(n || 0).toLocaleString()} MMK`;
 
   return (
     <div className="h-full flex flex-col space-y-4 min-h-0 overflow-hidden">
-      {/* Top Page Header */}
+      {/* Top Page Header matching reference image */}
       <div className="shrink-0">
         <PageHeader
-          category="FINANCIALS & PAYROLL"
+          category="FINANCIALS & BILLING"
           title="Caregiver Payouts"
-          subtitle="Manage salary disbursements, caregiver payouts, and payment vouchers."
+          subtitle="Manage caregiver disbursements, pay slips, and payout verification."
           actions={
-            <Button
-              variant="primary"
-              size="md"
-              onClick={() => navigate('/update-payout')}
-              leftIcon={<Banknote size={16} />}
-            >
-              Update Payout
-            </Button>
+            <>
+              <Button
+                variant="outline"
+                size="md"
+                onClick={toggleStats}
+                leftIcon={showStats ? <EyeOff size={15} /> : <BarChart3 size={15} />}
+                className="border-slate-200 text-slate-700 hover:bg-slate-50 font-semibold cursor-pointer"
+                title={showStats ? 'Hide filters & summary statistics' : 'Show filters & summary statistics'}
+              >
+                {showStats ? 'Hide Filters & Stats' : 'Show Filters & Stats'}
+              </Button>
+              <Button
+                variant="primary"
+                size="md"
+                onClick={() => navigate('/update-payout')}
+                leftIcon={<Banknote size={16} />}
+              >
+                Update Payout
+              </Button>
+            </>
           }
         />
       </div>
 
-      {/* 2 Metric Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 shrink-0">
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold shrink-0">
-            <Clock size={18} />
-          </div>
-          <div>
-            <div className="text-xl font-black text-amber-700 tracking-tight">
-              {formatMMK(summary?.totalPending || 0)}
+      {/* 2 Metric Summary Cards (Collapsible) */}
+      {showStats && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 shrink-0 animate-fadeIn">
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold shrink-0">
+              <Clock size={18} />
             </div>
-            <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">
-              Pending Payout ({pendingInvoices.length} invoices)
-            </p>
+            <div>
+              <div className="text-xl font-black text-amber-700 tracking-tight">
+                {formatMMK(summary?.totalPending || 0)}
+              </div>
+              <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">
+                Pending Payout ({pendingInvoices.length} invoices)
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold shrink-0">
+              <CheckCircle2 size={18} />
+            </div>
+            <div>
+              <div className="text-xl font-black text-emerald-700 tracking-tight">
+                {formatMMK(summary?.totalPaid || 0)}
+              </div>
+              <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">
+                Total Disbursed ({paidInvoices.length} invoices)
+              </p>
+            </div>
           </div>
         </div>
+      )}
 
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold shrink-0">
-            <CheckCircle2 size={18} />
-          </div>
-          <div>
-            <div className="text-xl font-black text-emerald-700 tracking-tight">
-              {formatMMK(summary?.totalPaid || 0)}
-            </div>
-            <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">
-              Total Disbursed ({paidInvoices.length} invoices)
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Tabs & Search */}
-      <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <Tabs
-          items={tabItems}
-          activeId={activeTab}
-          onChange={(id) => setActiveTab(id)}
-        />
-
-        <div className="w-full md:w-72">
-          <SearchInput
-            placeholder="Search invoice, caregiver..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            onClear={() => setSearchTerm('')}
+      {/* Tabs & Search (Collapsible with stats) */}
+      {showStats && (
+        <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-4 animate-fadeIn">
+          <Tabs
+            items={tabItems}
+            activeId={activeTab}
+            onChange={(id) => setActiveTab(id)}
           />
+
+          <div className="w-full md:w-72">
+            <SearchInput
+              placeholder="Search invoice, caregiver..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onClear={() => setSearchTerm('')}
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Payouts Table Card */}
       <Card className="flex-1 min-h-0 flex flex-col overflow-hidden">

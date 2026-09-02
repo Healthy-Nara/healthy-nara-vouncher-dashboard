@@ -16,7 +16,10 @@ import {
   Star,
   Loader2,
   ShieldCheck,
+  BarChart3,
+  EyeOff,
 } from 'lucide-react';
+import { useStatsToggle } from '../hooks/useStatsToggle';
 import { CaregiverCVModal } from '../components/CaregiverCVModal';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
@@ -85,6 +88,7 @@ export const Caregivers = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<CaregiverForm>(emptyForm());
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [showStats, toggleStats] = useStatsToggle('caregivers');
   const [createdCredentials, setCreatedCredentials] = useState<{
     username: string;
     password: string;
@@ -210,65 +214,79 @@ export const Caregivers = () => {
           title="Caregiver Directory"
           subtitle="Manage your care team and their current availability."
           actions={
-            <Button variant="primary" size="md" onClick={openCreate} leftIcon={<Plus size={16} />}>
-              Add Caregiver
-            </Button>
+            <>
+              <Button
+                variant="outline"
+                size="md"
+                onClick={toggleStats}
+                leftIcon={showStats ? <EyeOff size={15} /> : <BarChart3 size={15} />}
+                className="border-slate-200 text-slate-700 hover:bg-slate-50 font-semibold cursor-pointer"
+                title={showStats ? 'Hide summary statistics' : 'Show summary statistics'}
+              >
+                {showStats ? 'Hide Stats' : 'Show Stats'}
+              </Button>
+              <Button variant="primary" size="md" onClick={openCreate} leftIcon={<Plus size={16} />}>
+                Add Caregiver
+              </Button>
+            </>
           }
         />
       </div>
 
-      {/* 4 Stat Metric Cards matching reference image */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 shrink-0">
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-slate-100 text-slate-700 flex items-center justify-center font-bold shrink-0">
-            <Users size={18} />
-          </div>
-          <div>
-            <div className="text-xl font-black text-slate-900 tracking-tight">{totalCount}</div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">
-              Total Caregivers
-            </p>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center font-bold shrink-0">
-            <Briefcase size={18} />
-          </div>
-          <div>
-            <div className="text-xl font-black text-slate-900 tracking-tight">{onDutyCount}</div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">
-              On Duty
-            </p>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold shrink-0">
-            <CheckCircle2 size={18} />
-          </div>
-          <div>
-            <div className="text-xl font-black text-slate-900 tracking-tight">
-              {availableCount}
+      {/* 4 Stat Metric Cards (Collapsible) */}
+      {showStats && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 shrink-0 animate-fadeIn">
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-slate-100 text-slate-700 flex items-center justify-center font-bold shrink-0">
+              <Users size={18} />
             </div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">
-              Available
-            </p>
+            <div>
+              <div className="text-xl font-black text-slate-900 tracking-tight">{totalCount}</div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">
+                Total Caregivers
+              </p>
+            </div>
           </div>
-        </div>
 
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold shrink-0">
-            <Clock size={18} />
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center font-bold shrink-0">
+              <Briefcase size={18} />
+            </div>
+            <div>
+              <div className="text-xl font-black text-slate-900 tracking-tight">{onDutyCount}</div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">
+                On Duty
+              </p>
+            </div>
           </div>
-          <div>
-            <div className="text-xl font-black text-slate-900 tracking-tight">{awayCount}</div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">
-              Away
-            </p>
+
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold shrink-0">
+              <CheckCircle2 size={18} />
+            </div>
+            <div>
+              <div className="text-xl font-black text-slate-900 tracking-tight">
+                {availableCount}
+              </div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">
+                Available
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold shrink-0">
+              <Clock size={18} />
+            </div>
+            <div>
+              <div className="text-xl font-black text-slate-900 tracking-tight">{awayCount}</div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">
+                Away
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Main Table Card matching reference image */}
       <Card className="flex-1 min-h-0 flex flex-col overflow-hidden">

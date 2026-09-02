@@ -11,7 +11,10 @@ import {
   RefreshCw,
   ChevronRight,
   Baby,
+  BarChart3,
+  EyeOff,
 } from 'lucide-react';
+import { useStatsToggle } from '../hooks/useStatsToggle';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
@@ -35,6 +38,7 @@ export const NAReports = () => {
   );
   const [statusFilter, setStatusFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showStats, toggleStats] = useStatsToggle('nareports');
 
   const { data: reports = [], isLoading, refetch, isFetching } = useQuery<any[]>({
     queryKey: ['adminNAReports', selectedDate, statusFilter],
@@ -92,118 +96,134 @@ export const NAReports = () => {
           title="Daily Care Reports"
           subtitle="Review daily activity logs and health care updates submitted by Nurse Aids."
           actions={
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => refetch()}
-              disabled={isFetching}
-              leftIcon={
-                <RefreshCw
-                  size={14}
-                  className={isFetching ? 'animate-spin text-teal-600' : ''}
-                />
-              }
-            >
-              Refresh
-            </Button>
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={toggleStats}
+                leftIcon={showStats ? <EyeOff size={14} /> : <BarChart3 size={14} />}
+                className="border-slate-200 text-slate-700 hover:bg-slate-50 font-semibold cursor-pointer"
+                title={showStats ? 'Hide filters & summary statistics' : 'Show filters & summary statistics'}
+              >
+                {showStats ? 'Hide Filters & Stats' : 'Show Filters & Stats'}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => refetch()}
+                disabled={isFetching}
+                leftIcon={
+                  <RefreshCw
+                    size={14}
+                    className={isFetching ? 'animate-spin text-teal-600' : ''}
+                  />
+                }
+              >
+                Refresh
+              </Button>
+            </>
           }
         />
       </div>
 
-      {/* 3 Metric Summary Cards */}
-      <div className="grid grid-cols-3 gap-3 shrink-0">
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-xs flex items-center gap-3">
-          <div className="w-9 h-9 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center font-bold shrink-0">
-            <FileText size={18} />
-          </div>
-          <div>
-            <div className="text-xl font-black text-slate-900 tracking-tight">
-              {stats.total}
+      {/* 3 Metric Summary Cards (Collapsible) */}
+      {showStats && (
+        <div className="grid grid-cols-3 gap-3 shrink-0 animate-fadeIn">
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-xs flex items-center gap-3">
+            <div className="w-9 h-9 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center font-bold shrink-0">
+              <FileText size={18} />
             </div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-              Total Reports
-            </p>
+            <div>
+              <div className="text-xl font-black text-slate-900 tracking-tight">
+                {stats.total}
+              </div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                Total Reports
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-xs flex items-center gap-3">
+            <div className="w-9 h-9 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold shrink-0">
+              <CheckCircle2 size={18} />
+            </div>
+            <div>
+              <div className="text-xl font-black text-emerald-700 tracking-tight">
+                {stats.submitted}
+              </div>
+              <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">
+                Submitted
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-xs flex items-center gap-3">
+            <div className="w-9 h-9 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold shrink-0">
+              <Clock size={18} />
+            </div>
+            <div>
+              <div className="text-xl font-black text-amber-700 tracking-tight">
+                {stats.draft}
+              </div>
+              <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">
+                Drafting
+              </p>
+            </div>
           </div>
         </div>
+      )}
 
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-xs flex items-center gap-3">
-          <div className="w-9 h-9 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold shrink-0">
-            <CheckCircle2 size={18} />
-          </div>
-          <div>
-            <div className="text-xl font-black text-emerald-700 tracking-tight">
-              {stats.submitted}
-            </div>
-            <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">
-              Submitted
-            </p>
-          </div>
-        </div>
+      {/* Filter Toolbar (Collapsible with stats) */}
+      {showStats && (
+        <Card className="shrink-0 animate-fadeIn">
+          <CardContent className="p-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="w-full sm:w-72">
+                <SearchInput
+                  placeholder="Search caregiver, baby, client..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onClear={() => setSearchQuery('')}
+                />
+              </div>
 
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-xs flex items-center gap-3">
-          <div className="w-9 h-9 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold shrink-0">
-            <Clock size={18} />
-          </div>
-          <div>
-            <div className="text-xl font-black text-amber-700 tracking-tight">
-              {stats.draft}
-            </div>
-            <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">
-              Drafting
-            </p>
-          </div>
-        </div>
-      </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="p-2 text-xs rounded-xl border border-slate-200 bg-white text-slate-700 outline-none"
+                />
 
-      {/* Filter Toolbar */}
-      <Card className="shrink-0">
-        <CardContent className="p-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="w-full sm:w-72">
-              <SearchInput
-                placeholder="Search caregiver, baby, client..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onClear={() => setSearchQuery('')}
-              />
-            </div>
-
-            <div className="flex items-center gap-2">
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="p-2 text-xs rounded-xl border border-slate-200 bg-white text-slate-700 outline-none"
-              />
-
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="text-xs p-2 rounded-xl border border-slate-200 bg-white font-semibold text-slate-700 outline-none"
-              >
-                <option value="">Status: All</option>
-                <option value="submitted">Submitted</option>
-                <option value="draft">Draft</option>
-              </select>
-
-              {(selectedDate || statusFilter || searchQuery) && (
-                <Button
-                  variant="ghost"
-                  size="xs"
-                  onClick={() => {
-                    setSelectedDate('');
-                    setStatusFilter('');
-                    setSearchQuery('');
-                  }}
-                  className="text-rose-600 hover:bg-rose-50"
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="text-xs p-2 rounded-xl border border-slate-200 bg-white font-semibold text-slate-700 outline-none"
                 >
-                  Reset
-                </Button>
-              )}
+                  <option value="">Status: All</option>
+                  <option value="submitted">Submitted</option>
+                  <option value="draft">Draft</option>
+                </select>
+
+                {(selectedDate || statusFilter || searchQuery) && (
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    onClick={() => {
+                      setSelectedDate('');
+                      setStatusFilter('');
+                      setSearchQuery('');
+                    }}
+                    className="text-rose-600 hover:bg-rose-50"
+                  >
+                    Reset
+                  </Button>
+                )}
+              </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Table Card */}
       <Card className="flex-1 min-h-0 flex flex-col overflow-hidden">

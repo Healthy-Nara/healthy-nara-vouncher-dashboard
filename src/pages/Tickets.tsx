@@ -9,7 +9,10 @@ import {
   ChevronRight,
   X,
   Calendar,
+  EyeOff,
+  Filter,
 } from 'lucide-react';
+import { useStatsToggle } from '../hooks/useStatsToggle';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
@@ -34,6 +37,7 @@ export const Tickets = () => {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [showStats, toggleStats] = useStatsToggle('tickets');
   const [showModal, setShowModal] = useState(false);
 
   // New ticket form state
@@ -113,47 +117,61 @@ export const Tickets = () => {
           title="Support Tickets"
           subtitle="Manage customer requests, operational tickets, and team escalations."
           actions={
-            <Button
-              variant="primary"
-              size="md"
-              onClick={() => setShowModal(true)}
-              leftIcon={<Plus size={16} />}
-            >
-              New Ticket
-            </Button>
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={toggleStats}
+                leftIcon={showStats ? <EyeOff size={14} /> : <Filter size={14} />}
+                className="border-slate-200 text-slate-700 hover:bg-slate-50 font-semibold cursor-pointer"
+                title={showStats ? 'Hide search & filters' : 'Show search & filters'}
+              >
+                {showStats ? 'Hide Filters' : 'Show Filters'}
+              </Button>
+              <Button
+                variant="primary"
+                size="md"
+                onClick={() => setShowModal(true)}
+                leftIcon={<Plus size={16} />}
+              >
+                New Ticket
+              </Button>
+            </>
           }
         />
       </div>
 
-      {/* Filter Toolbar */}
-      <Card className="shrink-0">
-        <CardContent className="p-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="w-full sm:w-72">
-              <SearchInput
-                placeholder="Search tickets by title..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                onClear={() => setSearch('')}
-              />
-            </div>
+      {/* Filter Toolbar (Collapsible) */}
+      {showStats && (
+        <Card className="shrink-0 animate-fadeIn">
+          <CardContent className="p-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="w-full sm:w-72">
+                <SearchInput
+                  placeholder="Search tickets by title..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  onClear={() => setSearch('')}
+                />
+              </div>
 
-            <div className="flex items-center gap-2">
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="text-xs p-2 rounded-xl border border-slate-200 bg-white font-semibold text-slate-700 outline-none"
-              >
-                <option value="">Status: All</option>
-                <option value="Open">Open</option>
-                <option value="In Progress">In Progress</option>
-                <option value="Pending">Pending</option>
-                <option value="Resolved">Resolved</option>
-              </select>
+              <div className="flex items-center gap-2">
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="text-xs p-2 rounded-xl border border-slate-200 bg-white font-semibold text-slate-700 outline-none"
+                >
+                  <option value="">Status: All</option>
+                  <option value="Open">Open</option>
+                  <option value="In Progress">In Progress</option>
+                  <option value="Pending">Pending</option>
+                  <option value="Resolved">Resolved</option>
+                </select>
+              </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Tickets Table Card */}
       <Card className="flex-1 min-h-0 flex flex-col overflow-hidden">

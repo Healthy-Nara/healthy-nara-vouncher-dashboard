@@ -16,11 +16,15 @@ import {
   Clock,
   ChevronRight,
   Loader2,
+  BarChart3,
+  EyeOff,
 } from 'lucide-react';
 import { DateRange, type Range, type RangeKeyDict } from 'react-date-range';
 import { format } from 'date-fns';
 import 'react-date-range/dist/styles.css';
 import 'react-date-range/dist/theme/default.css';
+import { useStatsToggle } from '../hooks/useStatsToggle';
+import { getInvoiceGrandTotal } from '../utils/invoice';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
@@ -49,6 +53,7 @@ export const Invoices = () => {
   });
   const [searchTerm, setSearchTerm] = useState('');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [showStats, toggleStats] = useStatsToggle('invoices');
 
   // Date Picker State
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -140,16 +145,16 @@ export const Invoices = () => {
     });
   }, [invoices, searchTerm]);
 
-  // Totals calculations
+  // Totals calculations (Customer Payable Grand Total)
   const totalAmount = useMemo(
-    () => invoices.reduce((sum, inv) => sum + (inv.amount || 0), 0),
+    () => invoices.reduce((sum, inv) => sum + getInvoiceGrandTotal(inv), 0),
     [invoices]
   );
   const totalReceived = useMemo(
     () =>
       invoices
         .filter((inv) => inv.customerPaymentStatus === 'Received')
-        .reduce((sum, inv) => sum + (inv.amount || 0), 0),
+        .reduce((sum, inv) => sum + getInvoiceGrandTotal(inv), 0),
     [invoices]
   );
   const totalPending = totalAmount - totalReceived;
@@ -165,154 +170,170 @@ export const Invoices = () => {
           title="Invoices"
           subtitle="Manage customer invoices, receipts, and payment collection."
           actions={
-            <Button
-              variant="primary"
-              size="md"
-              onClick={() => navigate('/create-invoice')}
-              leftIcon={<Plus size={16} />}
-            >
-              Create Invoice
-            </Button>
+            <>
+              <Button
+                variant="outline"
+                size="md"
+                onClick={toggleStats}
+                leftIcon={showStats ? <EyeOff size={15} /> : <BarChart3 size={15} />}
+                className="border-slate-200 text-slate-700 hover:bg-slate-50 font-semibold cursor-pointer"
+                title={showStats ? 'Hide filters & summary statistics' : 'Show filters & summary statistics'}
+              >
+                {showStats ? 'Hide Filters & Stats' : 'Show Filters & Stats'}
+              </Button>
+              <Button
+                variant="primary"
+                size="md"
+                onClick={() => navigate('/create-invoice')}
+                leftIcon={<Plus size={16} />}
+              >
+                Create Invoice
+              </Button>
+            </>
           }
         />
       </div>
 
-      {/* 3 Metric Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 shrink-0">
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-xs flex items-center gap-3">
-          <div className="w-9 h-9 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center font-bold shrink-0">
-            <Receipt size={18} />
-          </div>
-          <div>
-            <div className="text-xl font-black text-slate-900 tracking-tight">
-              {invoices.length}
+      {/* 3 Metric Summary Cards (Collapsible) */}
+      {showStats && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 shrink-0 animate-fadeIn">
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-xs flex items-center gap-3">
+            <div className="w-9 h-9 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center font-bold shrink-0">
+              <Receipt size={18} />
             </div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-              Total Invoices
-            </p>
+            <div>
+              <div className="text-xl font-black text-slate-900 tracking-tight">
+                {invoices.length}
+              </div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                Total Invoices
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-xs flex items-center gap-3">
+            <div className="w-9 h-9 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold shrink-0">
+              <CheckCircle size={18} />
+            </div>
+            <div>
+              <div className="text-xl font-black text-emerald-700 tracking-tight">
+                {formatMMK(totalReceived)}
+              </div>
+              <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">
+                Payments Received
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-xs flex items-center gap-3">
+            <div className="w-9 h-9 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold shrink-0">
+              <Clock size={18} />
+            </div>
+            <div>
+              <div className="text-xl font-black text-amber-700 tracking-tight">
+                {formatMMK(totalPending)}
+              </div>
+              <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">
+                Pending Payments
+              </p>
+            </div>
           </div>
         </div>
+      )}
 
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-xs flex items-center gap-3">
-          <div className="w-9 h-9 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold shrink-0">
-            <CheckCircle size={18} />
-          </div>
-          <div>
-            <div className="text-xl font-black text-emerald-700 tracking-tight">
-              {formatMMK(totalReceived)}
-            </div>
-            <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">
-              Payments Received
-            </p>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-xs flex items-center gap-3">
-          <div className="w-9 h-9 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold shrink-0">
-            <Clock size={18} />
-          </div>
-          <div>
-            <div className="text-xl font-black text-amber-700 tracking-tight">
-              {formatMMK(totalPending)}
-            </div>
-            <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">
-              Pending Payments
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Filter Toolbar */}
-      <Card className="shrink-0">
-        <CardContent className="p-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            {/* Search Input */}
-            <div className="w-full sm:w-72">
-              <SearchInput
-                placeholder="Search invoice #, customer..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                onClear={() => setSearchTerm('')}
-              />
-            </div>
-
-            {/* Filter Dropdowns */}
-            <div className="flex flex-wrap items-center gap-2">
-              <select
-                value={filter.customerPaymentStatus}
-                onChange={(e) =>
-                  setFilter({ ...filter, customerPaymentStatus: e.target.value })
-                }
-                className="text-xs p-2 rounded-xl border border-slate-200 bg-white font-semibold text-slate-700 outline-none"
-              >
-                <option value="">Customer Payment: All</option>
-                <option value="Received">Received</option>
-                <option value="Pending">Pending</option>
-                <option value="Partial">Partial</option>
-              </select>
-
-              <select
-                value={filter.caregiverPayoutStatus}
-                onChange={(e) =>
-                  setFilter({ ...filter, caregiverPayoutStatus: e.target.value })
-                }
-                className="text-xs p-2 rounded-xl border border-slate-200 bg-white font-semibold text-slate-700 outline-none"
-              >
-                <option value="">Caregiver Payout: All</option>
-                <option value="Paid">Paid</option>
-                <option value="Pending">Pending</option>
-              </select>
-
-              {/* Date Range Picker */}
-              <div className="relative" ref={datePickerRef}>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowDatePicker(!showDatePicker)}
-                  leftIcon={<CalendarIcon size={14} />}
-                >
-                  {filter.startDate
-                    ? `${filter.startDate} — ${filter.endDate}`
-                    : 'Date Range'}
-                </Button>
-
-                {showDatePicker && (
-                  <div className="absolute right-0 top-full mt-2 z-50 bg-white rounded-2xl shadow-2xl border border-slate-200 p-3 animate-fadeIn">
-                    <DateRange
-                      ranges={dateRange}
-                      onChange={handleDateRangeChange}
-                      rangeColors={['#14B8A6']}
-                    />
-                    <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
-                      <Button
-                        variant="ghost"
-                        size="xs"
-                        onClick={() => setShowDatePicker(false)}
-                      >
-                        Close
-                      </Button>
-                    </div>
-                  </div>
-                )}
+      {/* Filter Toolbar (Collapsible with stats) */}
+      {showStats && (
+        <Card className="shrink-0 animate-fadeIn">
+          <CardContent className="p-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              {/* Search Input */}
+              <div className="w-full sm:w-72">
+                <SearchInput
+                  placeholder="Search invoice #, customer..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onClear={() => setSearchTerm('')}
+                />
               </div>
 
-              {(filter.status ||
-                filter.customerPaymentStatus ||
-                filter.caregiverPayoutStatus ||
-                filter.startDate) && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={resetFilters}
-                  className="text-rose-600 hover:bg-rose-50"
+              {/* Filter Dropdowns */}
+              <div className="flex flex-wrap items-center gap-2">
+                <select
+                  value={filter.customerPaymentStatus}
+                  onChange={(e) =>
+                    setFilter({ ...filter, customerPaymentStatus: e.target.value })
+                  }
+                  className="text-xs p-2 rounded-xl border border-slate-200 bg-white font-semibold text-slate-700 outline-none"
                 >
-                  Reset
-                </Button>
-              )}
+                  <option value="">Customer Payment: All</option>
+                  <option value="Received">Received</option>
+                  <option value="Pending">Pending</option>
+                  <option value="Partial">Partial</option>
+                </select>
+
+                <select
+                  value={filter.caregiverPayoutStatus}
+                  onChange={(e) =>
+                    setFilter({ ...filter, caregiverPayoutStatus: e.target.value })
+                  }
+                  className="text-xs p-2 rounded-xl border border-slate-200 bg-white font-semibold text-slate-700 outline-none"
+                >
+                  <option value="">Caregiver Payout: All</option>
+                  <option value="Paid">Paid</option>
+                  <option value="Pending">Pending</option>
+                </select>
+
+                {/* Date Range Picker */}
+                <div className="relative" ref={datePickerRef}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowDatePicker(!showDatePicker)}
+                    leftIcon={<CalendarIcon size={14} />}
+                  >
+                    {filter.startDate
+                      ? `${filter.startDate} — ${filter.endDate}`
+                      : 'Date Range'}
+                  </Button>
+
+                  {showDatePicker && (
+                    <div className="absolute right-0 top-full mt-2 z-50 bg-white rounded-2xl shadow-2xl border border-slate-200 p-3 animate-fadeIn">
+                      <DateRange
+                        ranges={dateRange}
+                        onChange={handleDateRangeChange}
+                        rangeColors={['#14B8A6']}
+                      />
+                      <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                        <Button
+                          variant="ghost"
+                          size="xs"
+                          onClick={() => setShowDatePicker(false)}
+                        >
+                          Close
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {(filter.status ||
+                  filter.customerPaymentStatus ||
+                  filter.caregiverPayoutStatus ||
+                  filter.startDate) && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={resetFilters}
+                    className="text-rose-600 hover:bg-rose-50"
+                  >
+                    Reset
+                  </Button>
+                )}
+              </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Main Invoices Table Card */}
       <Card className="flex-1 min-h-0 flex flex-col overflow-hidden">
@@ -400,11 +421,18 @@ export const Invoices = () => {
                             </span>
                           </TableCell>
 
-                          {/* Amount */}
+                          {/* Amount (Grand Total - Customer Pay) */}
                           <TableCell>
-                            <span className="font-extrabold text-slate-900 font-mono text-xs">
-                              {formatMMK(inv.amount || 0)}
-                            </span>
+                            <div>
+                              <span className="font-extrabold text-slate-900 font-mono text-xs">
+                                {formatMMK(getInvoiceGrandTotal(inv))}
+                              </span>
+                              {getInvoiceGrandTotal(inv) !== (inv.amount || 0) && (
+                                <p className="text-[10px] text-slate-400 font-mono" title="Caregiver Payout">
+                                  Payout: {formatMMK(inv.amount || 0)}
+                                </p>
+                              )}
+                            </div>
                           </TableCell>
 
                           {/* Payment Status */}
@@ -529,8 +557,13 @@ export const Invoices = () => {
 
                         <div className="text-right">
                           <p className="text-xs font-black text-slate-900 font-mono">
-                            {formatMMK(inv.amount || 0)}
+                            {formatMMK(getInvoiceGrandTotal(inv))}
                           </p>
+                          {getInvoiceGrandTotal(inv) !== (inv.amount || 0) && (
+                            <p className="text-[9px] text-slate-400 font-mono">
+                              Payout: {formatMMK(inv.amount || 0)}
+                            </p>
+                          )}
                           <p className="text-[10px] text-slate-400">
                             CG: {inv.caregiverName || '—'}
                           </p>
