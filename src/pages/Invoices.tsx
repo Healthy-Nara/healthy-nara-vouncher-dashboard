@@ -27,7 +27,7 @@ import { useStatsToggle } from '../hooks/useStatsToggle';
 import { getInvoiceGrandTotal } from '../utils/invoice';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
+import { Card, CardContent } from '../components/ui/Card';
 import { PageHeader } from '../components/ui/PageHeader';
 import { SearchInput } from '../components/ui/SearchInput';
 import { Avatar } from '../components/ui/Avatar';
@@ -337,15 +337,6 @@ export const Invoices = () => {
 
       {/* Main Invoices Table Card */}
       <Card className="flex-1 min-h-0 flex flex-col overflow-hidden">
-        <CardHeader className="shrink-0">
-          <div>
-            <CardTitle>Invoices List</CardTitle>
-            <CardDescription>
-              {filteredInvoices.length} of {invoices.length} invoices
-            </CardDescription>
-          </div>
-        </CardHeader>
-
         <CardContent className="p-0 flex-1 min-h-0 flex flex-col overflow-hidden">
           {isLoading ? (
             <div className="text-center py-16 text-slate-400 text-sm">
@@ -367,6 +358,7 @@ export const Invoices = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-12 text-center">#</TableHead>
                       <TableHead>INVOICE #</TableHead>
                       <TableHead>DATE</TableHead>
                       <TableHead>CUSTOMER</TableHead>
@@ -379,7 +371,7 @@ export const Invoices = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredInvoices.map((inv: any) => {
+                    {filteredInvoices.map((inv: any, index: number) => {
                       const isReceived = inv.customerPaymentStatus === 'Received';
                       const isPaid = inv.caregiverPayoutStatus === 'Paid';
                       const isCompleted = inv.status === 'Completed';
@@ -390,6 +382,11 @@ export const Invoices = () => {
                           onClick={() => navigate(`/invoice/${inv.invoiceNumber}`)}
                           className="cursor-pointer group"
                         >
+                          {/* Row Number */}
+                          <TableCell className="text-center font-mono text-xs text-slate-400 font-semibold w-12">
+                            {index + 1}
+                          </TableCell>
+
                           {/* Invoice # */}
                           <TableCell>
                             <span className="font-extrabold text-slate-900 font-mono text-xs group-hover:text-teal-600 transition-colors">
