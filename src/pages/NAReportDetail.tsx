@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getAdminNAReportById, generateNAReportAISummary } from '../api';
+import { getMyanmarDateString } from '../utils/date';
 import {
   ArrowLeft,
   Droplets,
@@ -423,7 +424,7 @@ const NAReportDetail = () => {
     setExportLoading('pdf');
     try {
       const safeName = (report?.childName || 'Child').replace(/[\s/]+/g, '_');
-      const safeDate = (report?.date ? new Date(report.date).toISOString().split('T')[0] : 'Date');
+      const safeDate = report?.date ? getMyanmarDateString(report.date) : 'Date';
       const elementIds = isMultiPage
         ? ['ai-summary-voucher-p1', 'ai-summary-voucher-p2']
         : ['ai-summary-voucher-p1'];
@@ -439,7 +440,7 @@ const NAReportDetail = () => {
     setExportLoading('png');
     try {
       const safeName = (report?.childName || 'Child').replace(/[\s/]+/g, '_');
-      const safeDate = (report?.date ? new Date(report.date).toISOString().split('T')[0] : 'Date');
+      const safeDate = report?.date ? getMyanmarDateString(report.date) : 'Date';
       const elementIds = isMultiPage
         ? ['ai-summary-voucher-p1', 'ai-summary-voucher-p2']
         : ['ai-summary-voucher-p1'];

@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchLeads, createLead, deleteLead } from '../api';
 import { useNavigate } from 'react-router-dom';
+import { getMyanmarDateString } from '../utils/date';
 import {
   Plus,
   X,
@@ -102,7 +103,7 @@ export const Leads = () => {
     }
     if (dateFilter) {
       result = result.filter(
-        (l: any) => l.date && new Date(l.date).toISOString().slice(0, 10) === dateFilter
+        (l: any) => l.date && getMyanmarDateString(l.date) === dateFilter
       );
     }
     if (searchTerm) {

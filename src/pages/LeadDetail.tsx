@@ -11,6 +11,7 @@ import {
 } from "../api";
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { getMyanmarDateString } from "../utils/date";
 import {
   ArrowLeft,
   Phone,
@@ -228,7 +229,7 @@ const LeadDetail = () => {
                       notes: lead.notes || "",
                       lostReason: lead.lostReason || "",
                       date: lead.date
-                        ? new Date(lead.date).toISOString().slice(0, 10)
+                        ? getMyanmarDateString(lead.date)
                         : "",
                     });
                     setIsEditing(true);

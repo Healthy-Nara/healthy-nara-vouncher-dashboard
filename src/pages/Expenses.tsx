@@ -47,17 +47,13 @@ const CATEGORIES = [
   'Other',
 ] as const;
 
+import { getMyanmarDateString } from '../utils/date';
+
 const CHANNELS = ['KBZPay (Kpay)', 'AYAPay', 'WavePay', 'Cash', 'Bank', 'Other'] as const;
 
-const todayStr = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
-    d.getDate()
-  ).padStart(2, '0')}`;
-};
+const todayStr = () => getMyanmarDateString();
 
-const toDateInput = (d: any) =>
-  d ? new Date(d).toISOString().slice(0, 10) : '';
+const toDateInput = (d: any) => (d ? getMyanmarDateString(d) : '');
 
 interface ExpenseForm {
   category: string;

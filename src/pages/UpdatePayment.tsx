@@ -3,6 +3,7 @@ import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { fetchInvoiceByNumber, updateCustomerPayment } from '../api';
 import { Search, ArrowLeft, CreditCard, Check } from 'lucide-react';
+import { getMyanmarDateTimeInputString } from '../utils/date';
 
 const UpdatePayment = () => {
   const navigate = useNavigate();
@@ -14,7 +15,7 @@ const UpdatePayment = () => {
     receivedAmount: 0,
     paymentChannel: 'Bank Transfer',
     payerAccountName: '',
-    dateTime: new Date().toISOString().slice(0, 16),
+    dateTime: getMyanmarDateTimeInputString(),
     note: '',
   });
 

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
 import { getFamilyReports, getFamilyReportByDate } from '../api';
+import { getMyanmarDateString } from '../utils/date';
 import { 
   Heart, FileText, CheckCircle2, Clock, Calendar, 
   User, Droplets, Baby, Moon, Activity, AlertCircle,
@@ -10,7 +11,7 @@ import {
 
 const FamilyReports = () => {
   const { token } = useParams<{ token: string }>();
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(getMyanmarDateString());
   const { data: reportsData, isLoading } = useQuery({
     queryKey: ['familyReports', token],
     queryFn: () => getFamilyReports(token!),
@@ -224,7 +225,7 @@ const FamilyReports = () => {
               {reports.map((report: any) => (
                 <button
                   key={report._id}
-                  onClick={() => setSelectedDate(new Date(report.date).toISOString().split('T')[0])}
+                  onClick={() => setSelectedDate(getMyanmarDateString(report.date))}
                   className="w-full p-3 bg-gray-50 hover:bg-gray-100 rounded-xl transition-all text-left flex items-center justify-between"
                 >
                   <div className="flex items-center gap-3">
