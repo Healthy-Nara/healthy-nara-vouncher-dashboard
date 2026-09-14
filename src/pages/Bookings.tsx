@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchBookings, fetchParents, createBookingFromParent, importBookings } from '../api';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
+import { getMyanmarDateString } from '../utils/date';
 import {
   ChevronRight,
   Calendar,
@@ -204,11 +205,11 @@ export const Bookings = () => {
   }, [parents, selectedParentId]);
 
   const handleAddDate = () => {
-    const isoDate = selectedDateObj.toISOString();
-    if (!parentForm.requestedDates.includes(isoDate)) {
+    const dateStr = getMyanmarDateString(selectedDateObj);
+    if (!parentForm.requestedDates.includes(dateStr)) {
       setParentForm((prev) => ({
         ...prev,
-        requestedDates: [...prev.requestedDates, isoDate].sort(),
+        requestedDates: [...prev.requestedDates, dateStr].sort(),
       }));
     }
   };
@@ -858,11 +859,19 @@ export const Bookings = () => {
                           key={d}
                           className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-teal-50 text-teal-800 border border-teal-200 text-xs font-bold"
                         >
-                          {d.slice(0, 10)}
+                          {(() => {
+                            if (d.includes('-') && d.length >= 10) {
+                              const parts = d.slice(0, 10).split('-');
+                              if (parts.length === 3 && parts[0].length === 4) {
+                                return `${parts[2]}-${parts[1]}-${parts[0]}`;
+                              }
+                            }
+                            return d.slice(0, 10);
+                          })()}
                           <button
                             type="button"
                             onClick={() => handleRemoveDate(d)}
-                            className="hover:text-rose-600"
+                            className="hover:text-rose-600 cursor-pointer"
                           >
                             ×
                           </button>
